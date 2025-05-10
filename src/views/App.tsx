@@ -1,26 +1,13 @@
-import { ThemeProvider } from '@/components/theme-provider';
-import { Fullscreen, Shrink, SplitIcon } from 'lucide-react';
-import {
-	useCallback,
-	useEffect,
-	useRef,
-	useState,
-	type ComponentProps,
-	type Dispatch,
-	type ReactNode,
-	type SetStateAction,
-} from 'react';
-import { ModeToggle } from './components/mode-toggle';
-import { Badge } from './components/ui/badge';
-import { Button } from './components/ui/button';
-import { Input } from './components/ui/input';
-import { Label } from './components/ui/label';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import {
 	ResizableHandle,
 	ResizablePanel,
 	ResizablePanelGroup,
-} from './components/ui/resizable';
-import { ScrollArea } from './components/ui/scroll-area';
+} from '@/components/ui/resizable';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import {
 	Table,
 	TableBody,
@@ -28,20 +15,21 @@ import {
 	TableHead,
 	TableHeader,
 	TableRow,
-} from './components/ui/table';
-import { cn } from './lib/utils';
+} from '@/components/ui/table';
+import useLocalStorage from '@/hooks/useLocalStorage';
+import { cn } from '@/lib/utils';
+import { Fullscreen, Shrink } from 'lucide-react';
+import {
+	useCallback,
+	useEffect,
+	useRef,
+	useState,
+	type Dispatch,
+	type SetStateAction,
+} from 'react';
 
 function App() {
-	const [splitDirection, setSplitDirection] =
-		useState<ComponentProps<typeof ResizablePanelGroup>['direction']>(
-			'horizontal',
-		);
-
-	const toggleSplitDirection = useCallback(() => {
-		setSplitDirection((prev) =>
-			prev === 'horizontal' ? 'vertical' : 'horizontal',
-		);
-	}, []);
+	const [splitDirection] = useLocalStorage('layoutDirection', 'horizontal');
 
 	const [data, setData] = useState<Entity[]>([
 		{
@@ -72,50 +60,41 @@ function App() {
 	const [selectedEntityId, setSelectedEntityId] = useState<string | null>(
 		null,
 	);
+
 	return (
-		<ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
-			<Layout
-				splitDirection={splitDirection}
-				toggleSplitDirection={toggleSplitDirection}
-			>
-				{/* <div className="bg-amber-300">my stuff</div> */}
-				<ResizablePanelGroup
-					direction={splitDirection}
-					className="flex-1 w-auto h-auto border"
-				>
-					<ResizablePanel defaultSize={50}>
-						<ScrollArea>
-							<InitiativeTable
-								selectedEntityId={selectedEntityId}
-								setSelectedEntityId={setSelectedEntityId}
-								data={data}
-							/>
-						</ScrollArea>
-					</ResizablePanel>
-					<ResizableHandle />
-					<ResizablePanel defaultSize={50} className="p-4">
-						{selectedEntityId ? (
-							<EntityPropertyPanel
-								entity={
-									data.find((e) => e.id === selectedEntityId)!
-								}
-								onChange={(entity) => {
-									setData((prev) =>
-										prev.map((e) =>
-											e.id === entity.id ? entity : e,
-										),
-									);
-								}}
-							/>
-						) : (
-							<div className="flex items-center justify-center w-full h-full">
-								<p>Select an entity to edit</p>
-							</div>
-						)}
-					</ResizablePanel>
-				</ResizablePanelGroup>
-			</Layout>
-		</ThemeProvider>
+		<ResizablePanelGroup
+			direction={splitDirection as 'horizontal' | 'vertical'}
+			className="flex-1 w-auto h-auto border"
+		>
+			<ResizablePanel defaultSize={50}>
+				<ScrollArea>
+					<InitiativeTable
+						selectedEntityId={selectedEntityId}
+						setSelectedEntityId={setSelectedEntityId}
+						data={data}
+					/>
+				</ScrollArea>
+			</ResizablePanel>
+			<ResizableHandle />
+			<ResizablePanel defaultSize={50} className="p-4">
+				{selectedEntityId ? (
+					<EntityPropertyPanel
+						entity={data.find((e) => e.id === selectedEntityId)!}
+						onChange={(entity) => {
+							setData((prev) =>
+								prev.map((e) =>
+									e.id === entity.id ? entity : e,
+								),
+							);
+						}}
+					/>
+				) : (
+					<div className="flex items-center justify-center w-full h-full">
+						<p>Select an entity to edit</p>
+					</div>
+				)}
+			</ResizablePanel>
+		</ResizablePanelGroup>
 	);
 }
 
@@ -349,39 +328,6 @@ function InitiativeTable({
 				</Table>
 			</main>
 		</section>
-	);
-}
-
-function Layout({
-	children,
-	splitDirection,
-	toggleSplitDirection,
-}: {
-	children: ReactNode;
-
-	splitDirection: ComponentProps<typeof ResizablePanelGroup>['direction'];
-	toggleSplitDirection: () => void;
-}) {
-	return (
-		<div className="flex flex-col items-stretch justify-center min-h-screen bg-background">
-			<header className="flex items-center justify-between p-4 gap-x-4">
-				<h1 className="text-2xl font-bold flex-1">My App</h1>
-				<Button
-					variant="outline"
-					size="icon"
-					className="cursor-pointer"
-					onClick={toggleSplitDirection}
-				>
-					<SplitIcon className="absolute h-[1.2rem] w-[1.2rem] rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
-					<span className="sr-only">Toggle split direction</span>
-				</Button>
-				<ModeToggle />
-			</header>
-			<main className="flex-1 p-4 grid">{children}</main>
-			<footer className="flex items-center justify-between p-4">
-				Footer Bro
-			</footer>
-		</div>
 	);
 }
 
