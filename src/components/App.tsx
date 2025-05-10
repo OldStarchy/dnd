@@ -1,4 +1,3 @@
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -17,49 +16,112 @@ import {
 	TableRow,
 } from '@/components/ui/table';
 import useLocalStorage from '@/hooks/useLocalStorage';
-import { cn } from '@/lib/utils';
-import { Fullscreen, Shrink } from 'lucide-react';
-import {
-	useCallback,
-	useEffect,
-	useRef,
-	useState,
-	type Dispatch,
-	type SetStateAction,
-} from 'react';
+import { setDefault, setEntity } from '@/store/reducers/initiativeSlice';
+import { setPort, useAppDispatch, useAppSelector } from '@/store/store';
+import type { Entity } from '@/store/types/Entity';
+import { ExternalLink } from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
+import InitiativeTable from './initiative-table';
 
 function App() {
 	const [splitDirection] = useLocalStorage('layoutDirection', 'horizontal');
 
-	const [data, setData] = useState<Entity[]>([
-		{
-			initiative: 10,
-			name: 'Player 1',
-			id: crypto.randomUUID(),
-			health: 100,
-			tags: [
+	const data = useAppSelector((state) => state.initiative.entities);
+	const dispatch = useAppDispatch();
+
+	useEffect(() => {
+		dispatch(
+			setDefault([
 				{
-					name: 'Stunned',
-					color: 'bg-red-500',
+					initiative: 10,
+					name: 'Player 1',
+					id: crypto.randomUUID(),
+					health: 100,
+					tags: [
+						{
+							name: 'Stunned',
+							color: 'bg-red-500',
+						},
+						{
+							name: 'Poisoned',
+							color: 'bg-green-500',
+						},
+					],
 				},
 				{
-					name: 'Poisoned',
-					color: 'bg-green-500',
+					initiative: 20,
+					name: 'Player 2',
+					id: crypto.randomUUID(),
+					health: 80,
+					tags: [],
 				},
-			],
-		},
-		{
-			initiative: 20,
-			name: 'Player 2',
-			id: crypto.randomUUID(),
-			health: 80,
-			tags: [],
-		},
-	]);
+			]),
+		);
+	}, []);
 
 	const [selectedEntityId, setSelectedEntityId] = useState<string | null>(
 		null,
 	);
+
+	const [popupWindow, setPopupWindow] = useState<Window | null>(null);
+
+	const togglePopup = useCallback(() => {
+		setPopupWindow((prev) => {
+			if (prev) {
+				prev.close();
+				setPort(null);
+				return null;
+			} else {
+				const win = window.open(
+					'/popout',
+					'popout',
+					'width=800,height=600',
+				);
+				if (win) {
+					win.opener = window;
+					win.focus();
+					const thisCloseHandler = () => {
+						win.close();
+					};
+					window.addEventListener('beforeunload', thisCloseHandler);
+
+					win.addEventListener('beforeunload', () => {
+						setPort(null);
+						setPopupWindow(null);
+						window.removeEventListener(
+							'beforeunload',
+							thisCloseHandler,
+						);
+					});
+
+					win.addEventListener('load', () => {
+						const chan = new MessageChannel();
+
+						win.postMessage({ type: 'INIT_PORT' }, '*', [
+							chan.port2,
+						]);
+						chan.port1.start();
+						setPort(chan.port1);
+
+						const handleInitOK = (event: MessageEvent) => {
+							if (event.data?.type === 'INIT_PORT_OK') {
+								chan.port1.removeEventListener(
+									'message',
+									handleInitOK,
+								);
+								chan.port1.postMessage({
+									type: 'FORWARDED_ACTION',
+									payload: setDefault(data),
+								});
+							}
+						};
+						chan.port1.addEventListener('message', handleInitOK);
+					});
+				}
+				return win;
+			}
+		});
+	}, [data]);
 
 	return (
 		<ResizablePanelGroup
@@ -72,6 +134,17 @@ function App() {
 						selectedEntityId={selectedEntityId}
 						setSelectedEntityId={setSelectedEntityId}
 						data={data}
+						headerButtons={
+							<Button
+								className="ml-auto"
+								variant="outline"
+								size="icon"
+								onClick={togglePopup}
+							>
+								<ExternalLink className="h-4 w-4" />
+								<span className="sr-only">Open popup</span>
+							</Button>
+						}
 					/>
 				</ScrollArea>
 			</ResizablePanel>
@@ -81,11 +154,7 @@ function App() {
 					<EntityPropertyPanel
 						entity={data.find((e) => e.id === selectedEntityId)!}
 						onChange={(entity) => {
-							setData((prev) =>
-								prev.map((e) =>
-									e.id === entity.id ? entity : e,
-								),
-							);
+							dispatch(setEntity(entity));
 						}}
 					/>
 				) : (
@@ -97,14 +166,6 @@ function App() {
 		</ResizablePanelGroup>
 	);
 }
-
-type Entity = {
-	initiative: number;
-	name: string;
-	id: string;
-	health: number;
-	tags: Array<{ name: string; color: string }>;
-};
 
 function EntityPropertyPanel({
 	entity,
@@ -213,121 +274,6 @@ function EntityPropertyPanel({
 				</TableBody>
 			</Table>
 		</>
-	);
-}
-
-function InitiativeTable({
-	data,
-	selectedEntityId,
-	setSelectedEntityId,
-}: {
-	data: Entity[];
-	selectedEntityId: string | null;
-	setSelectedEntityId: Dispatch<SetStateAction<string | null>>;
-}) {
-	const tableRef = useRef<HTMLTableElement>(null);
-	const [isFullscreen, setIsFullscreen] = useState(false);
-
-	const toggleFullscreen = useCallback(() => {
-		if (tableRef.current) {
-			if (document.fullscreenElement) {
-				document.exitFullscreen();
-			} else {
-				tableRef.current.requestFullscreen();
-			}
-		}
-	}, [tableRef]);
-
-	useEffect(() => {
-		const handleFullscreenChange = () => {
-			if (document.fullscreenElement) {
-				setIsFullscreen(true);
-			} else {
-				setIsFullscreen(false);
-			}
-		};
-		document.addEventListener('fullscreenchange', handleFullscreenChange);
-		return () => {
-			document.removeEventListener(
-				'fullscreenchange',
-				handleFullscreenChange,
-			);
-		};
-	}, []);
-
-	return (
-		<section ref={tableRef} className="bg-background ">
-			<header className="flex items-center space-x-2 p-4">
-				<h2 className="text-lg font-bold flex-1">Initiative Tracker</h2>
-				<Button
-					variant="outline"
-					size="icon"
-					className="cursor-pointer"
-					onClick={toggleFullscreen}
-				>
-					<Fullscreen
-						className={cn('h-[1.2rem] w-[1.2rem] scale-100', {
-							'scale-0': isFullscreen,
-						})}
-					/>
-					<Shrink
-						className={cn(
-							'absolute h-[1.2rem] w-[1.2rem] scale-0',
-							{
-								'scale-100': isFullscreen,
-							},
-						)}
-					/>
-
-					<span className="sr-only">Toggle fullscreen</span>
-				</Button>
-			</header>
-			<main>
-				<Table>
-					<TableHeader>
-						<TableRow>
-							<TableHead className="pl-4">Initiative</TableHead>
-							<TableHead>Player</TableHead>
-							<TableHead>Health</TableHead>
-							<TableHead className="pr-4" />
-						</TableRow>
-					</TableHeader>
-					<TableBody>
-						{data.map((row) => (
-							<TableRow
-								key={row.id}
-								className={cn(
-									{
-										'bg-accent':
-											selectedEntityId === row.id,
-									},
-									'cursor-pointer hover:bg-accent',
-								)}
-								onClick={() => setSelectedEntityId(row.id)}
-							>
-								<TableCell className="pl-4">
-									{row.initiative}
-								</TableCell>
-								<TableCell>{row.name}</TableCell>
-								<TableCell>{row.health}</TableCell>
-								<TableCell className="pr-4">
-									<div className="flex space-x-2">
-										{row.tags.map((tag, index) => (
-											<Badge
-												className={tag.color}
-												key={index}
-											>
-												{tag.name}
-											</Badge>
-										))}
-									</div>
-								</TableCell>
-							</TableRow>
-						))}
-					</TableBody>
-				</Table>
-			</main>
-		</section>
 	);
 }
 

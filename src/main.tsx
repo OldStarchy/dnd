@@ -1,10 +1,10 @@
-import App from '@/views/App.tsx';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { createBrowserRouter, RouterProvider } from 'react-router';
 import { ThemeProvider } from './components/theme-provider';
 import './index.css';
 import Layout from './layout/layout';
+import Home from './views/Home';
 import PopoutView from './views/Popout';
 
 const router = createBrowserRouter([
@@ -13,7 +13,7 @@ const router = createBrowserRouter([
 		children: [
 			{
 				index: true,
-				Component: App,
+				Component: Home,
 			},
 			{
 				path: '/popout',
