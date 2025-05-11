@@ -7,8 +7,10 @@ import { useCallback } from 'react';
 import { Outlet } from 'react-router';
 
 function Layout() {
-	const [splitDirection, setSplitDirection] =
-		useLocalStorage('layoutDirection');
+	const [splitDirection, setSplitDirection] = useLocalStorage(
+		'layoutDirection',
+		(v) => (v !== 'vertical' ? 'horizontal' : 'vertical'),
+	);
 
 	const toggleSplitDirection = useCallback(() => {
 		setSplitDirection((prev) =>

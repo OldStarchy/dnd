@@ -24,7 +24,9 @@ import { useCallback, useEffect, useState } from 'react';
 import InitiativeTable from './initiative-table';
 
 function App() {
-	const [splitDirection] = useLocalStorage('layoutDirection', 'horizontal');
+	const [splitDirection] = useLocalStorage('layoutDirection', (v) =>
+		v !== 'vertical' ? 'horizontal' : 'vertical',
+	);
 
 	const data = useAppSelector((state) => state.initiative.entities);
 	const dispatch = useAppDispatch();
