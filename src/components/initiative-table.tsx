@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import {
 	Table,
 	TableBody,
+	TableCaption,
 	TableCell,
 	TableHead,
 	TableHeader,
@@ -19,6 +20,7 @@ import {
 	useRef,
 	useState,
 	type Dispatch,
+	type ReactNode,
 	type SetStateAction,
 } from 'react';
 
@@ -28,12 +30,14 @@ function InitiativeTable({
 	headerButtons,
 	rowButtons,
 	reorderable = false,
+	footer,
 }: {
 	selectedEntityId: string | null;
 	setSelectedEntityId: Dispatch<SetStateAction<string | null>>;
-	headerButtons?: React.ReactNode;
-	rowButtons?: (entity: Entity, index: number) => React.ReactNode;
+	headerButtons?: ReactNode;
+	rowButtons?: (entity: Entity, index: number) => ReactNode;
 	reorderable?: boolean;
+	footer?: ReactNode;
 }) {
 	const data = useAppSelector((state) => state.initiative.entities);
 	const dispatch = useAppDispatch();
@@ -180,6 +184,11 @@ function InitiativeTable({
 							</TableRow>
 						))}
 					</TableBody>
+					{footer && (
+						<TableCaption className="text-muted-foreground mt-4 text-sm">
+							{footer}
+						</TableCaption>
+					)}
 				</Table>
 			</main>
 		</section>

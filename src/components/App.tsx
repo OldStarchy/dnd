@@ -10,6 +10,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import {
 	Table,
 	TableBody,
+	TableCaption,
 	TableCell,
 	TableHead,
 	TableHeader,
@@ -23,7 +24,7 @@ import {
 } from '@/store/reducers/initiativeSlice';
 import { setPort, useAppDispatch, useAppSelector } from '@/store/store';
 import type { Entity } from '@/store/types/Entity';
-import { ExternalLink } from 'lucide-react';
+import { ExternalLink, Plus } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import InitiativeTable from './initiative-table';
 
@@ -132,6 +133,19 @@ function App() {
 	const selectedEntity = data.find(
 		(entity) => entity.id === selectedEntityId,
 	);
+
+	const createNewEntity = useCallback(() => {
+		const newEntity: Entity = {
+			initiative: 0,
+			name: 'New Entity',
+			id: crypto.randomUUID(),
+			health: 100,
+			tags: [],
+		};
+		dispatch(setEntity(newEntity));
+		setSelectedEntityId(newEntity.id);
+	}, [data]);
+
 	return (
 		<ResizablePanelGroup
 			direction={splitDirection}
@@ -168,6 +182,17 @@ function App() {
 								</Button>
 							);
 						}}
+						footer={
+							<Button
+								variant="outline"
+								size="icon"
+								className="cursor-pointer"
+								onClick={createNewEntity}
+							>
+								<Plus className="h-4 w-4" />
+								<span className="sr-only">Add entity</span>
+							</Button>
+						}
 					/>
 				</ScrollArea>
 			</ResizablePanel>
@@ -282,19 +307,24 @@ function EntityPropertyPanel({
 						</TableRow>
 					))}
 					<TableRow>
-						<TableCell colSpan={3}>
-							<Button
-								onClick={() => {
-									const newTags = [...entity.tags];
-									newTags.push({ name: '', color: '' });
-									onChange({ ...entity, tags: newTags });
-								}}
-							>
-								Add Tag
-							</Button>
-						</TableCell>
+						<TableCell colSpan={3}></TableCell>
 					</TableRow>
 				</TableBody>
+				<TableCaption>
+					<Button
+						variant="outline"
+						size="icon"
+						className="cursor-pointer"
+						onClick={() => {
+							const newTags = [...entity.tags];
+							newTags.push({ name: '', color: '' });
+							onChange({ ...entity, tags: newTags });
+						}}
+					>
+						<Plus className="h-4 w-4" />
+						<span className="sr-only">Add tag</span>
+					</Button>
+				</TableCaption>
 			</Table>
 		</>
 	);
