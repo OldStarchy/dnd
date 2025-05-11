@@ -9,16 +9,26 @@ import {
 function useLocalStorage(
 	key: string,
 ): [string | null, Dispatch<SetStateAction<string | null>>];
-function useLocalStorage(
+function useLocalStorage<T extends string | null>(
 	key: string,
-	defaultValue: string,
-): [string | null, Dispatch<SetStateAction<string | null>>];
-function useLocalStorage(
+	readTransformer: (stored: string | null) => T,
+): [T, Dispatch<SetStateAction<string | null>>];
+function useLocalStorage<T>(
 	key: string,
-	defaultValue: string | null = null,
-): [string | null, Dispatch<SetStateAction<string | null>>] {
-	const [value, setValue] = useState<string | null>(
-		localStorage.getItem(key) ?? defaultValue,
+	readTransformer: (stored: string | null) => T,
+	writeTransformer: (value: T) => string,
+): [T, Dispatch<SetStateAction<T>>];
+
+function useLocalStorage<T>(
+	key: string,
+	readTransformer?: (stored: string | null) => T,
+	writeTransformer: (value: T | string | null) => string | null = (v) =>
+		v as string | null,
+): [T | string | null, Dispatch<SetStateAction<T | string | null>>] {
+	const [value, setValue] = useState<T | string | null>(
+		readTransformer
+			? readTransformer(localStorage.getItem(key))
+			: localStorage.getItem(key),
 	);
 
 	const setStoredValue = useCallback(
@@ -26,14 +36,23 @@ function useLocalStorage(
 			newValueOrCallback:
 				| string
 				| null
-				| ((oldValue: string | null) => string | null),
+				| ((oldValue: T | string | null) => T | string | null),
 		) => {
 			const cb =
 				typeof newValueOrCallback === 'function'
 					? newValueOrCallback
 					: () => newValueOrCallback as string | null;
 
-			const newValue = cb(localStorage.getItem(key));
+			const oldValue = localStorage.getItem(key);
+
+			const newValue = writeTransformer(
+				cb(
+					readTransformer
+						? readTransformer(localStorage.getItem(key))
+						: (localStorage.getItem(key) as T),
+				) as T,
+			);
+
 			if (newValue === null) {
 				localStorage.removeItem(key);
 			} else {
@@ -44,7 +63,7 @@ function useLocalStorage(
 				new StorageEvent('storage', {
 					key,
 					newValue,
-					oldValue: value,
+					oldValue,
 				}),
 			);
 			// setValue(newValue); // handled by storage event below
@@ -64,7 +83,10 @@ function useLocalStorage(
 		};
 	}, [key]);
 
-	return [value, setStoredValue];
+	return [
+		value as T | string | null,
+		setStoredValue as Dispatch<SetStateAction<T | string | null>>,
+	];
 }
 
 export default useLocalStorage;
