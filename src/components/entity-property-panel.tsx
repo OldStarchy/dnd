@@ -29,76 +29,100 @@ function EntityPropertyPanel({
 	onChange: (entity: Entity) => void;
 }) {
 	return (
-		<div className="flex flex-col gap-2">
-			<div className="flex items-center space-x-2">
-				<Switch
-					id="hidden"
-					checked={entity.visible}
-					onCheckedChange={(e) => onChange({ ...entity, visible: e })}
-				/>
-				<Label htmlFor="hidden">Visible</Label>
+		<div className="flex flex-col space-y-2">
+			<div className="flex items-stretch space-x-2">
+				<div className="space-y-2">
+					<Label htmlFor="hidden">Visible</Label>
+					<Switch
+						id="hidden"
+						checked={entity.visible}
+						onCheckedChange={(e) =>
+							onChange({ ...entity, visible: e })
+						}
+					/>
+				</div>
+
+				<div className="space-y-2">
+					<Label htmlFor="initiative">Initiative</Label>
+					<Input
+						id="initiative"
+						type="number"
+						value={entity.initiative}
+						onChange={(e) =>
+							onChange({
+								...entity,
+								initiative: parseInt(e.target.value),
+							})
+						}
+					/>
+				</div>
+
+				<div className="space-y-2 flex-1">
+					<Label htmlFor="name">Name</Label>
+					<Input
+						id="name"
+						className="text-2xl"
+						value={entity.name}
+						onChange={(e) =>
+							onChange({ ...entity, name: e.target.value })
+						}
+					/>
+				</div>
 			</div>
 
-			<Label htmlFor="name">Name</Label>
-			<Input
-				id="name"
-				className="text-2xl"
-				value={entity.name}
-				onChange={(e) => onChange({ ...entity, name: e.target.value })}
-			/>
-			<Label htmlFor="initiative">Initiative</Label>
-			<Input
-				id="initiative"
-				type="number"
-				value={entity.initiative}
-				onChange={(e) =>
-					onChange({
-						...entity,
-						initiative: parseInt(e.target.value),
-					})
-				}
-			/>
-			<Label htmlFor="health">Health</Label>
-			<Input
-				id="health"
-				type="number"
-				value={entity.health}
-				onChange={(e) =>
-					onChange({ ...entity, health: parseInt(e.target.value) })
-				}
-			/>
-			<Label htmlFor="maxHealth">Max Health</Label>
-			<Input
-				id="maxHealth"
-				type="number"
-				value={entity.maxHealth}
-				onChange={(e) =>
-					onChange({
-						...entity,
-						maxHealth: parseInt(e.target.value),
-					})
-				}
-			/>
-			<Select
-				value={entity.obfuscateHealth}
-				onValueChange={(e) => {
-					onChange({
-						...entity,
-						obfuscateHealth: e as HealthObfuscation,
-					});
-				}}
-			>
-				<SelectContent>
+			<div className="grid grid-flow-col grid-rows-2 auto-rows-auto gap-2">
+				<Label htmlFor="health">Health</Label>
+				<Input
+					id="health"
+					type="number"
+					value={entity.health}
+					onChange={(e) =>
+						onChange({
+							...entity,
+							health: parseInt(e.target.value),
+						})
+					}
+				/>
+
+				<Label htmlFor="maxHealth">Max Health</Label>
+				<Input
+					id="maxHealth"
+					type="number"
+					value={entity.maxHealth}
+					onChange={(e) =>
+						onChange({
+							...entity,
+							maxHealth: parseInt(e.target.value),
+						})
+					}
+				/>
+
+				<Label htmlFor="obfuscateHealth">Obfuscate Health</Label>
+				<Select
+					value={entity.obfuscateHealth}
+					onValueChange={(e) => {
+						onChange({
+							...entity,
+							obfuscateHealth: e as HealthObfuscation,
+						});
+					}}
+				>
 					<SelectTrigger>
 						<SelectValue placeholder="Select obfuscation" />
 					</SelectTrigger>
-					<SelectItem value={HealthObfuscation.NO}>None</SelectItem>
-					<SelectItem value={HealthObfuscation.TEXT}>Text</SelectItem>
-					<SelectItem value={HealthObfuscation.HIDDEN}>
-						Hidden
-					</SelectItem>
-				</SelectContent>
-			</Select>
+					<SelectContent>
+						<SelectItem value={HealthObfuscation.NO}>
+							None
+						</SelectItem>
+						<SelectItem value={HealthObfuscation.TEXT}>
+							Text
+						</SelectItem>
+						<SelectItem value={HealthObfuscation.HIDDEN}>
+							Hidden
+						</SelectItem>
+					</SelectContent>
+				</Select>
+			</div>
 			<Table>
 				<TableHeader>
 					<TableRow>
