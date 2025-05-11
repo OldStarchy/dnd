@@ -11,8 +11,7 @@ import {
 } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
 import { swapEntities } from '@/store/reducers/initiativeSlice';
-import { useAppDispatch, useAppSelector } from '@/store/store';
-import type { Entity } from '@/store/types/Entity';
+import { useAppDispatch } from '@/store/store';
 import { Fullscreen, Shrink } from 'lucide-react';
 import {
 	useCallback,
@@ -24,7 +23,17 @@ import {
 	type SetStateAction,
 } from 'react';
 
+export type InitiativeTableEntityView = {
+	initiative: number;
+	name: string;
+	id: string;
+	healthDisplay: string;
+	tags: { name: string; color: string }[];
+	effect?: 'muted';
+};
+
 function InitiativeTable({
+	entities,
 	selectedEntityId,
 	setSelectedEntityId,
 	headerButtons,
@@ -32,14 +41,17 @@ function InitiativeTable({
 	reorderable = false,
 	footer,
 }: {
+	entities: InitiativeTableEntityView[];
 	selectedEntityId: string | null;
 	setSelectedEntityId: Dispatch<SetStateAction<string | null>>;
 	headerButtons?: ReactNode;
-	rowButtons?: (entity: Entity, index: number) => ReactNode;
+	rowButtons?: (
+		entity: InitiativeTableEntityView,
+		index: number,
+	) => ReactNode;
 	reorderable?: boolean;
 	footer?: ReactNode;
 }) {
-	const data = useAppSelector((state) => state.initiative.entities);
 	const dispatch = useAppDispatch();
 	const tableRef = useRef<HTMLTableElement>(null);
 	const [isFullscreen, setIsFullscreen] = useState(false);
@@ -96,7 +108,7 @@ function InitiativeTable({
 				setDragRowIndex(null);
 			}
 		},
-		[dragRowIndex, data, dispatch],
+		[dragRowIndex, entities, dispatch],
 	);
 	const handleDragEnd = useCallback(() => {
 		setDragRowIndex(null);
@@ -142,30 +154,34 @@ function InitiativeTable({
 						</TableRow>
 					</TableHeader>
 					<TableBody>
-						{data.map((row, index) => (
+						{entities.map((row, index) => (
 							<TableRow
 								key={row.id}
 								className={cn(
 									{
 										'bg-accent':
 											selectedEntityId === row.id,
+										'text-muted-foreground':
+											row.effect === 'muted',
 									},
 									'cursor-pointer hover:bg-accent',
 								)}
 								onClick={() => setSelectedEntityId(row.id)}
 								draggable={reorderable}
 								onDragStart={(e) =>
-									handleDragStart(e, data.indexOf(row))
+									handleDragStart(e, entities.indexOf(row))
 								}
 								onDragOver={handleDragOver}
-								onDrop={(e) => handleDrop(e, data.indexOf(row))}
+								onDrop={(e) =>
+									handleDrop(e, entities.indexOf(row))
+								}
 								onDragEnd={handleDragEnd}
 							>
 								<TableCell className="pl-4">
 									{row.initiative}
 								</TableCell>
 								<TableCell>{row.name}</TableCell>
-								<TableCell>{row.health}</TableCell>
+								<TableCell>{row.healthDisplay}</TableCell>
 								<TableCell className="pr-4">
 									<div className="flex space-x-2">
 										{row.tags.map((tag, index) => (

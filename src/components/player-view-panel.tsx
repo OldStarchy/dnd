@@ -1,10 +1,30 @@
 import InitiativeTable from '@/components/initiative-table';
-import { useAppDispatch } from '@/store/store';
+import { useAppDispatch, useAppSelector } from '@/store/store';
+import { getObfuscatedHealthText } from '@/store/types/Entity';
 import { useEffect, useState } from 'react';
 
 function PlayerViewPanel() {
 	const [portFromMain, setPortFromMain] = useState<null | MessagePort>(null);
+	const entities = useAppSelector((state) => state.initiative.entities);
 	const dispatch = useAppDispatch();
+
+	const entitiesView = entities
+		.filter((entity) => entity.visible)
+		.map((entity) => {
+			const healthDisplay = getObfuscatedHealthText(
+				entity.health,
+				entity.maxHealth,
+				entity.obfuscateHealth,
+			);
+
+			return {
+				id: entity.id,
+				name: entity.name,
+				initiative: entity.initiative,
+				healthDisplay,
+				tags: entity.tags,
+			};
+		});
 
 	useEffect(() => {
 		const messageHandler = (event: MessageEvent) => {
@@ -40,6 +60,7 @@ function PlayerViewPanel() {
 	return (
 		<div>
 			<InitiativeTable
+				entities={entitiesView}
 				setSelectedEntityId={() => {}}
 				selectedEntityId={null}
 			/>

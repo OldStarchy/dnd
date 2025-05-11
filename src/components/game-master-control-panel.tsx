@@ -12,33 +12,73 @@ import {
 	setEntity,
 } from '@/store/reducers/initiativeSlice';
 import { setPort, useAppDispatch, useAppSelector } from '@/store/store';
-import type { Entity } from '@/store/types/Entity';
+import {
+	getObfuscatedHealthText,
+	HealthObfuscation,
+	type Entity,
+} from '@/store/types/Entity';
 import { ExternalLink, Plus } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import EntityPropertyPanel from './entity-property-panel';
-import InitiativeTable from './initiative-table';
+import InitiativeTable, {
+	type InitiativeTableEntityView,
+} from './initiative-table';
 
 function GameMasterControlPanel() {
 	const [splitDirection] = useLocalStorage('layoutDirection', (v) =>
 		v !== 'vertical' ? 'horizontal' : 'vertical',
 	);
 
-	const data = useAppSelector((state) => state.initiative.entities);
+	const entities = useAppSelector((state) => state.initiative.entities);
 	const dispatch = useAppDispatch();
 
 	useEffect(() => {
 		dispatch(
 			setDefault([
 				{
-					initiative: 10,
-					name: 'Player 1',
 					id: crypto.randomUUID(),
-					health: 100,
+					name: 'Sybil Snow',
+					visible: true,
+					initiative: 10,
+					health: 11,
+					maxHealth: 11,
+					obfuscateHealth: HealthObfuscation.NO,
+					tags: [],
+				},
+				{
+					id: crypto.randomUUID(),
+					name: 'Goblin 2',
+					visible: true,
+					initiative: 10,
+					health: 2,
+					maxHealth: 7,
+					obfuscateHealth: HealthObfuscation.TEXT,
 					tags: [
 						{
 							name: 'Stunned',
-							color: 'bg-red-500',
+							color: 'bg-indigo-500',
 						},
+					],
+				},
+				{
+					id: crypto.randomUUID(),
+					name: 'Goblin 1',
+					visible: true,
+					initiative: 8,
+					health: 0,
+					maxHealth: 7,
+					obfuscateHealth: HealthObfuscation.TEXT,
+					tags: [],
+				},
+				{
+					id: crypto.randomUUID(),
+					name: 'Billiam',
+					visible: true,
+					initiative: 9,
+					health: 12,
+					maxHealth: 12,
+					obfuscateHealth: HealthObfuscation.TEXT,
+					tags: [
 						{
 							name: 'Poisoned',
 							color: 'bg-green-500',
@@ -46,10 +86,38 @@ function GameMasterControlPanel() {
 					],
 				},
 				{
-					initiative: 20,
-					name: 'Player 2',
 					id: crypto.randomUUID(),
-					health: 80,
+					name: 'Sneaky Goblin',
+					visible: false,
+					initiative: 5,
+					health: 10,
+					maxHealth: 10,
+					obfuscateHealth: HealthObfuscation.TEXT,
+					tags: [],
+				},
+				{
+					id: crypto.randomUUID(),
+					name: 'Silence',
+					visible: true,
+					initiative: 3,
+					health: 8,
+					maxHealth: 10,
+					obfuscateHealth: HealthObfuscation.NO,
+					tags: [
+						{
+							name: 'Burned',
+							color: 'bg-red-500',
+						},
+					],
+				},
+				{
+					id: crypto.randomUUID(),
+					name: 'Dragon',
+					visible: true,
+					initiative: 3,
+					health: 13,
+					maxHealth: 25,
+					obfuscateHealth: HealthObfuscation.HIDDEN,
 					tags: [],
 				},
 			]),
@@ -108,7 +176,7 @@ function GameMasterControlPanel() {
 								);
 								chan.port1.postMessage({
 									type: 'FORWARDED_ACTION',
-									payload: setDefault(data),
+									payload: setDefault(entities),
 								});
 							}
 						};
@@ -118,23 +186,52 @@ function GameMasterControlPanel() {
 				return win;
 			}
 		});
-	}, [data]);
+	}, [entities]);
 
-	const selectedEntity = data.find(
+	const selectedEntity = entities.find(
 		(entity) => entity.id === selectedEntityId,
 	);
 
 	const createNewEntity = useCallback(() => {
 		const newEntity: Entity = {
-			initiative: 0,
-			name: 'New Entity',
 			id: crypto.randomUUID(),
-			health: 100,
+			name: 'New Entity',
+			visible: false,
+			initiative: 0,
+			health: 10,
+			maxHealth: 10,
+			obfuscateHealth: HealthObfuscation.NO,
 			tags: [],
 		};
 		dispatch(setEntity(newEntity));
 		setSelectedEntityId(newEntity.id);
-	}, [data]);
+	}, [entities]);
+
+	const entitiesView: InitiativeTableEntityView[] = entities.map((entity) => {
+		const ety: InitiativeTableEntityView = {
+			initiative: entity.initiative,
+			name: entity.name,
+			id: entity.id,
+			healthDisplay:
+				`${entity.health}/${entity.maxHealth}` +
+				(entity.obfuscateHealth !== HealthObfuscation.NO
+					? ` (${getObfuscatedHealthText(
+							entity.health,
+							entity.maxHealth,
+							entity.obfuscateHealth,
+						)})`
+					: ''),
+			tags: entity.tags.map((tag) => ({
+				name: tag.name,
+				color: tag.color,
+			})),
+		};
+		if (!entity.visible) {
+			ety.name = `(${ety.name})`;
+			ety.effect = 'muted';
+		}
+		return ety;
+	});
 
 	return (
 		<ResizablePanelGroup
@@ -144,6 +241,7 @@ function GameMasterControlPanel() {
 			<ResizablePanel defaultSize={50}>
 				<ScrollArea>
 					<InitiativeTable
+						entities={entitiesView}
 						selectedEntityId={selectedEntityId}
 						setSelectedEntityId={setSelectedEntityId}
 						reorderable
