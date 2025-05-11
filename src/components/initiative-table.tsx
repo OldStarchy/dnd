@@ -11,16 +11,14 @@ import {
 } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
 import { swapEntities } from '@/store/reducers/initiativeSlice';
-import { useAppDispatch } from '@/store/store';
-import { Fullscreen, Shrink } from 'lucide-react';
+import { useAppDispatch, useAppSelector } from '@/store/store';
+import { ArrowRight, Fullscreen, Shrink } from 'lucide-react';
 import {
 	useCallback,
 	useEffect,
 	useRef,
 	useState,
-	type Dispatch,
 	type ReactNode,
-	type SetStateAction,
 } from 'react';
 
 export type InitiativeTableEntityView = {
@@ -35,7 +33,8 @@ export type InitiativeTableEntityView = {
 function InitiativeTable({
 	entities,
 	selectedEntityId,
-	setSelectedEntityId,
+	onClickEntity,
+	onDoubleClickEntity,
 	headerButtons,
 	rowButtons,
 	reorderable = false,
@@ -43,7 +42,8 @@ function InitiativeTable({
 }: {
 	entities: InitiativeTableEntityView[];
 	selectedEntityId: string | null;
-	setSelectedEntityId: Dispatch<SetStateAction<string | null>>;
+	onClickEntity?: (id: string) => void;
+	onDoubleClickEntity?: (id: string) => void;
 	headerButtons?: ReactNode;
 	rowButtons?: (
 		entity: InitiativeTableEntityView,
@@ -52,6 +52,9 @@ function InitiativeTable({
 	reorderable?: boolean;
 	footer?: ReactNode;
 }) {
+	const currentTurnEntityId = useAppSelector(
+		(state) => state.initiative.currentTurnEntityId,
+	);
 	const dispatch = useAppDispatch();
 	const tableRef = useRef<HTMLTableElement>(null);
 	const [isFullscreen, setIsFullscreen] = useState(false);
@@ -146,10 +149,11 @@ function InitiativeTable({
 				<Table>
 					<TableHeader>
 						<TableRow>
-							<TableHead className="pl-4">Initiative</TableHead>
+							<TableHead className="pl-4 w-4 pr-0" />
+							<TableHead>Initiative</TableHead>
 							<TableHead>Player</TableHead>
 							<TableHead>Health</TableHead>
-							<TableHead className="pr-4" />
+							<TableHead />
 							<TableHead className="pr-4" />
 						</TableRow>
 					</TableHeader>
@@ -166,7 +170,10 @@ function InitiativeTable({
 									},
 									'cursor-pointer hover:bg-accent',
 								)}
-								onClick={() => setSelectedEntityId(row.id)}
+								onClick={() => onClickEntity?.(row.id)}
+								onDoubleClick={() =>
+									onDoubleClickEntity?.(row.id)
+								}
 								draggable={reorderable}
 								onDragStart={(e) =>
 									handleDragStart(e, entities.indexOf(row))
@@ -177,9 +184,15 @@ function InitiativeTable({
 								}
 								onDragEnd={handleDragEnd}
 							>
-								<TableCell className="pl-4">
-									{row.initiative}
+								<TableCell className="pl-4 w-8 pr-0 text-right">
+									<ArrowRight
+										className={cn('h-4 w-4', {
+											invisible:
+												currentTurnEntityId !== row.id,
+										})}
+									/>
 								</TableCell>
+								<TableCell>{row.initiative}</TableCell>
 								<TableCell>{row.name}</TableCell>
 								<TableCell>{row.healthDisplay}</TableCell>
 								<TableCell className="pr-4">

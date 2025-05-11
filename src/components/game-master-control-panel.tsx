@@ -8,6 +8,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import useLocalStorage from '@/hooks/useLocalStorage';
 import {
 	removeEntity,
+	setCurrentTurnEntityId,
 	setDefault,
 	setEntity,
 } from '@/store/reducers/initiativeSlice';
@@ -29,7 +30,9 @@ function GameMasterControlPanel() {
 		v !== 'vertical' ? 'horizontal' : 'vertical',
 	);
 
-	const entities = useAppSelector((state) => state.initiative.entities);
+	const { entities, currentTurnEntityId } = useAppSelector(
+		(state) => state.initiative,
+	);
 	const dispatch = useAppDispatch();
 
 	useEffect(() => {
@@ -178,6 +181,13 @@ function GameMasterControlPanel() {
 									type: 'FORWARDED_ACTION',
 									payload: setDefault(entities),
 								});
+								chan.port1.postMessage({
+									type: 'FORWARDED_ACTION',
+									payload:
+										setCurrentTurnEntityId(
+											currentTurnEntityId,
+										),
+								});
 							}
 						};
 						chan.port1.addEventListener('message', handleInitOK);
@@ -186,7 +196,7 @@ function GameMasterControlPanel() {
 				return win;
 			}
 		});
-	}, [entities]);
+	}, [entities, currentTurnEntityId]);
 
 	const selectedEntity = entities.find(
 		(entity) => entity.id === selectedEntityId,
@@ -243,7 +253,6 @@ function GameMasterControlPanel() {
 					<InitiativeTable
 						entities={entitiesView}
 						selectedEntityId={selectedEntityId}
-						setSelectedEntityId={setSelectedEntityId}
 						reorderable
 						headerButtons={
 							<>
@@ -258,6 +267,14 @@ function GameMasterControlPanel() {
 								</Button>
 							</>
 						}
+						onClickEntity={setSelectedEntityId}
+						onDoubleClickEntity={(id) => {
+							if (id === currentTurnEntityId) {
+								dispatch(setCurrentTurnEntityId(null));
+							} else {
+								dispatch(setCurrentTurnEntityId(id));
+							}
+						}}
 						rowButtons={(entity) => {
 							return (
 								<Button

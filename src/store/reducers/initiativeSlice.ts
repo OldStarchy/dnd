@@ -4,10 +4,12 @@ import type { Entity } from '../types/Entity';
 
 export interface InitiativeState {
 	entities: Entity[];
+	currentTurnEntityId: string | null;
 }
 
 const initialState: InitiativeState = {
 	entities: [],
+	currentTurnEntityId: null,
 };
 
 export const initiativeSlice = createSlice({
@@ -34,6 +36,22 @@ export const initiativeSlice = createSlice({
 				state.entities = action.payload;
 			}
 		},
+		setCurrentTurnEntityId: (
+			state,
+			action: PayloadAction<string | null>,
+		) => {
+			if (action.payload === null) {
+				state.currentTurnEntityId = null;
+				return;
+			}
+
+			const entity = state.entities.find((e) => e.id === action.payload);
+			if (entity) {
+				state.currentTurnEntityId = action.payload;
+			} else {
+				state.currentTurnEntityId = null;
+			}
+		},
 		swapEntities: (
 			state,
 			action: PayloadAction<[a: number, b: number]>,
@@ -57,7 +75,12 @@ export const initiativeSlice = createSlice({
 });
 
 // Action creators are generated for each case reducer function
-export const { setEntity, removeEntity, setDefault, swapEntities } =
-	initiativeSlice.actions;
+export const {
+	setEntity,
+	removeEntity,
+	setDefault,
+	setCurrentTurnEntityId,
+	swapEntities,
+} = initiativeSlice.actions;
 
 export default initiativeSlice.reducer;

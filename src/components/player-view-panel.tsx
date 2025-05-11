@@ -33,7 +33,6 @@ function PlayerViewPanel() {
 				portFromMain.start();
 				portFromMain.onmessage = (event: MessageEvent) => {
 					const data = event.data as any;
-					console.log(data);
 					if (data && data.type === 'FORWARDED_ACTION') {
 						dispatch(data.payload);
 					}
@@ -61,7 +60,7 @@ function PlayerViewPanel() {
 		<div>
 			<InitiativeTable
 				entities={entitiesView}
-				setSelectedEntityId={() => {}}
+				onClickEntity={() => {}}
 				selectedEntityId={null}
 			/>
 		</div>

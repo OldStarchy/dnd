@@ -8,7 +8,6 @@ export function createDeferredForwardingMiddleware(
 	const middleware: Middleware = () => (next) => (action) => {
 		const result = next(action);
 
-		console.log(action);
 		if (port && predicate(action)) {
 			port.postMessage({
 				type: 'FORWARDED_ACTION',
