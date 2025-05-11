@@ -18,7 +18,7 @@ import { useCallback, useEffect, useState } from 'react';
 import EntityPropertyPanel from './entity-property-panel';
 import InitiativeTable from './initiative-table';
 
-function App() {
+function GameMasterControlPanel() {
 	const [splitDirection] = useLocalStorage('layoutDirection', (v) =>
 		v !== 'vertical' ? 'horizontal' : 'vertical',
 	);
@@ -205,4 +205,4 @@ function App() {
 	);
 }
 
-export default App;
+export default GameMasterControlPanel;

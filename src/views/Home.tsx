@@ -1,11 +1,11 @@
 import { store } from '@/store/store';
 import { Provider } from 'react-redux';
-import App from '../components/App';
+import GameMasterControlPanel from '../components/game-master-control-panel';
 
 function Home() {
 	return (
 		<Provider store={store}>
-			<App />
+			<GameMasterControlPanel />
 		</Provider>
 	);
 }
