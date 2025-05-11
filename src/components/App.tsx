@@ -16,7 +16,11 @@ import {
 	TableRow,
 } from '@/components/ui/table';
 import useLocalStorage from '@/hooks/useLocalStorage';
-import { setDefault, setEntity } from '@/store/reducers/initiativeSlice';
+import {
+	removeEntity,
+	setDefault,
+	setEntity,
+} from '@/store/reducers/initiativeSlice';
 import { setPort, useAppDispatch, useAppSelector } from '@/store/store';
 import type { Entity } from '@/store/types/Entity';
 import { ExternalLink } from 'lucide-react';
@@ -125,9 +129,12 @@ function App() {
 		});
 	}, [data]);
 
+	const selectedEntity = data.find(
+		(entity) => entity.id === selectedEntityId,
+	);
 	return (
 		<ResizablePanelGroup
-			direction={splitDirection as 'horizontal' | 'vertical'}
+			direction={splitDirection}
 			className="flex-1 w-auto h-auto border"
 		>
 			<ResizablePanel defaultSize={50}>
@@ -135,27 +142,40 @@ function App() {
 					<InitiativeTable
 						selectedEntityId={selectedEntityId}
 						setSelectedEntityId={setSelectedEntityId}
-						data={data}
 						reorderable
 						headerButtons={
-							<Button
-								className="ml-auto"
-								variant="outline"
-								size="icon"
-								onClick={togglePopup}
-							>
-								<ExternalLink className="h-4 w-4" />
-								<span className="sr-only">Open popup</span>
-							</Button>
+							<>
+								<Button
+									className="ml-auto"
+									variant="outline"
+									size="icon"
+									onClick={togglePopup}
+								>
+									<ExternalLink className="h-4 w-4" />
+									<span className="sr-only">Open popup</span>
+								</Button>
+							</>
 						}
+						rowButtons={(entity, index) => {
+							return (
+								<Button
+									variant="destructive"
+									onClick={() => {
+										dispatch(removeEntity(entity.id));
+									}}
+								>
+									Delete
+								</Button>
+							);
+						}}
 					/>
 				</ScrollArea>
 			</ResizablePanel>
 			<ResizableHandle />
 			<ResizablePanel defaultSize={50} className="p-4">
-				{selectedEntityId ? (
+				{selectedEntity ? (
 					<EntityPropertyPanel
-						entity={data.find((e) => e.id === selectedEntityId)!}
+						entity={selectedEntity}
 						onChange={(entity) => {
 							dispatch(setEntity(entity));
 						}}
