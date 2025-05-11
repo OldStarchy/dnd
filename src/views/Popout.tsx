@@ -14,7 +14,6 @@ function PopoutView() {
 function PopoutApp() {
 	const [portFromMain, setPortFromMain] = useState<null | MessagePort>(null);
 	const dispatch = useAppDispatch();
-	const data = useAppSelector((state) => state.initiative.entities);
 
 	useEffect(() => {
 		const messageHandler = (event: MessageEvent) => {
@@ -50,7 +49,6 @@ function PopoutApp() {
 	return (
 		<div>
 			<InitiativeTable
-				data={data}
 				setSelectedEntityId={() => {}}
 				selectedEntityId={null}
 			/>

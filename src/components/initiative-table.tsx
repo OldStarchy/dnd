@@ -9,6 +9,8 @@ import {
 	TableRow,
 } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
+import { swapEntities } from '@/store/reducers/initiativeSlice';
+import { useAppDispatch, useAppSelector } from '@/store/store';
 import type { Entity } from '@/store/types/Entity';
 import { Fullscreen, Shrink } from 'lucide-react';
 import {
@@ -21,16 +23,20 @@ import {
 } from 'react';
 
 function InitiativeTable({
-	data,
 	selectedEntityId,
 	setSelectedEntityId,
 	headerButtons,
+	rowButtons,
+	reorderable = false,
 }: {
-	data: Entity[];
 	selectedEntityId: string | null;
 	setSelectedEntityId: Dispatch<SetStateAction<string | null>>;
 	headerButtons?: React.ReactNode;
+	rowButtons?: (entity: Entity, index: number) => React.ReactNode;
+	reorderable?: boolean;
 }) {
+	const data = useAppSelector((state) => state.initiative.entities);
+	const dispatch = useAppDispatch();
 	const tableRef = useRef<HTMLTableElement>(null);
 	const [isFullscreen, setIsFullscreen] = useState(false);
 
@@ -59,6 +65,37 @@ function InitiativeTable({
 				handleFullscreenChange,
 			);
 		};
+	}, []);
+
+	const [dragRowIndex, setDragRowIndex] = useState<number | null>(null);
+	const handleDragStart = useCallback(
+		(event: React.DragEvent<HTMLTableRowElement>, index: number) => {
+			setDragRowIndex(index);
+			event.dataTransfer.effectAllowed = 'move';
+			event.dataTransfer.setData('text/plain', index.toString());
+		},
+		[],
+	);
+	const handleDragOver = useCallback(
+		(event: React.DragEvent<HTMLTableRowElement>) => {
+			event.preventDefault();
+			event.dataTransfer.dropEffect = 'move';
+		},
+		[],
+	);
+	const handleDrop = useCallback(
+		(event: React.DragEvent<HTMLTableRowElement>, index: number) => {
+			event.preventDefault();
+			const draggedRowIndex = dragRowIndex;
+			if (draggedRowIndex !== null && draggedRowIndex !== index) {
+				dispatch(swapEntities([draggedRowIndex, index]));
+				setDragRowIndex(null);
+			}
+		},
+		[dragRowIndex, data, dispatch],
+	);
+	const handleDragEnd = useCallback(() => {
+		setDragRowIndex(null);
 	}, []);
 
 	return (
@@ -97,10 +134,11 @@ function InitiativeTable({
 							<TableHead>Player</TableHead>
 							<TableHead>Health</TableHead>
 							<TableHead className="pr-4" />
+							<TableHead className="pr-4" />
 						</TableRow>
 					</TableHeader>
 					<TableBody>
-						{data.map((row) => (
+						{data.map((row, index) => (
 							<TableRow
 								key={row.id}
 								className={cn(
@@ -111,6 +149,13 @@ function InitiativeTable({
 									'cursor-pointer hover:bg-accent',
 								)}
 								onClick={() => setSelectedEntityId(row.id)}
+								draggable={reorderable}
+								onDragStart={(e) =>
+									handleDragStart(e, data.indexOf(row))
+								}
+								onDragOver={handleDragOver}
+								onDrop={(e) => handleDrop(e, data.indexOf(row))}
+								onDragEnd={handleDragEnd}
 							>
 								<TableCell className="pl-4">
 									{row.initiative}
@@ -128,6 +173,9 @@ function InitiativeTable({
 											</Badge>
 										))}
 									</div>
+								</TableCell>
+								<TableCell className="flex justify-end pr-4">
+									{rowButtons && rowButtons(row, index)}
 								</TableCell>
 							</TableRow>
 						))}

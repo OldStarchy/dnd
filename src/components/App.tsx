@@ -134,6 +134,7 @@ function App() {
 						selectedEntityId={selectedEntityId}
 						setSelectedEntityId={setSelectedEntityId}
 						data={data}
+						reorderable
 						headerButtons={
 							<Button
 								className="ml-auto"

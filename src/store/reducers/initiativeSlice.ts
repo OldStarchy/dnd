@@ -34,10 +34,30 @@ export const initiativeSlice = createSlice({
 				state.entities = action.payload;
 			}
 		},
+		swapEntities: (
+			state,
+			action: PayloadAction<[a: number, b: number]>,
+		) => {
+			const [a, b] = action.payload;
+			if (
+				a < 0 ||
+				a >= state.entities.length ||
+				b < 0 ||
+				b >= state.entities.length ||
+				a === b
+			) {
+				return;
+			}
+
+			const temp = state.entities[a];
+			state.entities[a] = state.entities[b];
+			state.entities[b] = temp;
+		},
 	},
 });
 
 // Action creators are generated for each case reducer function
-export const { setEntity, removeEntity, setDefault } = initiativeSlice.actions;
+export const { setEntity, removeEntity, setDefault, swapEntities } =
+	initiativeSlice.actions;
 
 export default initiativeSlice.reducer;
