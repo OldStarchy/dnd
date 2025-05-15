@@ -1,20 +1,16 @@
-import { configureStore } from '@reduxjs/toolkit';
+import { configureStore, createListenerMiddleware } from '@reduxjs/toolkit';
 import { useDispatch, useSelector } from 'react-redux';
-import { createDeferredForwardingMiddleware } from './middleware/createDeferredForwardingMiddleware';
 import initiativeReducer from './reducers/initiativeSlice';
 
-const { middleware: syncMiddleware, setPort } =
-	createDeferredForwardingMiddleware((action) => true);
+const listenerMiddlewareInstance = createListenerMiddleware();
 
 export const store = configureStore({
 	reducer: {
 		initiative: initiativeReducer,
 	},
 	middleware: (getDefaultMiddleware) =>
-		getDefaultMiddleware().concat(syncMiddleware),
+		getDefaultMiddleware().prepend(listenerMiddlewareInstance.middleware),
 });
-
-export { setPort };
 
 export type RootState = ReturnType<typeof store.getState>;
 export type AppDispatch = typeof store.dispatch;

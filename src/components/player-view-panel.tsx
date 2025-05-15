@@ -32,7 +32,7 @@ function PlayerViewPanel() {
 				const portFromMain = event.ports[0];
 				portFromMain.start();
 				portFromMain.onmessage = (event: MessageEvent) => {
-					const data = event.data as any;
+					const data = event.data;
 					if (data && data.type === 'FORWARDED_ACTION') {
 						dispatch(data.payload);
 					}
@@ -41,7 +41,7 @@ function PlayerViewPanel() {
 				setPortFromMain(portFromMain);
 
 				portFromMain.postMessage({
-					type: 'INIT_PORT_OK',
+					type: 'READY',
 				});
 			}
 		};

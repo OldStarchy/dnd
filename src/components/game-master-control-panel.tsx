@@ -12,12 +12,13 @@ import {
 	setDefault,
 	setEntity,
 } from '@/store/reducers/initiativeSlice';
-import { setPort, useAppDispatch, useAppSelector } from '@/store/store';
+import { useAppDispatch, useAppSelector } from '@/store/store';
 import {
 	getObfuscatedHealthText,
 	HealthObfuscation,
 	type Entity,
 } from '@/store/types/Entity';
+import { addListener } from '@reduxjs/toolkit';
 import { ExternalLink, Plus } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import EntityPropertyPanel from './entity-property-panel';
@@ -125,78 +126,81 @@ function GameMasterControlPanel() {
 				},
 			]),
 		);
-	}, []);
+	}, [dispatch]);
 
 	const [selectedEntityId, setSelectedEntityId] = useState<string | null>(
 		null,
 	);
 
-	const [, setPopupWindow] = useState<Window | null>(null);
+	const [popupWindow, setPopupWindow] = useState<Window | null>(null);
 
 	const togglePopup = useCallback(() => {
 		setPopupWindow((prev) => {
 			if (prev) {
 				prev.close();
-				setPort(null);
 				return null;
 			} else {
-				const win = window.open(
-					'/popout',
-					'popout',
-					'width=800,height=600',
-				);
-				if (win) {
-					win.opener = window;
-					win.focus();
-					const thisCloseHandler = () => {
-						win.close();
-					};
-					window.addEventListener('beforeunload', thisCloseHandler);
-
-					win.addEventListener('beforeunload', () => {
-						setPort(null);
-						setPopupWindow(null);
-						window.removeEventListener(
-							'beforeunload',
-							thisCloseHandler,
-						);
-					});
-
-					win.addEventListener('load', () => {
-						const chan = new MessageChannel();
-
-						win.postMessage({ type: 'INIT_PORT' }, '*', [
-							chan.port2,
-						]);
-						chan.port1.start();
-						setPort(chan.port1);
-
-						const handleInitOK = (event: MessageEvent) => {
-							if (event.data?.type === 'INIT_PORT_OK') {
-								chan.port1.removeEventListener(
-									'message',
-									handleInitOK,
-								);
-								chan.port1.postMessage({
-									type: 'FORWARDED_ACTION',
-									payload: setDefault(entities),
-								});
-								chan.port1.postMessage({
-									type: 'FORWARDED_ACTION',
-									payload:
-										setCurrentTurnEntityId(
-											currentTurnEntityId,
-										),
-								});
-							}
-						};
-						chan.port1.addEventListener('message', handleInitOK);
-					});
-				}
-				return win;
+				return window.open('/popout', 'popout', 'width=800,height=600');
 			}
 		});
-	}, [entities, currentTurnEntityId]);
+	}, []);
+
+	useEffect(() => {
+		if (!popupWindow) return;
+
+		const closeCheck = () => {
+			if (popupWindow?.closed) {
+				setPopupWindow(null);
+			}
+		};
+
+		const interval = setInterval(closeCheck, 1000);
+
+		popupWindow.focus();
+		const { port1, port2 } = new MessageChannel();
+		port1.start();
+
+		let ready = false;
+
+		const unsub = dispatch(
+			addListener({
+				predicate: () => ready,
+				effect: (action) => {
+					port1.postMessage({
+						type: 'FORWARDED_ACTION',
+						payload: action,
+					});
+				},
+			}),
+		);
+
+		const handleReady = (event: MessageEvent) => {
+			if (event.data?.type === 'READY') {
+				port1.removeEventListener('message', handleReady);
+				port1.postMessage({
+					type: 'FORWARDED_ACTION',
+					payload: setDefault(entities),
+				});
+				port1.postMessage({
+					type: 'FORWARDED_ACTION',
+					payload: setCurrentTurnEntityId(currentTurnEntityId),
+				});
+				ready = true;
+			}
+		};
+		port1.addEventListener('message', handleReady);
+
+		popupWindow.addEventListener('load', () => {
+			popupWindow.postMessage({ type: 'INIT_PORT', port: port2 }, '*', [
+				port2,
+			]);
+		});
+
+		return () => {
+			clearInterval(interval);
+			unsub();
+		};
+	}, [popupWindow, entities, currentTurnEntityId, dispatch]);
 
 	const selectedEntity = entities.find(
 		(entity) => entity.id === selectedEntityId,
@@ -215,7 +219,7 @@ function GameMasterControlPanel() {
 		};
 		dispatch(setEntity(newEntity));
 		setSelectedEntityId(newEntity.id);
-	}, [entities]);
+	}, [dispatch]);
 
 	const entitiesView: InitiativeTableEntityView[] = entities.map((entity) => {
 		const ety: InitiativeTableEntityView = {
