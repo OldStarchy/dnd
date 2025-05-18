@@ -6,35 +6,79 @@ import {
 } from '@/components/ui/resizable';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import useLocalStorage from '@/hooks/useLocalStorage';
+import { usePrimaryDispatch, usePrimarySelector } from '@/store/primary-store';
 import {
 	removeEntity,
 	setCurrentTurnEntityId,
 	setDefault,
 	setEntity,
+	swapEntities,
 } from '@/store/reducers/initiativeSlice';
-import { useAppDispatch, useAppSelector } from '@/store/store';
+import {
+	actions as reducedActions,
+	removeEntity as reducedRemoveEntity,
+	setCurrentTurnEntityId as reducedSetCurrentTurnEntityId,
+	setDefault as reducedSetDefault,
+	setEntity as reducedSetEntity,
+	swapEntities as reducedSwapEntities,
+} from '@/store/reducers/reduced-initiative-slice';
 import {
 	getObfuscatedHealthText,
 	HealthObfuscation,
 	type Entity,
+	type PlayerEntityView,
 } from '@/store/types/Entity';
 import { addListener } from '@reduxjs/toolkit';
 import { ExternalLink, Plus } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import EntityPropertyPanel from './entity-property-panel';
-import InitiativeTable, {
-	type InitiativeTableEntityView,
-} from './initiative-table';
+import InitiativeTable from './initiative-table';
+
+function reduceEntity(entity: Entity): PlayerEntityView {
+	const healthDisplay = getObfuscatedHealthText(
+		entity.health,
+		entity.maxHealth,
+		entity.obfuscateHealth,
+	);
+
+	return {
+		id: entity.id,
+		name: entity.name,
+		initiative: entity.initiative,
+		healthDisplay,
+		tags: entity.tags,
+	};
+}
+
+function reduceEntities(entities: Entity[]): PlayerEntityView[] {
+	return entities
+		.filter((entity) => entity.visible)
+		.map((entity) => {
+			const healthDisplay = getObfuscatedHealthText(
+				entity.health,
+				entity.maxHealth,
+				entity.obfuscateHealth,
+			);
+
+			return {
+				id: entity.id,
+				name: entity.name,
+				initiative: entity.initiative,
+				healthDisplay,
+				tags: entity.tags,
+			};
+		});
+}
 
 function GameMasterControlPanel() {
 	const [splitDirection] = useLocalStorage('layoutDirection', (v) =>
 		v !== 'vertical' ? 'horizontal' : 'vertical',
 	);
 
-	const { entities, currentTurnEntityId } = useAppSelector(
+	const { entities, currentTurnEntityId } = usePrimarySelector(
 		(state) => state.initiative,
 	);
-	const dispatch = useAppDispatch();
+	const dispatch = usePrimaryDispatch();
 
 	useEffect(() => {
 		dispatch(
@@ -162,30 +206,65 @@ function GameMasterControlPanel() {
 
 		let ready = false;
 
-		const unsub = dispatch(
-			addListener({
-				predicate: () => ready,
-				effect: (action) => {
-					port1.postMessage({
-						type: 'FORWARDED_ACTION',
-						payload: action,
-					});
-				},
-			}),
-		);
+		const dispatchOther = (
+			action: ReturnType<
+				(typeof reducedActions)[keyof typeof reducedActions]
+			>,
+		) => {
+			if (ready) {
+				port1.postMessage({
+					type: 'FORWARDED_ACTION',
+					payload: action,
+				});
+			}
+		};
+
+		const unsubs = [
+			dispatch(
+				addListener({
+					actionCreator: setEntity,
+					effect: (action) =>
+						dispatchOther(
+							reducedSetEntity(reduceEntity(action.payload)),
+						),
+				}),
+			),
+			dispatch(
+				addListener({
+					actionCreator: removeEntity,
+					effect: (action) => {
+						dispatchOther(reducedRemoveEntity(action.payload));
+					},
+				}),
+			),
+			dispatch(
+				addListener({
+					actionCreator: setDefault,
+					effect: (action) => {
+						dispatchOther(
+							reducedSetDefault(reduceEntities(action.payload)),
+						);
+					},
+				}),
+			),
+			dispatch(
+				addListener({
+					actionCreator: swapEntities,
+					effect: (action) => {
+						dispatchOther(reducedSwapEntities(action.payload));
+					},
+				}),
+			),
+		];
 
 		const handleReady = (event: MessageEvent) => {
 			if (event.data?.type === 'READY') {
 				port1.removeEventListener('message', handleReady);
-				port1.postMessage({
-					type: 'FORWARDED_ACTION',
-					payload: setDefault(entities),
-				});
-				port1.postMessage({
-					type: 'FORWARDED_ACTION',
-					payload: setCurrentTurnEntityId(currentTurnEntityId),
-				});
 				ready = true;
+				dispatchOther(reducedSetDefault(reduceEntities(entities)));
+				dispatchOther(
+					reducedSetCurrentTurnEntityId(currentTurnEntityId),
+				);
 			}
 		};
 		port1.addEventListener('message', handleReady);
@@ -198,7 +277,7 @@ function GameMasterControlPanel() {
 
 		return () => {
 			clearInterval(interval);
-			unsub();
+			unsubs.forEach((unsub) => unsub());
 		};
 	}, [popupWindow, entities, currentTurnEntityId, dispatch]);
 
@@ -221,8 +300,8 @@ function GameMasterControlPanel() {
 		setSelectedEntityId(newEntity.id);
 	}, [dispatch]);
 
-	const entitiesView: InitiativeTableEntityView[] = entities.map((entity) => {
-		const ety: InitiativeTableEntityView = {
+	const entitiesView: PlayerEntityView[] = entities.map((entity) => {
+		const ety: PlayerEntityView = {
 			initiative: entity.initiative,
 			name: entity.name,
 			id: entity.id,
@@ -256,7 +335,11 @@ function GameMasterControlPanel() {
 				<ScrollArea>
 					<InitiativeTable
 						entities={entitiesView}
+						currentTurnEntityId={currentTurnEntityId}
 						selectedEntityId={selectedEntityId}
+						onSwapEntities={(a, b) =>
+							dispatch(swapEntities([a, b]))
+						}
 						reorderable
 						headerButtons={
 							<>

@@ -27,6 +27,15 @@ export type Entity = {
 	obfuscateHealth: HealthObfuscation;
 };
 
+export type PlayerEntityView = {
+	initiative: number;
+	name: string;
+	id: string;
+	healthDisplay: string;
+	tags: { name: string; color: string }[];
+	effect?: 'muted';
+};
+
 export function getObfuscatedHealthText(
 	health: number,
 	maxHealth: number,
