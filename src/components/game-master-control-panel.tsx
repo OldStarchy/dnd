@@ -31,6 +31,7 @@ import {
 import { addListener } from '@reduxjs/toolkit';
 import { ExternalLink, Plus } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
+import CharacterBuilderPanel from './character-builder-panel';
 import EntityPropertyPanel from './entity-property-panel';
 import InitiativeTable from './initiative-table';
 
@@ -328,80 +329,94 @@ function GameMasterControlPanel() {
 
 	return (
 		<ResizablePanelGroup
-			direction={splitDirection}
+			direction="vertical"
 			className="flex-1 w-auto h-auto border"
 		>
-			<ResizablePanel defaultSize={50}>
-				<ScrollArea>
-					<InitiativeTable
-						entities={entitiesView}
-						currentTurnEntityId={currentTurnEntityId}
-						selectedEntityId={selectedEntityId}
-						onSwapEntities={(a, b) =>
-							dispatch(swapEntities([a, b]))
-						}
-						reorderable
-						headerButtons={
-							<>
-								<Button
-									className="ml-auto"
-									variant="outline"
-									size="icon"
-									onClick={togglePopup}
-								>
-									<ExternalLink className="h-4 w-4" />
-									<span className="sr-only">Open popup</span>
-								</Button>
-							</>
-						}
-						onClickEntity={setSelectedEntityId}
-						onDoubleClickEntity={(id) => {
-							if (id === currentTurnEntityId) {
-								dispatch(setCurrentTurnEntityId(null));
-							} else {
-								dispatch(setCurrentTurnEntityId(id));
-							}
-						}}
-						rowButtons={(entity) => {
-							return (
-								<Button
-									variant="destructive"
-									onClick={() => {
-										dispatch(removeEntity(entity.id));
-									}}
-								>
-									Delete
-								</Button>
-							);
-						}}
-						footer={
-							<Button
-								variant="outline"
-								size="icon"
-								className="cursor-pointer"
-								onClick={createNewEntity}
-							>
-								<Plus className="h-4 w-4" />
-								<span className="sr-only">Add entity</span>
-							</Button>
-						}
-					/>
-				</ScrollArea>
+			<ResizablePanel>
+				<ResizablePanelGroup direction={splitDirection}>
+					<ResizablePanel defaultSize={50}>
+						<ScrollArea>
+							<InitiativeTable
+								entities={entitiesView}
+								currentTurnEntityId={currentTurnEntityId}
+								selectedEntityId={selectedEntityId}
+								onSwapEntities={(a, b) =>
+									dispatch(swapEntities([a, b]))
+								}
+								reorderable
+								headerButtons={
+									<>
+										<Button
+											className="ml-auto"
+											variant="outline"
+											size="icon"
+											onClick={togglePopup}
+										>
+											<ExternalLink className="h-4 w-4" />
+											<span className="sr-only">
+												Open popup
+											</span>
+										</Button>
+									</>
+								}
+								onClickEntity={setSelectedEntityId}
+								onDoubleClickEntity={(id) => {
+									if (id === currentTurnEntityId) {
+										dispatch(setCurrentTurnEntityId(null));
+									} else {
+										dispatch(setCurrentTurnEntityId(id));
+									}
+								}}
+								rowButtons={(entity) => {
+									return (
+										<Button
+											variant="destructive"
+											onClick={() => {
+												dispatch(
+													removeEntity(entity.id),
+												);
+											}}
+										>
+											Delete
+										</Button>
+									);
+								}}
+								footer={
+									<Button
+										variant="outline"
+										size="icon"
+										className="cursor-pointer"
+										onClick={createNewEntity}
+									>
+										<Plus className="h-4 w-4" />
+										<span className="sr-only">
+											Add entity
+										</span>
+									</Button>
+								}
+							/>
+						</ScrollArea>
+					</ResizablePanel>
+					<ResizableHandle />
+					<ResizablePanel defaultSize={50} className="p-4">
+						{selectedEntity ? (
+							<EntityPropertyPanel
+								entity={selectedEntity}
+								onChange={(entity) => {
+									dispatch(setEntity(entity));
+								}}
+							/>
+						) : (
+							<div className="flex items-center justify-center w-full h-full">
+								<p>Select an entity to edit</p>
+							</div>
+						)}
+					</ResizablePanel>
+				</ResizablePanelGroup>
 			</ResizablePanel>
 			<ResizableHandle />
-			<ResizablePanel defaultSize={50} className="p-4">
-				{selectedEntity ? (
-					<EntityPropertyPanel
-						entity={selectedEntity}
-						onChange={(entity) => {
-							dispatch(setEntity(entity));
-						}}
-					/>
-				) : (
-					<div className="flex items-center justify-center w-full h-full">
-						<p>Select an entity to edit</p>
-					</div>
-				)}
+			<ResizablePanel>
+				<CharacterBuilderPanel />
 			</ResizablePanel>
 		</ResizablePanelGroup>
 	);
