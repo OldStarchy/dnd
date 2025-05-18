@@ -1,22 +1,22 @@
 import type { PayloadAction } from '@reduxjs/toolkit';
 import { createSlice } from '@reduxjs/toolkit';
-import type { Entity } from '../types/Entity';
+import type { PlayerEntityView } from '../types/Entity';
 
-interface InitiativeState {
-	entities: Entity[];
+interface ReducedInitiativeState {
+	entities: PlayerEntityView[];
 	currentTurnEntityId: string | null;
 }
 
-const initialState: InitiativeState = {
+const initialState: ReducedInitiativeState = {
 	entities: [],
-	currentTurnEntityId: null,
+	currentTurnEntityId: 'null',
 };
 
-export const initiativeSlice = createSlice({
-	name: 'initiative',
+export const reducedInitiativeSlice = createSlice({
+	name: 'reducedInitiative',
 	initialState,
 	reducers: {
-		setEntity: (state, action: PayloadAction<Entity>) => {
+		setEntity: (state, action: PayloadAction<PlayerEntityView>) => {
 			const existing = state.entities.find(
 				(e) => e.id === action.payload.id,
 			);
@@ -31,7 +31,7 @@ export const initiativeSlice = createSlice({
 				(e) => e.id !== action.payload,
 			);
 		},
-		setDefault: (state, action: PayloadAction<Entity[]>) => {
+		setDefault: (state, action: PayloadAction<PlayerEntityView[]>) => {
 			if (state.entities.length === 0) {
 				state.entities = action.payload;
 			}
@@ -81,6 +81,8 @@ export const {
 	setDefault,
 	setCurrentTurnEntityId,
 	swapEntities,
-} = initiativeSlice.actions;
+} = reducedInitiativeSlice.actions;
 
-export default initiativeSlice.reducer;
+export const actions = reducedInitiativeSlice.actions;
+
+export default reducedInitiativeSlice.reducer;

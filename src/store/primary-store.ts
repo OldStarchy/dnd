@@ -4,7 +4,7 @@ import initiativeReducer from './reducers/initiativeSlice';
 
 const listenerMiddlewareInstance = createListenerMiddleware();
 
-export const store = configureStore({
+export const primaryStore = configureStore({
 	reducer: {
 		initiative: initiativeReducer,
 	},
@@ -12,8 +12,8 @@ export const store = configureStore({
 		getDefaultMiddleware().prepend(listenerMiddlewareInstance.middleware),
 });
 
-export type RootState = ReturnType<typeof store.getState>;
-export type AppDispatch = typeof store.dispatch;
+export type PrimaryState = ReturnType<typeof primaryStore.getState>;
+export type PrimaryDispatch = typeof primaryStore.dispatch;
 
-export const useAppDispatch = useDispatch.withTypes<AppDispatch>();
-export const useAppSelector = useSelector.withTypes<RootState>();
+export const usePrimaryDispatch = useDispatch.withTypes<PrimaryDispatch>();
+export const usePrimarySelector = useSelector.withTypes<PrimaryState>();
