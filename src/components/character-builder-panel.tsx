@@ -1,6 +1,6 @@
-import { useMemo, useReducer } from 'react';
-import { Input } from './ui/input';
-import { Label } from './ui/label';
+import {useMemo, useReducer} from 'react';
+import {Input} from './ui/input';
+import {Label} from './ui/label';
 
 type CharacterState = {
 	race: string;
@@ -139,6 +139,8 @@ function calculateDerivedCharacterState(state: CharacterState): DerivedCharacter
 		intelligenceModifier: Math.floor((state.intelligence - 10) / 2),
 		wisdomModifier: Math.floor((state.wisdom - 10) / 2),
 		charismaModifier: Math.floor((state.charisma - 10) / 2),
+	}
+}
 
 
 
