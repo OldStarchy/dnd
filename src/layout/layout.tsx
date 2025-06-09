@@ -48,14 +48,14 @@ function Layout() {
 			prev !== 'vertical' ? 'vertical' : 'horizontal',
 		);
 	}, []);
+
 	return (
 		<SidebarProvider>
 			<div className="fixed inset-0 flex">
 				<AppSidebar />
 				<div className="flex flex-col flex-grow items-stretch justify-center min-h-screen bg-background p-4 gap-4">
 					<header className="flex items-center justify-between space-x-2">
-						<h1 className="text-2xl font-bold flex-1">My App</h1>
-						<SidebarTrigger />
+						<SidebarTrigger className="ml-auto" />
 						<Button
 							variant="outline"
 							size="icon"
@@ -124,7 +124,7 @@ export function AppSidebar() {
 					<SidebarMenu>
 						<SidebarMenuItem>
 							<SidebarMenuButton asChild>
-								<a href="/pc">
+								<a href="/characters">
 									<Users2 />
 									Player Characters
 								</a>

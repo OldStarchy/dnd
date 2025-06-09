@@ -5,6 +5,7 @@ import {
 	ResizablePanelGroup,
 } from '@/components/ui/resizable';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import useCharacterPresets from '@/hooks/useCharacterPresets';
 import useLocalStorage from '@/hooks/useLocalStorage';
 import { usePrimaryDispatch, usePrimarySelector } from '@/store/primary-store';
 import {
@@ -28,11 +29,17 @@ import {
 	type Entity,
 	type PlayerEntityView,
 } from '@/store/types/Entity';
+import { DropdownMenuTrigger } from '@radix-ui/react-dropdown-menu';
 import { addListener } from '@reduxjs/toolkit';
-import { ExternalLink, Plus } from 'lucide-react';
+import { ChevronDown, ExternalLink, Plus } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import EntityPropertyPanel from './entity-property-panel';
 import InitiativeTable from './initiative-table';
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+} from './ui/dropdown-menu';
 
 function reduceEntity(entity: Entity): PlayerEntityView {
 	const healthDisplay = getObfuscatedHealthText(
@@ -79,6 +86,8 @@ function GameMasterControlPanel() {
 		(state) => state.initiative,
 	);
 	const dispatch = usePrimaryDispatch();
+
+	const [characters] = useCharacterPresets();
 
 	useEffect(() => {
 		dispatch(
@@ -375,15 +384,67 @@ function GameMasterControlPanel() {
 							);
 						}}
 						footer={
-							<Button
-								variant="outline"
-								size="icon"
-								className="cursor-pointer"
-								onClick={createNewEntity}
-							>
-								<Plus className="h-4 w-4" />
-								<span className="sr-only">Add entity</span>
-							</Button>
+							<div className="inline-flex items-stretch border rounded-md overflow-hidden divide-x divide-border bg-background">
+								<Button
+									variant="ghost"
+									className="cursor-pointer rounded-none p-0"
+									onClick={createNewEntity}
+								>
+									<Plus />
+									<span className="sr-only">Add entity</span>
+								</Button>
+
+								<DropdownMenu>
+									<DropdownMenuTrigger asChild>
+										<Button
+											variant="ghost"
+											size="icon"
+											className="cursor-pointer rounded-none"
+										>
+											<ChevronDown />
+										</Button>
+									</DropdownMenuTrigger>
+									<DropdownMenuContent>
+										{characters.length > 0 ? (
+											characters.map((character) => (
+												<DropdownMenuItem
+													key={character.id}
+													onClick={() => {
+														const newEntity: Entity =
+															{
+																id: crypto.randomUUID(),
+																name: character.name,
+																visible: false,
+																initiative: 0,
+																health: character.health,
+																maxHealth:
+																	character.maxHealth,
+																obfuscateHealth:
+																	HealthObfuscation.NO,
+																tags: [],
+															};
+														dispatch(
+															setEntity(
+																newEntity,
+															),
+														);
+														setSelectedEntityId(
+															newEntity.id,
+														);
+													}}
+												>
+													{character.name}
+												</DropdownMenuItem>
+											))
+										) : (
+											<DropdownMenuItem disabled>
+												Create some Player Character
+												Presets
+											</DropdownMenuItem>
+										)}
+									</DropdownMenuContent>
+								</DropdownMenu>
+							</div>
 						}
 					/>
 				</ScrollArea>

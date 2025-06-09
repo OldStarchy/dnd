@@ -61,7 +61,6 @@ function EntityPropertyPanel({
 					<Label htmlFor="name">Name</Label>
 					<Input
 						id="name"
-						className="text-2xl"
 						value={entity.name}
 						onChange={(e) =>
 							onChange({ ...entity, name: e.target.value })
