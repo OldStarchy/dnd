@@ -10,8 +10,7 @@ import {
 	TableRow,
 } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
-import { swapEntities } from '@/store/reducers/initiativeSlice';
-import { useAppDispatch, useAppSelector } from '@/store/store';
+import type { PlayerEntityView } from '@/store/types/Entity';
 import { ArrowRight, Fullscreen, Shrink } from 'lucide-react';
 import {
 	useCallback,
@@ -21,41 +20,29 @@ import {
 	type ReactNode,
 } from 'react';
 
-export type InitiativeTableEntityView = {
-	initiative: number;
-	name: string;
-	id: string;
-	healthDisplay: string;
-	tags: { name: string; color: string }[];
-	effect?: 'muted';
-};
-
 function InitiativeTable({
 	entities,
+	currentTurnEntityId,
 	selectedEntityId,
 	onClickEntity,
 	onDoubleClickEntity,
+	onSwapEntities,
 	headerButtons,
 	rowButtons,
 	reorderable = false,
 	footer,
 }: {
-	entities: InitiativeTableEntityView[];
+	entities: PlayerEntityView[];
+	currentTurnEntityId: string | null;
 	selectedEntityId: string | null;
 	onClickEntity?: (id: string) => void;
 	onDoubleClickEntity?: (id: string) => void;
+	onSwapEntities?: (a: number, b: number) => void;
 	headerButtons?: ReactNode;
-	rowButtons?: (
-		entity: InitiativeTableEntityView,
-		index: number,
-	) => ReactNode;
+	rowButtons?: (entity: PlayerEntityView, index: number) => ReactNode;
 	reorderable?: boolean;
 	footer?: ReactNode;
 }) {
-	const currentTurnEntityId = useAppSelector(
-		(state) => state.initiative.currentTurnEntityId,
-	);
-	const dispatch = useAppDispatch();
 	const tableRef = useRef<HTMLTableElement>(null);
 	const [isFullscreen, setIsFullscreen] = useState(false);
 
@@ -107,11 +94,11 @@ function InitiativeTable({
 			event.preventDefault();
 			const draggedRowIndex = dragRowIndex;
 			if (draggedRowIndex !== null && draggedRowIndex !== index) {
-				dispatch(swapEntities([draggedRowIndex, index]));
+				onSwapEntities?.(draggedRowIndex, index);
 				setDragRowIndex(null);
 			}
 		},
-		[dragRowIndex, entities, dispatch],
+		[dragRowIndex, onSwapEntities],
 	);
 	const handleDragEnd = useCallback(() => {
 		setDragRowIndex(null);

@@ -74,7 +74,11 @@ function useLocalStorage<T>(
 	useEffect(() => {
 		const handleStorageChange = (event: StorageEvent) => {
 			if (event.key === key) {
-				setValue(event.newValue);
+				setValue(
+					readTransformer
+						? readTransformer(event.newValue)
+						: (event.newValue as T | string | null),
+				);
 			}
 		};
 		window.addEventListener('storage', handleStorageChange);

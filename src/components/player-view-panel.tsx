@@ -1,65 +1,47 @@
 import InitiativeTable from '@/components/initiative-table';
-import { useAppDispatch, useAppSelector } from '@/store/store';
-import { getObfuscatedHealthText } from '@/store/types/Entity';
-import { useEffect, useState } from 'react';
+import { useReducedDispatch, useReducedSelector } from '@/store/reduced-store';
+import { setCurrentTurnEntityId } from '@/store/reducers/reduced-initiative-slice';
+import { useEffect, useRef } from 'react';
 
 function PlayerViewPanel() {
-	const [portFromMain, setPortFromMain] = useState<null | MessagePort>(null);
-	const entities = useAppSelector((state) => state.initiative.entities);
-	const dispatch = useAppDispatch();
-
-	const entitiesView = entities
-		.filter((entity) => entity.visible)
-		.map((entity) => {
-			const healthDisplay = getObfuscatedHealthText(
-				entity.health,
-				entity.maxHealth,
-				entity.obfuscateHealth,
-			);
-
-			return {
-				id: entity.id,
-				name: entity.name,
-				initiative: entity.initiative,
-				healthDisplay,
-				tags: entity.tags,
-			};
-		});
+	const portFromMain = useRef<MessagePort>(null);
+	const { entities, currentTurnEntityId } = useReducedSelector(
+		(state) => state.reducedInitiative,
+	);
+	const dispatch = useReducedDispatch();
 
 	useEffect(() => {
+		dispatch(setCurrentTurnEntityId(null));
 		const messageHandler = (event: MessageEvent) => {
 			if (event.data?.type === 'INIT_PORT' && event.ports?.length) {
-				const portFromMain = event.ports[0];
-				portFromMain.start();
-				portFromMain.onmessage = (event: MessageEvent) => {
-					const data = event.data as any;
+				const port = event.ports[0];
+				port.start();
+				port.onmessage = (event: MessageEvent) => {
+					const data = event.data;
 					if (data && data.type === 'FORWARDED_ACTION') {
 						dispatch(data.payload);
 					}
 				};
 
-				setPortFromMain(portFromMain);
+				portFromMain.current = port;
 
-				portFromMain.postMessage({
-					type: 'INIT_PORT_OK',
+				port.postMessage({
+					type: 'READY',
 				});
 			}
 		};
 		window.addEventListener('message', messageHandler);
 		return () => {
 			window.removeEventListener('message', messageHandler);
-			if (portFromMain) {
-				setPortFromMain((prev) => {
-					prev?.close();
-					return null;
-				});
-			}
+			portFromMain.current?.close();
+			portFromMain.current = null;
 		};
-	}, []);
+	}, [dispatch]);
 	return (
 		<div>
 			<InitiativeTable
-				entities={entitiesView}
+				entities={entities}
+				currentTurnEntityId={currentTurnEntityId}
 				onClickEntity={() => {}}
 				selectedEntityId={null}
 			/>

@@ -5,35 +5,89 @@ import {
 	ResizablePanelGroup,
 } from '@/components/ui/resizable';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import useCharacterPresets from '@/hooks/useCharacterPresets';
 import useLocalStorage from '@/hooks/useLocalStorage';
+import { usePrimaryDispatch, usePrimarySelector } from '@/store/primary-store';
 import {
 	removeEntity,
 	setCurrentTurnEntityId,
 	setDefault,
 	setEntity,
+	swapEntities,
 } from '@/store/reducers/initiativeSlice';
-import { setPort, useAppDispatch, useAppSelector } from '@/store/store';
+import {
+	actions as reducedActions,
+	removeEntity as reducedRemoveEntity,
+	setCurrentTurnEntityId as reducedSetCurrentTurnEntityId,
+	setDefault as reducedSetDefault,
+	setEntity as reducedSetEntity,
+	swapEntities as reducedSwapEntities,
+} from '@/store/reducers/reduced-initiative-slice';
 import {
 	getObfuscatedHealthText,
 	HealthObfuscation,
 	type Entity,
+	type PlayerEntityView,
 } from '@/store/types/Entity';
-import { ExternalLink, Plus } from 'lucide-react';
+import { DropdownMenuTrigger } from '@radix-ui/react-dropdown-menu';
+import { addListener } from '@reduxjs/toolkit';
+import { ChevronDown, ExternalLink, Plus } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import EntityPropertyPanel from './entity-property-panel';
-import InitiativeTable, {
-	type InitiativeTableEntityView,
-} from './initiative-table';
+import InitiativeTable from './initiative-table';
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+} from './ui/dropdown-menu';
+
+function reduceEntity(entity: Entity): PlayerEntityView {
+	const healthDisplay = getObfuscatedHealthText(
+		entity.health,
+		entity.maxHealth,
+		entity.obfuscateHealth,
+	);
+
+	return {
+		id: entity.id,
+		name: entity.name,
+		initiative: entity.initiative,
+		healthDisplay,
+		tags: entity.tags,
+	};
+}
+
+function reduceEntities(entities: Entity[]): PlayerEntityView[] {
+	return entities
+		.filter((entity) => entity.visible)
+		.map((entity) => {
+			const healthDisplay = getObfuscatedHealthText(
+				entity.health,
+				entity.maxHealth,
+				entity.obfuscateHealth,
+			);
+
+			return {
+				id: entity.id,
+				name: entity.name,
+				initiative: entity.initiative,
+				healthDisplay,
+				tags: entity.tags,
+			};
+		});
+}
 
 function GameMasterControlPanel() {
 	const [splitDirection] = useLocalStorage('layoutDirection', (v) =>
 		v !== 'vertical' ? 'horizontal' : 'vertical',
 	);
 
-	const { entities, currentTurnEntityId } = useAppSelector(
+	const { entities, currentTurnEntityId } = usePrimarySelector(
 		(state) => state.initiative,
 	);
-	const dispatch = useAppDispatch();
+	const dispatch = usePrimaryDispatch();
+
+	const [characters] = useCharacterPresets();
 
 	useEffect(() => {
 		dispatch(
@@ -125,78 +179,116 @@ function GameMasterControlPanel() {
 				},
 			]),
 		);
-	}, []);
+	}, [dispatch]);
 
 	const [selectedEntityId, setSelectedEntityId] = useState<string | null>(
 		null,
 	);
 
-	const [, setPopupWindow] = useState<Window | null>(null);
+	const [popupWindow, setPopupWindow] = useState<Window | null>(null);
 
 	const togglePopup = useCallback(() => {
 		setPopupWindow((prev) => {
 			if (prev) {
 				prev.close();
-				setPort(null);
 				return null;
 			} else {
-				const win = window.open(
-					'/popout',
-					'popout',
-					'width=800,height=600',
-				);
-				if (win) {
-					win.opener = window;
-					win.focus();
-					const thisCloseHandler = () => {
-						win.close();
-					};
-					window.addEventListener('beforeunload', thisCloseHandler);
-
-					win.addEventListener('beforeunload', () => {
-						setPort(null);
-						setPopupWindow(null);
-						window.removeEventListener(
-							'beforeunload',
-							thisCloseHandler,
-						);
-					});
-
-					win.addEventListener('load', () => {
-						const chan = new MessageChannel();
-
-						win.postMessage({ type: 'INIT_PORT' }, '*', [
-							chan.port2,
-						]);
-						chan.port1.start();
-						setPort(chan.port1);
-
-						const handleInitOK = (event: MessageEvent) => {
-							if (event.data?.type === 'INIT_PORT_OK') {
-								chan.port1.removeEventListener(
-									'message',
-									handleInitOK,
-								);
-								chan.port1.postMessage({
-									type: 'FORWARDED_ACTION',
-									payload: setDefault(entities),
-								});
-								chan.port1.postMessage({
-									type: 'FORWARDED_ACTION',
-									payload:
-										setCurrentTurnEntityId(
-											currentTurnEntityId,
-										),
-								});
-							}
-						};
-						chan.port1.addEventListener('message', handleInitOK);
-					});
-				}
-				return win;
+				return window.open('/popout', 'popout', 'width=800,height=600');
 			}
 		});
-	}, [entities, currentTurnEntityId]);
+	}, []);
+
+	useEffect(() => {
+		if (!popupWindow) return;
+
+		const closeCheck = () => {
+			if (popupWindow?.closed) {
+				setPopupWindow(null);
+			}
+		};
+
+		const interval = setInterval(closeCheck, 1000);
+
+		popupWindow.focus();
+		const { port1, port2 } = new MessageChannel();
+		port1.start();
+
+		let ready = false;
+
+		const dispatchOther = (
+			action: ReturnType<
+				(typeof reducedActions)[keyof typeof reducedActions]
+			>,
+		) => {
+			if (ready) {
+				port1.postMessage({
+					type: 'FORWARDED_ACTION',
+					payload: action,
+				});
+			}
+		};
+
+		const unsubs = [
+			dispatch(
+				addListener({
+					actionCreator: setEntity,
+					effect: (action) =>
+						dispatchOther(
+							reducedSetEntity(reduceEntity(action.payload)),
+						),
+				}),
+			),
+			dispatch(
+				addListener({
+					actionCreator: removeEntity,
+					effect: (action) => {
+						dispatchOther(reducedRemoveEntity(action.payload));
+					},
+				}),
+			),
+			dispatch(
+				addListener({
+					actionCreator: setDefault,
+					effect: (action) => {
+						dispatchOther(
+							reducedSetDefault(reduceEntities(action.payload)),
+						);
+					},
+				}),
+			),
+			dispatch(
+				addListener({
+					actionCreator: swapEntities,
+					effect: (action) => {
+						dispatchOther(reducedSwapEntities(action.payload));
+					},
+				}),
+			),
+		];
+
+		const handleReady = (event: MessageEvent) => {
+			if (event.data?.type === 'READY') {
+				port1.removeEventListener('message', handleReady);
+				ready = true;
+				dispatchOther(reducedSetDefault(reduceEntities(entities)));
+				dispatchOther(
+					reducedSetCurrentTurnEntityId(currentTurnEntityId),
+				);
+			}
+		};
+		port1.addEventListener('message', handleReady);
+
+		popupWindow.addEventListener('load', () => {
+			popupWindow.postMessage({ type: 'INIT_PORT', port: port2 }, '*', [
+				port2,
+			]);
+		});
+
+		return () => {
+			clearInterval(interval);
+			unsubs.forEach((unsub) => unsub());
+		};
+	}, [popupWindow, entities, currentTurnEntityId, dispatch]);
 
 	const selectedEntity = entities.find(
 		(entity) => entity.id === selectedEntityId,
@@ -215,10 +307,10 @@ function GameMasterControlPanel() {
 		};
 		dispatch(setEntity(newEntity));
 		setSelectedEntityId(newEntity.id);
-	}, [entities]);
+	}, [dispatch]);
 
-	const entitiesView: InitiativeTableEntityView[] = entities.map((entity) => {
-		const ety: InitiativeTableEntityView = {
+	const entitiesView: PlayerEntityView[] = entities.map((entity) => {
+		const ety: PlayerEntityView = {
 			initiative: entity.initiative,
 			name: entity.name,
 			id: entity.id,
@@ -252,7 +344,11 @@ function GameMasterControlPanel() {
 				<ScrollArea>
 					<InitiativeTable
 						entities={entitiesView}
+						currentTurnEntityId={currentTurnEntityId}
 						selectedEntityId={selectedEntityId}
+						onSwapEntities={(a, b) =>
+							dispatch(swapEntities([a, b]))
+						}
 						reorderable
 						headerButtons={
 							<>
@@ -288,15 +384,67 @@ function GameMasterControlPanel() {
 							);
 						}}
 						footer={
-							<Button
-								variant="outline"
-								size="icon"
-								className="cursor-pointer"
-								onClick={createNewEntity}
-							>
-								<Plus className="h-4 w-4" />
-								<span className="sr-only">Add entity</span>
-							</Button>
+							<div className="inline-flex items-stretch border rounded-md overflow-hidden divide-x divide-border bg-background">
+								<Button
+									variant="ghost"
+									className="cursor-pointer rounded-none p-0"
+									onClick={createNewEntity}
+								>
+									<Plus />
+									<span className="sr-only">Add entity</span>
+								</Button>
+
+								<DropdownMenu>
+									<DropdownMenuTrigger asChild>
+										<Button
+											variant="ghost"
+											size="icon"
+											className="cursor-pointer rounded-none"
+										>
+											<ChevronDown />
+										</Button>
+									</DropdownMenuTrigger>
+									<DropdownMenuContent>
+										{characters.length > 0 ? (
+											characters.map((character) => (
+												<DropdownMenuItem
+													key={character.id}
+													onClick={() => {
+														const newEntity: Entity =
+															{
+																id: crypto.randomUUID(),
+																name: character.name,
+																visible: false,
+																initiative: 0,
+																health: character.health,
+																maxHealth:
+																	character.maxHealth,
+																obfuscateHealth:
+																	HealthObfuscation.NO,
+																tags: [],
+															};
+														dispatch(
+															setEntity(
+																newEntity,
+															),
+														);
+														setSelectedEntityId(
+															newEntity.id,
+														);
+													}}
+												>
+													{character.name}
+												</DropdownMenuItem>
+											))
+										) : (
+											<DropdownMenuItem disabled>
+												Create some Player Character
+												Presets
+											</DropdownMenuItem>
+										)}
+									</DropdownMenuContent>
+								</DropdownMenu>
+							</div>
 						}
 					/>
 				</ScrollArea>

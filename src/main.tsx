@@ -4,6 +4,7 @@ import { createBrowserRouter, RouterProvider } from 'react-router';
 import { ThemeProvider } from './components/theme-provider';
 import './index.css';
 import Layout from './layout/layout';
+import Characters from './views/Characters';
 import Home from './views/Home';
 import PopoutView from './views/Popout';
 
@@ -18,6 +19,10 @@ const router = createBrowserRouter([
 			{
 				path: '/popout',
 				Component: PopoutView,
+			},
+			{
+				path: '/characters',
+				Component: Characters,
 			},
 		],
 	},
