@@ -7,7 +7,9 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "bundle-swagger": "cd dnd5eapi && npm run bundle-swagger",
+    "dnd5eapi-generate-api": "swagger-typescript-api generate --clean-output --path ./dnd5eapi/dist/openapi.json --output ./src/generated/dnd5eapi --name Dnd5eApi --api-class-name Dnd5eApi --templates ./swagger-template"
   },
   "dependencies": {
     "@radix-ui/react-collapsible": "^1.1.11",
@@ -45,6 +47,7 @@
     "eslint-plugin-react-refresh": "^0.4.19",
     "globals": "^16.0.0",
     "prettier": "^3.5.3",
+    "swagger-typescript-api": "^13.2.1",
     "tw-animate-css": "^1.2.9",
     "typescript": "~5.8.3",
     "typescript-eslint": "^8.30.1",

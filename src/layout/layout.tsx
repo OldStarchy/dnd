@@ -79,7 +79,7 @@ function Layout() {
 
 						<ModeToggle />
 					</header>
-					<main className="flex-1 grid">
+					<main className="flex-1 grid overflow-auto">
 						<Outlet />
 					</main>
 					<footer className="flex items-center justify-between gap-4">
@@ -132,9 +132,9 @@ export function AppSidebar() {
 						</SidebarMenuItem>
 						<SidebarMenuItem>
 							<SidebarMenuButton asChild>
-								<a href="/npc">
+								<a href="/monsters">
 									<Dog />
-									Non-Player Characters
+									Monsters
 								</a>
 							</SidebarMenuButton>
 						</SidebarMenuItem>

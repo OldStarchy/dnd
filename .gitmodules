@@ -1,0 +1,3 @@
+[submodule "dnd5eapi"]
+	path = dnd5eapi
+	url = git@github.com:5e-bits/5e-srd-api.git
