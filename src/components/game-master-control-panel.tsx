@@ -5,8 +5,10 @@ import {
 	ResizablePanelGroup,
 } from '@/components/ui/resizable';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Dnd5eApi } from '@/generated/dnd5eapi/Dnd5eApi';
 import useCharacterPresets from '@/hooks/useCharacterPresets';
 import useLocalStorage from '@/hooks/useLocalStorage';
+import useMonsterList from '@/hooks/useMonsterList';
 import { usePrimaryDispatch, usePrimarySelector } from '@/store/primary-store';
 import {
 	removeEntity,
@@ -38,7 +40,10 @@ import InitiativeTable from './initiative-table';
 import {
 	DropdownMenu,
 	DropdownMenuContent,
+	DropdownMenuGroup,
 	DropdownMenuItem,
+	DropdownMenuLabel,
+	DropdownMenuSeparator,
 } from './ui/dropdown-menu';
 
 function reduceEntity(entity: Entity): PlayerEntityView {
@@ -88,6 +93,7 @@ function GameMasterControlPanel() {
 	const dispatch = usePrimaryDispatch();
 
 	const [characters] = useCharacterPresets();
+	const { monsters } = useMonsterList();
 
 	useEffect(() => {
 		dispatch(
@@ -405,43 +411,112 @@ function GameMasterControlPanel() {
 										</Button>
 									</DropdownMenuTrigger>
 									<DropdownMenuContent>
-										{characters.length > 0 ? (
-											characters.map((character) => (
-												<DropdownMenuItem
-													key={character.id}
-													onClick={() => {
-														const newEntity: Entity =
-															{
-																id: crypto.randomUUID(),
-																name: character.name,
-																visible: false,
-																initiative: 0,
-																health: character.health,
-																maxHealth:
-																	character.maxHealth,
-																obfuscateHealth:
-																	HealthObfuscation.NO,
-																tags: [],
-															};
-														dispatch(
-															setEntity(
-																newEntity,
-															),
-														);
-														setSelectedEntityId(
-															newEntity.id,
-														);
-													}}
-												>
-													{character.name}
+										<DropdownMenuGroup>
+											<DropdownMenuLabel>
+												Players
+											</DropdownMenuLabel>
+											{characters.length > 0 ? (
+												characters.map((character) => (
+													<DropdownMenuItem
+														key={character.id}
+														onClick={() => {
+															const newEntity: Entity =
+																{
+																	id: crypto.randomUUID(),
+																	name: character.name,
+																	visible:
+																		false,
+																	initiative: 0,
+																	health: character.health,
+																	maxHealth:
+																		character.maxHealth,
+																	obfuscateHealth:
+																		HealthObfuscation.NO,
+																	tags: [],
+																};
+															dispatch(
+																setEntity(
+																	newEntity,
+																),
+															);
+															setSelectedEntityId(
+																newEntity.id,
+															);
+														}}
+													>
+														{character.name}
+													</DropdownMenuItem>
+												))
+											) : (
+												<DropdownMenuItem disabled>
+													Create some Player Character
+													Presets
 												</DropdownMenuItem>
-											))
-										) : (
-											<DropdownMenuItem disabled>
-												Create some Player Character
-												Presets
-											</DropdownMenuItem>
-										)}
+											)}
+										</DropdownMenuGroup>
+										<DropdownMenuSeparator />
+										<DropdownMenuGroup>
+											<DropdownMenuLabel>
+												Monsters
+											</DropdownMenuLabel>
+											{monsters.length > 0 ? (
+												monsters.map((monster) => (
+													<DropdownMenuItem
+														key={monster.index}
+														onClick={() => {
+															(async () => {
+																const api =
+																	new Dnd5eApi();
+																const result = (
+																	await api.api._2014MonstersDetail(
+																		monster.index,
+																	)
+																).data;
+																const hitpoints =
+																	result.hit_points_roll !==
+																	undefined
+																		? Math.max(
+																				rollDice(
+																					result.hit_points_roll,
+																				),
+																				1,
+																			)
+																		: (result.hit_points ??
+																			0);
+																const newEntity: Entity =
+																	{
+																		id: crypto.randomUUID(),
+																		name: result.name!,
+																		visible:
+																			false,
+																		initiative: 0,
+																		health: hitpoints,
+																		maxHealth:
+																			hitpoints,
+																		obfuscateHealth:
+																			HealthObfuscation.TEXT,
+																		tags: [],
+																	};
+																dispatch(
+																	setEntity(
+																		newEntity,
+																	),
+																);
+																setSelectedEntityId(
+																	newEntity.id,
+																);
+															})();
+														}}
+													>
+														{monster.name}
+													</DropdownMenuItem>
+												))
+											) : (
+												<DropdownMenuItem disabled>
+													5e Monsters loading...
+												</DropdownMenuItem>
+											)}
+										</DropdownMenuGroup>
 									</DropdownMenuContent>
 								</DropdownMenu>
 							</div>
@@ -468,4 +543,30 @@ function GameMasterControlPanel() {
 	);
 }
 
+function rollDice(str: string): number {
+	const [count, sides, modifier] = (() => {
+		const match =
+			/^(?<count>\d+)d(?<sides>\d+)(?<modifier>[+-]?\d+)?$/.exec(str);
+		if (!match) {
+			throw new Error(`Invalid dice format: ${str}`);
+		}
+
+		const { count, sides, modifier } = match.groups as {
+			count: string;
+			sides: string;
+			modifier?: string;
+		};
+		return [
+			Number(count),
+			Number(sides),
+			modifier ? Number(modifier) : 0,
+		] as const;
+	})();
+
+	let total = 0;
+	for (let i = 0; i < count; i++) {
+		total += Math.floor(Math.random() * sides) + 1 + modifier;
+	}
+	return total;
+}
 export default GameMasterControlPanel;

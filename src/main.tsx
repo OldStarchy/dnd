@@ -6,6 +6,7 @@ import './index.css';
 import Layout from './layout/layout';
 import Characters from './views/Characters';
 import Home from './views/Home';
+import Monsters from './views/Monsters';
 import PopoutView from './views/Popout';
 
 const router = createBrowserRouter([
@@ -23,6 +24,10 @@ const router = createBrowserRouter([
 			{
 				path: '/characters',
 				Component: Characters,
+			},
+			{
+				path: '/monsters',
+				Component: Monsters,
 			},
 		],
 	},

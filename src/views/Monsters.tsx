@@ -1,0 +1,34 @@
+import useMonsterList from '@/hooks/useMonsterList';
+
+function Monsters() {
+	const { monsters, loading } = useMonsterList();
+
+	return (
+		<>
+			<h1 className="text-lg font-bold">Monsters</h1>
+			<p>
+				This list of monsters is supplied by the{' '}
+				<a
+					className="text-blue-500 hover:underline"
+					href="https://www.dnd5eapi.co/"
+					target="_blank"
+					rel="noopener noreferrer"
+				>
+					D&D 5e API
+				</a>
+			</p>
+			<hr />
+			{loading ? (
+				<div>Loading...</div>
+			) : (
+				<ul>
+					{monsters.map((monster) => (
+						<li key={monster.index}>{monster.name}</li>
+					))}
+				</ul>
+			)}
+		</>
+	);
+}
+
+export default Monsters;
