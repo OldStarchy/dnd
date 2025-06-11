@@ -3,7 +3,12 @@ import { useEffect, useState } from 'react';
 
 const api = new Dnd5eApi();
 function useMonsterList() {
-	const [monsters, setMonsters] = useState<string[]>([]);
+	const [monsters, setMonsters] = useState<
+		{
+			name: string;
+			index: string;
+		}[]
+	>([]);
 	const [loading, setLoading] = useState(true);
 
 	useEffect(() => {
@@ -11,7 +16,12 @@ function useMonsterList() {
 			try {
 				const response = await api.api._2014Detail('monsters');
 				if (response.ok && response.data) {
-					setMonsters(response.data.results!.map((r) => r.name!));
+					setMonsters(
+						response.data.results!.map((r) => ({
+							name: r.name!,
+							index: r.index!,
+						})),
+					);
 				} else {
 					console.error('No results found in the response');
 				}
