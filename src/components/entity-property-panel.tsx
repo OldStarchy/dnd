@@ -11,6 +11,7 @@ import {
 	TableRow,
 } from '@/components/ui/table';
 import { HealthObfuscation, type Entity } from '@/store/types/Entity';
+import { Debuff } from '@/type/Debuff';
 import { Plus } from 'lucide-react';
 import {
 	Select,
@@ -61,9 +62,15 @@ function EntityPropertyPanel({
 					<Label htmlFor="name">Name</Label>
 					<Input
 						id="name"
-						value={entity.name}
+						value={entity.creature.name}
 						onChange={(e) =>
-							onChange({ ...entity, name: e.target.value })
+							onChange({
+								...entity,
+								creature: {
+									...entity.creature,
+									name: e.target.value,
+								},
+							})
 						}
 					/>
 				</div>
@@ -74,11 +81,14 @@ function EntityPropertyPanel({
 				<Input
 					id="health"
 					type="number"
-					value={entity.health}
+					value={entity.creature.hp}
 					onChange={(e) =>
 						onChange({
 							...entity,
-							health: parseInt(e.target.value),
+							creature: {
+								...entity.creature,
+								hp: parseInt(e.target.value),
+							},
 						})
 					}
 				/>
@@ -87,11 +97,14 @@ function EntityPropertyPanel({
 				<Input
 					id="maxHealth"
 					type="number"
-					value={entity.maxHealth}
+					value={entity.creature.maxHp}
 					onChange={(e) =>
 						onChange({
 							...entity,
-							maxHealth: parseInt(e.target.value),
+							creature: {
+								...entity.creature,
+								maxHp: parseInt(e.target.value),
+							},
 						})
 					}
 				/>
@@ -131,182 +144,204 @@ function EntityPropertyPanel({
 					</TableRow>
 				</TableHeader>
 				<TableBody>
-					{entity.tags.map((tag, index) => (
-						<TableRow key={index}>
-							<TableCell>
-								<Input
-									value={tag.name}
-									onChange={(e) => {
-										onChange({
-											...entity,
-											tags: entity.tags.map((tag, i) =>
-												i === index
-													? {
-															...tag,
-															name: e.target
-																.value,
-														}
-													: tag,
-											),
-										});
-									}}
-								/>
-							</TableCell>
-							<TableCell>
-								<Select
-									value={tag.color}
-									onValueChange={(e) => {
-										onChange({
-											...entity,
-											tags: entity.tags.map((tag, i) =>
-												i === index
-													? {
-															...tag,
-															color: e,
-														}
-													: tag,
-											),
-										});
-									}}
-								>
-									<SelectTrigger>
-										<SelectValue placeholder="Select color" />
-									</SelectTrigger>
-									<SelectContent>
-										<SelectItem
-											className="bg-red-500"
-											value="bg-red-500"
-										>
-											Red
-										</SelectItem>
-										<SelectItem
-											className="bg-orange-500"
-											value="bg-orange-500"
-										>
-											Orange
-										</SelectItem>
-										<SelectItem
-											className="bg-amber-500"
-											value="bg-amber-500"
-										>
-											Amber
-										</SelectItem>
-										<SelectItem
-											className="bg-yellow-500"
-											value="bg-yellow-500"
-										>
-											Yellow
-										</SelectItem>
-										<SelectItem
-											className="bg-lime-500"
-											value="bg-lime-500"
-										>
-											Lime
-										</SelectItem>
-										<SelectItem
-											className="bg-green-500"
-											value="bg-green-500"
-										>
-											Green
-										</SelectItem>
-										<SelectItem
-											className="bg-emerald-500"
-											value="bg-emerald-500"
-										>
-											Emerald
-										</SelectItem>
-										<SelectItem
-											className="bg-teal-500"
-											value="bg-teal-500"
-										>
-											Teal
-										</SelectItem>
-										<SelectItem
-											className="bg-cyan-500"
-											value="bg-cyan-500"
-										>
-											Cyan
-										</SelectItem>
-										<SelectItem
-											className="bg-sky-500"
-											value="bg-sky-500"
-										>
-											Sky
-										</SelectItem>
-										<SelectItem
-											className="bg-blue-500"
-											value="bg-blue-500"
-										>
-											Blue
-										</SelectItem>
-										<SelectItem
-											className="bg-indigo-500"
-											value="bg-indigo-500"
-										>
-											Indigo
-										</SelectItem>
-										<SelectItem
-											className="bg-violet-500"
-											value="bg-violet-500"
-										>
-											Violet
-										</SelectItem>
-										<SelectItem
-											className="bg-purple-500"
-											value="bg-purple-500"
-										>
-											Purple
-										</SelectItem>
-										<SelectItem
-											className="bg-fuchsia-500"
-											value="bg-fuchsia-500"
-										>
-											Fuchsia
-										</SelectItem>
-										<SelectItem
-											className="bg-pink-500"
-											value="bg-pink-500"
-										>
-											Pink
-										</SelectItem>
-										<SelectItem
-											className="bg-rose-500"
-											value="bg-rose-500"
-										>
-											Rose
-										</SelectItem>
-										<SelectItem
-											className="bg-foreground text-background"
-											value="bg-foreground"
-										>
-											Black
-										</SelectItem>
-										<SelectItem
-											className="bg-background text-foreground"
-											value="bg-background"
-										>
-											White
-										</SelectItem>
-									</SelectContent>
-								</Select>
-							</TableCell>
-							<TableCell>
-								<Button
-									variant="destructive"
-									onClick={() => {
-										const newTags = [...entity.tags];
-										newTags.splice(index, 1);
-										onChange({
-											...entity,
-											tags: newTags,
-										});
-									}}
-								>
-									Delete
-								</Button>
-							</TableCell>
-						</TableRow>
-					))}
+					{entity.creature.debuffs
+						?.map(Debuff.flat)
+						.map((tag, index) => (
+							<TableRow key={index}>
+								<TableCell>
+									<Input
+										value={tag.name}
+										onChange={(e) => {
+											onChange({
+												...entity,
+												creature: {
+													...entity.creature,
+													debuffs:
+														entity.creature.debuffs!.map(
+															(tag, i) =>
+																i === index
+																	? {
+																			...tag,
+																			name: e
+																				.target
+																				.value,
+																		}
+																	: tag,
+														),
+												},
+											});
+										}}
+									/>
+								</TableCell>
+								<TableCell>
+									<Select
+										value={tag.color}
+										onValueChange={(e) => {
+											onChange({
+												...entity,
+												creature: {
+													...entity.creature,
+													debuffs:
+														entity.creature.debuffs!.map(
+															(tag, i): Debuff =>
+																i === index
+																	? {
+																			...Debuff.flat(
+																				tag,
+																			),
+																			kind: 'custom',
+																			color: e,
+																		}
+																	: tag,
+														),
+												},
+											});
+										}}
+									>
+										<SelectTrigger>
+											<SelectValue placeholder="Select color" />
+										</SelectTrigger>
+										<SelectContent>
+											<SelectItem
+												className="bg-red-500"
+												value="bg-red-500"
+											>
+												Red
+											</SelectItem>
+											<SelectItem
+												className="bg-orange-500"
+												value="bg-orange-500"
+											>
+												Orange
+											</SelectItem>
+											<SelectItem
+												className="bg-amber-500"
+												value="bg-amber-500"
+											>
+												Amber
+											</SelectItem>
+											<SelectItem
+												className="bg-yellow-500"
+												value="bg-yellow-500"
+											>
+												Yellow
+											</SelectItem>
+											<SelectItem
+												className="bg-lime-500"
+												value="bg-lime-500"
+											>
+												Lime
+											</SelectItem>
+											<SelectItem
+												className="bg-green-500"
+												value="bg-green-500"
+											>
+												Green
+											</SelectItem>
+											<SelectItem
+												className="bg-emerald-500"
+												value="bg-emerald-500"
+											>
+												Emerald
+											</SelectItem>
+											<SelectItem
+												className="bg-teal-500"
+												value="bg-teal-500"
+											>
+												Teal
+											</SelectItem>
+											<SelectItem
+												className="bg-cyan-500"
+												value="bg-cyan-500"
+											>
+												Cyan
+											</SelectItem>
+											<SelectItem
+												className="bg-sky-500"
+												value="bg-sky-500"
+											>
+												Sky
+											</SelectItem>
+											<SelectItem
+												className="bg-blue-500"
+												value="bg-blue-500"
+											>
+												Blue
+											</SelectItem>
+											<SelectItem
+												className="bg-indigo-500"
+												value="bg-indigo-500"
+											>
+												Indigo
+											</SelectItem>
+											<SelectItem
+												className="bg-violet-500"
+												value="bg-violet-500"
+											>
+												Violet
+											</SelectItem>
+											<SelectItem
+												className="bg-purple-500"
+												value="bg-purple-500"
+											>
+												Purple
+											</SelectItem>
+											<SelectItem
+												className="bg-fuchsia-500"
+												value="bg-fuchsia-500"
+											>
+												Fuchsia
+											</SelectItem>
+											<SelectItem
+												className="bg-pink-500"
+												value="bg-pink-500"
+											>
+												Pink
+											</SelectItem>
+											<SelectItem
+												className="bg-rose-500"
+												value="bg-rose-500"
+											>
+												Rose
+											</SelectItem>
+											<SelectItem
+												className="bg-foreground text-background"
+												value="bg-foreground"
+											>
+												Black
+											</SelectItem>
+											<SelectItem
+												className="bg-background text-foreground"
+												value="bg-background"
+											>
+												White
+											</SelectItem>
+										</SelectContent>
+									</Select>
+								</TableCell>
+								<TableCell>
+									<Button
+										variant="destructive"
+										onClick={() => {
+											const newTags = [
+												...(entity.creature.debuffs ??
+													[]),
+											];
+											newTags.splice(index, 1);
+											onChange({
+												...entity,
+												creature: {
+													...entity.creature,
+													debuffs: newTags,
+												},
+											});
+										}}
+									>
+										Delete
+									</Button>
+								</TableCell>
+							</TableRow>
+						))}
 					<TableRow>
 						<TableCell colSpan={3}></TableCell>
 					</TableRow>
@@ -317,9 +352,21 @@ function EntityPropertyPanel({
 						size="icon"
 						className="cursor-pointer"
 						onClick={() => {
-							const newTags = [...entity.tags];
-							newTags.push({ name: '', color: '' });
-							onChange({ ...entity, tags: newTags });
+							const newTags = [
+								...(entity.creature.debuffs ?? []),
+							];
+							newTags.push({
+								kind: 'custom',
+								name: '',
+								color: '',
+							});
+							onChange({
+								...entity,
+								creature: {
+									...entity.creature,
+									debuffs: newTags,
+								},
+							});
 						}}
 					>
 						<Plus className="h-4 w-4" />

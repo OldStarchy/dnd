@@ -4,7 +4,7 @@ import { createBrowserRouter, RouterProvider } from 'react-router';
 import { ThemeProvider } from './components/theme-provider';
 import './index.css';
 import Layout from './layout/layout';
-import Characters from './views/Characters';
+import CustomCreatureEditor from './views/CustomCreatureEditor';
 import Home from './views/Home';
 import Monsters from './views/Monsters';
 import PopoutView from './views/Popout';
@@ -23,7 +23,7 @@ const router = createBrowserRouter([
 			},
 			{
 				path: '/characters',
-				Component: Characters,
+				Component: CustomCreatureEditor,
 			},
 			{
 				path: '/monsters',

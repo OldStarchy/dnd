@@ -184,10 +184,11 @@ function InitiativeTable({
 								<TableCell>{row.healthDisplay}</TableCell>
 								<TableCell className="pr-4">
 									<div className="flex space-x-2">
-										{row.tags.map((tag, index) => (
+										{row.debuffs?.map((tag, index) => (
 											<Badge
 												className={tag.color}
 												key={index}
+												title={tag.notes}
 											>
 												{tag.name}
 											</Badge>

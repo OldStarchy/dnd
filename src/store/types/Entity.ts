@@ -1,3 +1,5 @@
+import type { Creature } from '@/type/Creature';
+
 export const HealthObfuscation = {
 	/**
 	 * Health is shown as hp/maxHp
@@ -17,22 +19,19 @@ export type HealthObfuscation =
 	(typeof HealthObfuscation)[keyof typeof HealthObfuscation];
 
 export type Entity = {
+	id: string;
 	initiative: number;
 	visible: boolean;
-	name: string;
-	id: string;
-	health: number;
-	maxHealth: number;
-	tags: { name: string; color: string }[];
 	obfuscateHealth: HealthObfuscation;
+	creature: Creature;
 };
 
 export type PlayerEntityView = {
-	initiative: number;
-	name: string;
 	id: string;
+	name: string;
+	initiative: number;
 	healthDisplay: string;
-	tags: { name: string; color: string }[];
+	debuffs?: { name: string; color: string; notes?: string }[];
 	effect?: 'muted';
 };
 
@@ -44,7 +43,7 @@ export function getObfuscatedHealthText(
 	switch (obfuscateHealth) {
 		case HealthObfuscation.NO:
 			return `${health}/${maxHealth}`;
-		case HealthObfuscation.TEXT:
+		case HealthObfuscation.TEXT: {
 			const ratio = health / maxHealth;
 			if (ratio > 0.75) {
 				return 'Healthy';
@@ -62,10 +61,11 @@ export function getObfuscatedHealthText(
 				return 'Unconscious';
 			}
 			return 'Dead';
+		}
 		case HealthObfuscation.HIDDEN:
 			return '??';
 	}
 
-	// @ts-expect-error
+	// @ts-expect-error unused
 	const _exhaustiveCheck: never = entity.obfuscateHealth;
 }

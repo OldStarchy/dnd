@@ -2,7 +2,9 @@ import { configureStore, createListenerMiddleware } from '@reduxjs/toolkit';
 import { useDispatch, useSelector } from 'react-redux';
 import { persistReducer, persistStore } from 'redux-persist';
 import storage from 'redux-persist/lib/storage';
-import initiativeReducer from './reducers/initiativeSlice';
+import initiativeReducer, {
+	type InitiativeState,
+} from './reducers/initiativeSlice';
 
 const listenerMiddlewareInstance = createListenerMiddleware();
 
@@ -13,7 +15,10 @@ const persistConfig = {
 
 export const primaryStore = configureStore({
 	reducer: {
-		initiative: persistReducer(persistConfig, initiativeReducer),
+		initiative: persistReducer<InitiativeState>(
+			persistConfig,
+			initiativeReducer,
+		),
 	},
 	middleware: (getDefaultMiddleware) =>
 		getDefaultMiddleware().prepend(listenerMiddlewareInstance.middleware),

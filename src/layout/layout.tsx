@@ -126,7 +126,7 @@ export function AppSidebar() {
 							<SidebarMenuButton asChild>
 								<a href="/characters">
 									<Users2 />
-									Player Characters
+									Custom Heroes & Creatures
 								</a>
 							</SidebarMenuButton>
 						</SidebarMenuItem>
@@ -134,7 +134,7 @@ export function AppSidebar() {
 							<SidebarMenuButton asChild>
 								<a href="/monsters">
 									<Dog />
-									Monsters
+									5e Monsters
 								</a>
 							</SidebarMenuButton>
 						</SidebarMenuItem>
