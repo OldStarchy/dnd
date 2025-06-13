@@ -1,82 +1,82 @@
-import useCharacterPresets, {
-	type Character,
-} from '@/hooks/useCharacterPresets';
+import useCustomCreatureList from '@/hooks/useCustomCreatureList';
+import type { Creature } from '@/type/Creature';
 import { useCallback } from 'react';
 
 /**
  * Allows editing of player characters.
  */
-function Characters() {
-	const [characters, setCharacters] = useCharacterPresets();
+function CustomCreatureEditor() {
+	const [creatures, setCreatures] = useCustomCreatureList();
 
-	const addCharacter = useCallback(
-		(character: Character) => {
-			setCharacters((prev) => [...prev, character]);
+	const addCreature = useCallback(
+		(character: Creature) => {
+			setCreatures((prev) => [...prev, character]);
 		},
-		[setCharacters],
+		[setCreatures],
 	);
 
-	const editCharacter = useCallback(
-		(id: string, updatedCharacter: Partial<Omit<Character, 'id'>>) => {
-			setCharacters((prev) =>
+	const editCreature = useCallback(
+		(id: string, updatedCreature: Partial<Omit<Creature, 'id'>>) => {
+			setCreatures((prev) =>
 				prev.map((char) =>
-					char.id === id ? { ...char, ...updatedCharacter } : char,
+					char.id === id ? { ...char, ...updatedCreature } : char,
 				),
 			);
 		},
-		[setCharacters],
+		[setCreatures],
 	);
 
-	const deleteCharacter = useCallback(
+	const deleteCreature = useCallback(
 		(id: string) => {
-			setCharacters((prev) => prev.filter((char) => char.id !== id));
+			setCreatures((prev) => prev.filter((char) => char.id !== id));
 		},
-		[setCharacters],
+		[setCreatures],
 	);
 
 	return (
 		<div>
-			<h1 className="text-2xl font-bold mb-4">Player Characters</h1>
+			<h1 className="text-2xl font-bold mb-4">Permanent Creatures</h1>
 			<p className="mb-4">
-				Here you can manage player characters, including adding,
-				editing, and deleting character presets.
+				Here you can manage recurring players and npcs.
 			</p>
 
 			<div className="space-y-4">
-				{characters.map((character) => (
+				{creatures.map((creature) => (
 					<div
-						key={character.id}
+						key={creature.id}
 						className="p-4 border rounded-lg flex justify-between items-center"
 					>
 						<div>
 							<h2 className="text-xl font-semibold">
-								{character.name}
+								{creature.name}
 							</h2>
 							<p>
-								Health: {character.health} /{' '}
-								{character.maxHealth}
+								Health: {creature.hp} / {creature.maxHp}
+								{creature.hitpointsRoll
+									? ` (${creature.hitpointsRoll})`
+									: ''}
 							</p>
 						</div>
 						<div className="flex space-x-2">
 							<button
 								onClick={() =>
-									editCharacter(character.id, {
+									editCreature(creature.id, {
 										name:
 											prompt(
 												'Enter new name',
-												character.name,
+												creature.name,
 											) ?? undefined,
-										health: parseInt(
+										hp: parseInt(
 											prompt(
 												'Enter new health',
-												character.health.toString(),
+												creature.hp.toString(),
 											) || '0',
 											10,
 										),
-										maxHealth: parseInt(
+										maxHp: parseInt(
 											prompt(
 												'Enter new max health',
-												character.maxHealth.toString(),
+												creature.maxHp.toString(),
 											) || '0',
 											10,
 										),
@@ -87,7 +87,7 @@ function Characters() {
 								Edit
 							</button>
 							<button
-								onClick={() => deleteCharacter(character.id)}
+								onClick={() => deleteCreature(creature.id)}
 								className="px-3 py-1 bg-red-500 text-white rounded"
 							>
 								Delete
@@ -97,22 +97,22 @@ function Characters() {
 				))}
 				<button
 					onClick={() =>
-						addCharacter({
+						addCreature({
 							id: Date.now().toString(),
 							name:
 								prompt('Enter character name', 'New Hero') ||
 								'',
-							maxHealth: 100,
-							health: 100,
+							maxHp: 100,
+							hp: 100,
 						})
 					}
 					className="px-4 py-2 bg-green-500 text-white rounded"
 				>
-					Add Character
+					Add Creature
 				</button>
 			</div>
 		</div>
 	);
 }
 
-export default Characters;
+export default CustomCreatureEditor;

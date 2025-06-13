@@ -6,7 +6,7 @@ import {
 } from '@/components/ui/resizable';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Dnd5eApi } from '@/generated/dnd5eapi/Dnd5eApi';
-import useCharacterPresets from '@/hooks/useCharacterPresets';
+import useCustomCreatureList from '@/hooks/useCustomCreatureList';
 import useLocalStorage from '@/hooks/useLocalStorage';
 import useMonsterList from '@/hooks/useMonsterList';
 import { usePrimaryDispatch, usePrimarySelector } from '@/store/primary-store';
@@ -31,6 +31,7 @@ import {
 	type Entity,
 	type PlayerEntityView,
 } from '@/store/types/Entity';
+import { Debuff } from '@/type/Debuff';
 import { DropdownMenuTrigger } from '@radix-ui/react-dropdown-menu';
 import { addListener } from '@reduxjs/toolkit';
 import { ChevronDown, ExternalLink, Plus } from 'lucide-react';
@@ -48,17 +49,17 @@ import {
 
 function reduceEntity(entity: Entity): PlayerEntityView {
 	const healthDisplay = getObfuscatedHealthText(
-		entity.health,
-		entity.maxHealth,
+		entity.creature.hp,
+		entity.creature.maxHp,
 		entity.obfuscateHealth,
 	);
 
 	return {
 		id: entity.id,
-		name: entity.name,
+		name: entity.creature.name,
 		initiative: entity.initiative,
 		healthDisplay,
-		tags: entity.tags,
+		debuffs: entity.creature.debuffs?.map(Debuff.flat),
 	};
 }
 
@@ -67,17 +68,17 @@ function reduceEntities(entities: Entity[]): PlayerEntityView[] {
 		.filter((entity) => entity.visible)
 		.map((entity) => {
 			const healthDisplay = getObfuscatedHealthText(
-				entity.health,
-				entity.maxHealth,
+				entity.creature.hp,
+				entity.creature.maxHp,
 				entity.obfuscateHealth,
 			);
 
 			return {
 				id: entity.id,
-				name: entity.name,
+				name: entity.creature.name,
 				initiative: entity.initiative,
 				healthDisplay,
-				tags: entity.tags,
+				debuffs: entity.creature.debuffs?.map(Debuff.flat),
 			};
 		});
 }
@@ -92,7 +93,7 @@ function GameMasterControlPanel() {
 	);
 	const dispatch = usePrimaryDispatch();
 
-	const [characters] = useCharacterPresets();
+	const [characters] = useCustomCreatureList();
 	const { monsters } = useMonsterList();
 
 	useEffect(() => {
@@ -100,88 +101,16 @@ function GameMasterControlPanel() {
 			setDefault([
 				{
 					id: crypto.randomUUID(),
-					name: 'Sybil Snow',
 					visible: true,
 					initiative: 10,
-					health: 11,
-					maxHealth: 11,
 					obfuscateHealth: HealthObfuscation.NO,
-					tags: [],
-				},
-				{
-					id: crypto.randomUUID(),
-					name: 'Goblin 2',
-					visible: true,
-					initiative: 10,
-					health: 2,
-					maxHealth: 7,
-					obfuscateHealth: HealthObfuscation.TEXT,
-					tags: [
-						{
-							name: 'Stunned',
-							color: 'bg-indigo-500',
-						},
-					],
-				},
-				{
-					id: crypto.randomUUID(),
-					name: 'Goblin 1',
-					visible: true,
-					initiative: 8,
-					health: 0,
-					maxHealth: 7,
-					obfuscateHealth: HealthObfuscation.TEXT,
-					tags: [],
-				},
-				{
-					id: crypto.randomUUID(),
-					name: 'Billiam',
-					visible: true,
-					initiative: 9,
-					health: 12,
-					maxHealth: 12,
-					obfuscateHealth: HealthObfuscation.TEXT,
-					tags: [
-						{
-							name: 'Poisoned',
-							color: 'bg-green-500',
-						},
-					],
-				},
-				{
-					id: crypto.randomUUID(),
-					name: 'Sneaky Goblin',
-					visible: false,
-					initiative: 5,
-					health: 10,
-					maxHealth: 10,
-					obfuscateHealth: HealthObfuscation.TEXT,
-					tags: [],
-				},
-				{
-					id: crypto.randomUUID(),
-					name: 'Silence',
-					visible: true,
-					initiative: 3,
-					health: 8,
-					maxHealth: 10,
-					obfuscateHealth: HealthObfuscation.NO,
-					tags: [
-						{
-							name: 'Burned',
-							color: 'bg-red-500',
-						},
-					],
-				},
-				{
-					id: crypto.randomUUID(),
-					name: 'Dragon',
-					visible: true,
-					initiative: 3,
-					health: 13,
-					maxHealth: 25,
-					obfuscateHealth: HealthObfuscation.HIDDEN,
-					tags: [],
+					creature: {
+						id: crypto.randomUUID(),
+						name: 'Sybil Snow',
+						hp: 11,
+						maxHp: 11,
+						debuffs: [],
+					},
 				},
 			]),
 		);
@@ -303,13 +232,16 @@ function GameMasterControlPanel() {
 	const createNewEntity = useCallback(() => {
 		const newEntity: Entity = {
 			id: crypto.randomUUID(),
-			name: 'New Entity',
 			visible: false,
 			initiative: 0,
-			health: 10,
-			maxHealth: 10,
 			obfuscateHealth: HealthObfuscation.NO,
-			tags: [],
+			creature: {
+				id: crypto.randomUUID(),
+				name: 'New Entity',
+				hp: 10,
+				maxHp: 10,
+				debuffs: [],
+			},
 		};
 		dispatch(setEntity(newEntity));
 		setSelectedEntityId(newEntity.id);
@@ -318,21 +250,18 @@ function GameMasterControlPanel() {
 	const entitiesView: PlayerEntityView[] = entities.map((entity) => {
 		const ety: PlayerEntityView = {
 			initiative: entity.initiative,
-			name: entity.name,
+			name: entity.creature.name,
 			id: entity.id,
 			healthDisplay:
-				`${entity.health}/${entity.maxHealth}` +
+				`${entity.creature.hp}/${entity.creature.maxHp}${entity.creature.hitpointsRoll ? ` (${entity.creature.hitpointsRoll})` : ''}` +
 				(entity.obfuscateHealth !== HealthObfuscation.NO
 					? ` (${getObfuscatedHealthText(
-							entity.health,
-							entity.maxHealth,
+							entity.creature.hp,
+							entity.creature.maxHp,
 							entity.obfuscateHealth,
 						)})`
 					: ''),
-			tags: entity.tags.map((tag) => ({
-				name: tag.name,
-				color: tag.color,
-			})),
+			debuffs: entity.creature.debuffs?.map(Debuff.flat),
 		};
 		if (!entity.visible) {
 			ety.name = `(${ety.name})`;
@@ -423,16 +352,13 @@ function GameMasterControlPanel() {
 															const newEntity: Entity =
 																{
 																	id: crypto.randomUUID(),
-																	name: character.name,
+																	creature:
+																		character,
 																	visible:
 																		false,
 																	initiative: 0,
-																	health: character.health,
-																	maxHealth:
-																		character.maxHealth,
 																	obfuscateHealth:
 																		HealthObfuscation.NO,
-																	tags: [],
 																};
 															dispatch(
 																setEntity(
@@ -486,16 +412,38 @@ function GameMasterControlPanel() {
 																const newEntity: Entity =
 																	{
 																		id: crypto.randomUUID(),
-																		name: result.name!,
 																		visible:
 																			false,
 																		initiative: 0,
-																		health: hitpoints,
-																		maxHealth:
-																			hitpoints,
 																		obfuscateHealth:
 																			HealthObfuscation.TEXT,
-																		tags: [],
+																		creature:
+																			{
+																				id: result.index!,
+																				name: result.name!,
+																				hp: hitpoints,
+																				maxHp: hitpoints,
+																				attributes:
+																					{
+																						strength:
+																							result.strength,
+																						dexterity:
+																							result.dexterity,
+																						constitution:
+																							result.constitution,
+																						intelligence:
+																							result.intelligence,
+																						wisdom: result.wisdom,
+																						charisma:
+																							result.charisma,
+																					},
+																				speed: result.speed,
+																				image: result.image,
+																				hitpointsRoll:
+																					result.hit_points_roll,
+																				debuffs:
+																					[],
+																			},
 																	};
 																dispatch(
 																	setEntity(

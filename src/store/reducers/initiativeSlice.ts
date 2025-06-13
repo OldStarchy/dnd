@@ -2,7 +2,7 @@ import type { PayloadAction } from '@reduxjs/toolkit';
 import { createSlice } from '@reduxjs/toolkit';
 import type { Entity } from '../types/Entity';
 
-interface InitiativeState {
+export interface InitiativeState {
 	entities: Entity[];
 	currentTurnEntityId: string | null;
 }
