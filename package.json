@@ -10,8 +10,9 @@
     "preview": "vite preview",
     "test": "vitest",
     "coverage": "vitest run --coverage",
-    "bundle-swagger": "cd dnd5eapi && npm run bundle-swagger",
-    "dnd5eapi-generate-api": "swagger-typescript-api generate --clean-output --path ./dnd5eapi/dist/openapi.json --output ./src/generated/dnd5eapi --name Dnd5eApi --api-class-name Dnd5eApi --templates ./swagger-template"
+    "bundle-swagger": "cd dnd5eapi && npm ci && npm run bundle-swagger",
+    "generate-swagger": "swagger-typescript-api generate --clean-output --path ./dnd5eapi/dist/openapi.json --output ./src/generated/dnd5eapi --name Dnd5eApi --api-class-name Dnd5eApi --templates ./swagger-template",
+    "generate": "yarn bundle-swagger && yarn generate-swagger"
   },
   "dependencies": {
     "@radix-ui/react-collapsible": "^1.1.11",
