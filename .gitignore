@@ -23,5 +23,6 @@ dist-ssr
 *.sln
 *.sw?
 
-src/generated
-coverage
+/src/generated
+/coverage
+__screenshots__

@@ -6,11 +6,9 @@
 	"image": "mcr.microsoft.com/devcontainers/typescript-node:1-22-bookworm",
 	"customizations": {
 		"vscode": {
-			"extensions": [
-				"esbenp.prettier-vscode"
-			]
+			"extensions": ["esbenp.prettier-vscode", "vitest.explorer"]
 		}
-	}
+	},
 
 	// Features to add to the dev container. More info: https://containers.dev/features.
 	// "features": {},
@@ -19,7 +17,11 @@
 	// "forwardPorts": [],
 
 	// Use 'postCreateCommand' to run commands after the container is created.
-	// "postCreateCommand": "yarn install",
+	"postCreateCommand": [
+		"yarn install",
+		"sudo yarn playwright install-deps",
+		"yarn playwright install"
+	]
 
 	// Configure tool-specific properties.
 	// "customizations": {},
