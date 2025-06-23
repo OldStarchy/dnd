@@ -102,6 +102,7 @@ function CustomCreatureEditor() {
 							name:
 								prompt('Enter character name', 'New Hero') ||
 								'',
+							race: prompt('Race', 'Human') || 'Human',
 							maxHp: 100,
 							hp: 100,
 						})

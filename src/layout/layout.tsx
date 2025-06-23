@@ -21,6 +21,7 @@ import {
 import useLocalStorage from '@/hooks/useLocalStorage';
 import { cn } from '@/lib/utils';
 import {
+	BugPlay,
 	ChevronUp,
 	Cog,
 	Crown,
@@ -35,7 +36,7 @@ import {
 	Users2,
 } from 'lucide-react';
 import { useCallback } from 'react';
-import { Outlet } from 'react-router';
+import { Link, Outlet } from 'react-router';
 
 function Layout() {
 	const [splitDirection, setSplitDirection] = useLocalStorage(
@@ -103,18 +104,18 @@ export function AppSidebar() {
 					<SidebarMenu>
 						<SidebarMenuItem>
 							<SidebarMenuButton asChild>
-								<a href="/">
+								<Link to="/">
 									<Crown />
 									Game Master View
-								</a>
+								</Link>
 							</SidebarMenuButton>
 						</SidebarMenuItem>
 						<SidebarMenuItem>
 							<SidebarMenuButton asChild>
-								<a href="/popout" target="_BLANK">
+								<Link to="/popout">
 									<Sword />
 									Player View
-								</a>
+								</Link>
 							</SidebarMenuButton>
 						</SidebarMenuItem>
 					</SidebarMenu>
@@ -124,18 +125,18 @@ export function AppSidebar() {
 					<SidebarMenu>
 						<SidebarMenuItem>
 							<SidebarMenuButton asChild>
-								<a href="/characters">
+								<Link to="/characters">
 									<Users2 />
 									Custom Heroes & Creatures
-								</a>
+								</Link>
 							</SidebarMenuButton>
 						</SidebarMenuItem>
 						<SidebarMenuItem>
 							<SidebarMenuButton asChild>
-								<a href="/monsters">
+								<Link to="/monsters">
 									<Dog />
 									5e Monsters
-								</a>
+								</Link>
 							</SidebarMenuButton>
 						</SidebarMenuItem>
 					</SidebarMenu>
@@ -156,10 +157,18 @@ export function AppSidebar() {
 					</SidebarMenuItem>
 					<SidebarMenuItem>
 						<SidebarMenuButton asChild>
-							<a href="/help" target="_BLANK">
+							<Link to="/help" target="_BLANK">
 								<GraduationCap />
 								Tutorials
-							</a>
+							</Link>
+						</SidebarMenuButton>
+					</SidebarMenuItem>
+					<SidebarMenuItem>
+						<SidebarMenuButton asChild>
+							<Link to="/sandbox">
+								<BugPlay />
+								Sandbox
+							</Link>
 						</SidebarMenuButton>
 					</SidebarMenuItem>
 					<SidebarMenuItem>

@@ -57,18 +57,25 @@ export const Debuff = {
 		};
 	},
 
-	flat(debuff: Debuff): { name: string; color: string; notes?: string } {
+	flat(debuff: Debuff): {
+		name: string;
+		color: string;
+		description?: string;
+		notes?: string;
+	} {
 		if (debuff.kind === 'preset') {
 			const preset = DebuffType[debuff.type];
 			return {
 				name: preset.name,
 				color: preset.color,
+				description: preset.description,
 				notes: debuff.notes,
 			};
 		} else {
 			return {
 				name: debuff.name,
 				color: debuff.color,
+				description: debuff.description,
 				notes: debuff.notes,
 			};
 		}

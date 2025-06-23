@@ -1,3 +1,4 @@
+import sybilProfile from '@/components/InitiativeTable/fixtures/sybil_profile.png';
 import { Button } from '@/components/ui/button';
 import {
 	ResizableHandle,
@@ -34,10 +35,11 @@ import {
 import { Debuff } from '@/type/Debuff';
 import { DropdownMenuTrigger } from '@radix-ui/react-dropdown-menu';
 import { addListener } from '@reduxjs/toolkit';
-import { ChevronDown, ExternalLink, Plus } from 'lucide-react';
+import { ChevronDown, Dot, Plus } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import EntityPropertyPanel from './entity-property-panel';
-import InitiativeTable from './initiative-table';
+import InitiativeTable from './InitiativeTable/InitiativeTable';
+import type { InitiativeTableEntry } from './InitiativeTable/InitiativeTableRow';
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -104,9 +106,13 @@ function GameMasterControlPanel() {
 					visible: true,
 					initiative: 10,
 					obfuscateHealth: HealthObfuscation.NO,
+
 					creature: {
 						id: crypto.randomUUID(),
 						name: 'Sybil Snow',
+						race: 'Human',
+						notes: "Sybil is a cool chick who doesn't afraid of anything.",
+						image: sybilProfile,
 						hp: 11,
 						maxHp: 11,
 						debuffs: [],
@@ -238,6 +244,7 @@ function GameMasterControlPanel() {
 			creature: {
 				id: crypto.randomUUID(),
 				name: 'New Entity',
+				race: 'Ghost',
 				hp: 10,
 				maxHp: 10,
 				debuffs: [],
@@ -247,10 +254,13 @@ function GameMasterControlPanel() {
 		setSelectedEntityId(newEntity.id);
 	}, [dispatch]);
 
-	const entitiesView: PlayerEntityView[] = entities.map((entity) => {
-		const ety: PlayerEntityView = {
+	const entitiesView: InitiativeTableEntry[] = entities.map((entity) => {
+		const ety: InitiativeTableEntry = {
 			initiative: entity.initiative,
 			name: entity.creature.name,
+			race: entity.creature.race,
+			image: entity.creature.image,
+			description: entity.creature.notes,
 			id: entity.id,
 			healthDisplay:
 				`${entity.creature.hp}/${entity.creature.maxHp}${entity.creature.hitpointsRoll ? ` (${entity.creature.hitpointsRoll})` : ''}` +
@@ -261,11 +271,10 @@ function GameMasterControlPanel() {
 							entity.obfuscateHealth,
 						)})`
 					: ''),
-			debuffs: entity.creature.debuffs?.map(Debuff.flat),
+			debuffs: entity.creature.debuffs ?? [],
 		};
 		if (!entity.visible) {
-			ety.name = `(${ety.name})`;
-			ety.effect = 'muted';
+			ety.effect = 'invisible';
 		}
 		return ety;
 	});
@@ -278,46 +287,20 @@ function GameMasterControlPanel() {
 			<ResizablePanel defaultSize={50}>
 				<ScrollArea>
 					<InitiativeTable
-						entities={entitiesView}
+						entries={entitiesView}
+						onEntityClick={({ id }) => setSelectedEntityId(id)}
 						currentTurnEntityId={currentTurnEntityId}
-						selectedEntityId={selectedEntityId}
+						onToggleTurn={({ id }, pressed) => {
+							dispatch(
+								setCurrentTurnEntityId(pressed ? id : null),
+							);
+						}}
+						decorations={({ id }) => (
+							<>{id === selectedEntityId && <Dot />}</>
+						)}
 						onSwapEntities={(a, b) =>
 							dispatch(swapEntities([a, b]))
 						}
-						reorderable
-						headerButtons={
-							<>
-								<Button
-									className="ml-auto"
-									variant="outline"
-									size="icon"
-									onClick={togglePopup}
-								>
-									<ExternalLink className="h-4 w-4" />
-									<span className="sr-only">Open popup</span>
-								</Button>
-							</>
-						}
-						onClickEntity={setSelectedEntityId}
-						onDoubleClickEntity={(id) => {
-							if (id === currentTurnEntityId) {
-								dispatch(setCurrentTurnEntityId(null));
-							} else {
-								dispatch(setCurrentTurnEntityId(id));
-							}
-						}}
-						rowButtons={(entity) => {
-							return (
-								<Button
-									variant="destructive"
-									onClick={() => {
-										dispatch(removeEntity(entity.id));
-									}}
-								>
-									Delete
-								</Button>
-							);
-						}}
 						footer={
 							<div className="inline-flex items-stretch border rounded-md overflow-hidden divide-x divide-border bg-background">
 								<Button
@@ -415,12 +398,14 @@ function GameMasterControlPanel() {
 																		visible:
 																			false,
 																		initiative: 0,
+
 																		obfuscateHealth:
 																			HealthObfuscation.TEXT,
 																		creature:
 																			{
 																				id: result.index!,
 																				name: result.name!,
+																				race: result.name!,
 																				hp: hitpoints,
 																				maxHp: hitpoints,
 																				attributes:
@@ -438,7 +423,9 @@ function GameMasterControlPanel() {
 																							result.charisma,
 																					},
 																				speed: result.speed,
-																				image: result.image,
+																				image:
+																					api.baseUrl +
+																					result.image,
 																				hitpointsRoll:
 																					result.hit_points_roll,
 																				debuffs:
@@ -475,12 +462,22 @@ function GameMasterControlPanel() {
 			<ResizableHandle />
 			<ResizablePanel defaultSize={50} className="p-4">
 				{selectedEntity ? (
-					<EntityPropertyPanel
-						entity={selectedEntity}
-						onChange={(entity) => {
-							dispatch(setEntity(entity));
-						}}
-					/>
+					<>
+						<Button
+							variant="destructive"
+							onClick={() => {
+								dispatch(removeEntity(selectedEntity.id));
+							}}
+						>
+							Delete
+						</Button>
+						<EntityPropertyPanel
+							entity={selectedEntity}
+							onChange={(entity) => {
+								dispatch(setEntity(entity));
+							}}
+						/>
+					</>
 				) : (
 					<div className="flex items-center justify-center w-full h-full">
 						<p>Select an entity to edit</p>
