@@ -36,7 +36,7 @@ import { Debuff } from '@/type/Debuff';
 import { DropdownMenuTrigger } from '@radix-ui/react-dropdown-menu';
 import { addListener } from '@reduxjs/toolkit';
 import { ChevronDown, Dot, Plus } from 'lucide-react';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import EntityPropertyPanel from './entity-property-panel';
 import InitiativeTable from './InitiativeTable/InitiativeTable';
 import type { InitiativeTableEntry } from './InitiativeTable/InitiativeTableRow';
@@ -254,30 +254,34 @@ function GameMasterControlPanel() {
 		setSelectedEntityId(newEntity.id);
 	}, [dispatch]);
 
-	const entitiesView: InitiativeTableEntry[] = entities.map((entity) => {
-		const ety: InitiativeTableEntry = {
-			initiative: entity.initiative,
-			name: entity.creature.name,
-			race: entity.creature.race,
-			image: entity.creature.image,
-			description: entity.creature.notes,
-			id: entity.id,
-			healthDisplay:
-				`${entity.creature.hp}/${entity.creature.maxHp}${entity.creature.hitpointsRoll ? ` (${entity.creature.hitpointsRoll})` : ''}` +
-				(entity.obfuscateHealth !== HealthObfuscation.NO
-					? ` (${getObfuscatedHealthText(
-							entity.creature.hp,
-							entity.creature.maxHp,
-							entity.obfuscateHealth,
-						)})`
-					: ''),
-			debuffs: entity.creature.debuffs ?? [],
-		};
-		if (!entity.visible) {
-			ety.effect = 'invisible';
-		}
-		return ety;
-	});
+	const entitiesView: InitiativeTableEntry[] = useMemo(
+		() =>
+			entities.map((entity) => {
+				const ety: InitiativeTableEntry = {
+					initiative: entity.initiative,
+					name: entity.creature.name,
+					race: entity.creature.race,
+					image: entity.creature.image,
+					description: entity.creature.notes,
+					id: entity.id,
+					healthDisplay:
+						`${entity.creature.hp}/${entity.creature.maxHp}${entity.creature.hitpointsRoll ? ` (${entity.creature.hitpointsRoll})` : ''}` +
+						(entity.obfuscateHealth !== HealthObfuscation.NO
+							? ` (${getObfuscatedHealthText(
+									entity.creature.hp,
+									entity.creature.maxHp,
+									entity.obfuscateHealth,
+								)})`
+							: ''),
+					debuffs: entity.creature.debuffs ?? [],
+				};
+				if (!entity.visible) {
+					ety.effect = 'invisible';
+				}
+				return ety;
+			}),
+		[entities],
+	);
 
 	return (
 		<ResizablePanelGroup
@@ -473,6 +477,7 @@ function GameMasterControlPanel() {
 						</Button>
 						<EntityPropertyPanel
 							entity={selectedEntity}
+							key={selectedEntity.id}
 							onChange={(entity) => {
 								dispatch(setEntity(entity));
 							}}
