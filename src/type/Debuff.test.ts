@@ -17,6 +17,8 @@ describe('Debuff', () => {
 			name: 'Poisoned',
 			color: '#00FF00',
 			notes: undefined,
+			description:
+				'The creature has disadvantage on attack rolls and ability checks.',
 		});
 	});
 
@@ -51,6 +53,7 @@ describe('Debuff', () => {
 		expect(flatCustomDebuff).toEqual({
 			name: 'Custom Debuff',
 			color: '#FF00FF',
+			description: 'This is a custom debuff.',
 			notes: 'Some notes about the custom debuff.',
 		});
 	});

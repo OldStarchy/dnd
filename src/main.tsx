@@ -8,6 +8,7 @@ import CustomCreatureEditor from './views/CustomCreatureEditor';
 import Home from './views/Home';
 import Monsters from './views/Monsters';
 import PopoutView from './views/Popout';
+import Sandbox from './views/Sandbox';
 
 const router = createBrowserRouter([
 	{
@@ -28,6 +29,10 @@ const router = createBrowserRouter([
 			{
 				path: '/monsters',
 				Component: Monsters,
+			},
+			{
+				path: '/sandbox',
+				Component: Sandbox,
 			},
 		],
 	},
