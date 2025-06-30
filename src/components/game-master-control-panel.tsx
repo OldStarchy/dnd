@@ -35,7 +35,7 @@ import {
 import { Debuff } from '@/type/Debuff';
 import { DropdownMenuTrigger } from '@radix-ui/react-dropdown-menu';
 import { addListener } from '@reduxjs/toolkit';
-import { ChevronDown, Dot, Plus } from 'lucide-react';
+import { ChevronDown, Plus } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import EntityPropertyPanel from './entity-property-panel';
 import InitiativeTable from './InitiativeTable/InitiativeTable';
@@ -299,9 +299,6 @@ function GameMasterControlPanel() {
 								setCurrentTurnEntityId(pressed ? id : null),
 							);
 						}}
-						decorations={({ id }) => (
-							<>{id === selectedEntityId && <Dot />}</>
-						)}
 						onSwapEntities={(a, b) =>
 							dispatch(swapEntities([a, b]))
 						}
