@@ -1,4 +1,4 @@
-import { useCallback, useRef, type ReactNode } from 'react';
+import { Fragment, useCallback, useRef, type ReactNode } from 'react';
 import { Button } from '../ui/button';
 import {
 	Table,
@@ -83,9 +83,8 @@ export default function InitiativeTable({
 				</TableRow>
 			</TableHeader>
 			{entries.map((entity, index) => (
-				<>
+				<Fragment key={entity.id}>
 					<InitiativeTableRow
-						key={entity.id}
 						entry={entity}
 						selected={selectedEntityId === entity.id}
 						draggable={draggable}
@@ -118,7 +117,7 @@ export default function InitiativeTable({
 								</TableRow>
 							</TableBody>
 						)}
-				</>
+				</Fragment>
 			))}
 			{footer && (
 				<TableCaption className="text-muted-foreground mt-4 text-sm">

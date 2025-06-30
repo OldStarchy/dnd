@@ -42,7 +42,6 @@ function PlayerViewPanel() {
 			<InitiativeTable
 				entries={entities}
 				currentTurnEntityId={currentTurnEntityId}
-				onClickEntity={() => {}}
 				selectedEntityId={null}
 			/>
 		</div>
