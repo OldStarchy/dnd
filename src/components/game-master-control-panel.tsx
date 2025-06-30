@@ -461,30 +461,32 @@ function GameMasterControlPanel() {
 				</ScrollArea>
 			</ResizablePanel>
 			<ResizableHandle />
-			<ResizablePanel defaultSize={50} className="p-4">
-				{selectedEntity ? (
-					<>
-						<Button
-							variant="destructive"
-							onClick={() => {
-								dispatch(removeEntity(selectedEntity.id));
-							}}
-						>
-							Delete
-						</Button>
-						<EntityPropertyPanel
-							entity={selectedEntity}
-							key={selectedEntity.id}
-							onChange={(entity) => {
-								dispatch(setEntity(entity));
-							}}
-						/>
-					</>
-				) : (
-					<div className="flex items-center justify-center w-full h-full">
-						<p>Select an entity to edit</p>
-					</div>
-				)}
+			<ResizablePanel defaultSize={50}>
+				<ScrollArea className="h-full">
+					{selectedEntity ? (
+						<div className="pl-4 pr-6">
+							<Button
+								variant="destructive"
+								onClick={() => {
+									dispatch(removeEntity(selectedEntity.id));
+								}}
+							>
+								Delete
+							</Button>
+							<EntityPropertyPanel
+								entity={selectedEntity}
+								key={selectedEntity.id}
+								onChange={(entity) => {
+									dispatch(setEntity(entity));
+								}}
+							/>
+						</div>
+					) : (
+						<div className="flex items-center justify-center w-full h-full">
+							<p>Select an entity to edit</p>
+						</div>
+					)}
+				</ScrollArea>
 			</ResizablePanel>
 		</ResizablePanelGroup>
 	);

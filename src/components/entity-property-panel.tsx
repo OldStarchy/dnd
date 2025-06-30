@@ -1,20 +1,20 @@
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import {
-	Table,
-	TableBody,
-	TableCaption,
-	TableCell,
-	TableHead,
-	TableHeader,
-	TableRow,
-} from '@/components/ui/table';
 import { HealthObfuscation, type Entity } from '@/store/types/Entity';
-import { Debuff } from '@/type/Debuff';
+import { Debuff, DebuffType } from '@/type/Debuff';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Plus } from 'lucide-react';
+import { ChevronDown, Plus } from 'lucide-react';
 import { useFieldArray, useForm } from 'react-hook-form';
+import { Fragment } from 'react/jsx-runtime';
 import { z } from 'zod';
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuGroup,
+	DropdownMenuItem,
+	DropdownMenuLabel,
+	DropdownMenuTrigger,
+} from './ui/dropdown-menu';
 import {
 	Form,
 	FormControl,
@@ -23,6 +23,7 @@ import {
 	FormLabel,
 	FormMessage,
 } from './ui/form';
+import { Label } from './ui/label';
 import {
 	Select,
 	SelectContent,
@@ -68,6 +69,7 @@ const DebuffSchema = z
 		name: z.string().min(1, 'Name is required'),
 		color: z.string().min(1, 'Color is required'),
 		notes: z.string().optional(),
+		description: z.string().optional(),
 		duration: z.coerce
 			.number()
 			.int()
@@ -93,7 +95,13 @@ const EntityPropertySchema = z.object({
 		.number()
 		.int()
 		.min(0, 'Initiative must be a non-negative integer'),
-	image: z.string().url().optional(),
+	image: z
+		.string()
+
+		.optional()
+		.transform(
+			(val) => val && new URL(val, window.location.toString()).toString(),
+		),
 	visible: z.boolean(),
 	hp: z.coerce.number().int(),
 	maxHp: z.coerce.number().int().min(1, 'Max Health must be at least 1'),
@@ -132,14 +140,13 @@ function EntityPropertyPanel({
 				hp: data.hp ?? entity.creature.hp,
 				maxHp: data.maxHp ?? entity.creature.maxHp,
 				debuffs: data.debuffs as Debuff[],
+				image: data.image ?? entity.creature.image,
 			},
 			initiative: data.initiative ?? entity.initiative,
 			obfuscateHealth: data.obfuscateHealth ?? entity.obfuscateHealth,
 			visible: data.visible ?? entity.visible,
 		});
 	}
-
-	const state = form.watch();
 
 	const debuffFields = useFieldArray({
 		control: form.control,
@@ -148,29 +155,31 @@ function EntityPropertyPanel({
 
 	return (
 		<div className="flex flex-col space-y-2">
-			<pre>{JSON.stringify(state, null, 2)}</pre>
 			<Form {...form}>
 				<form
 					onSubmit={form.handleSubmit(handleSubmit)}
 					className="flex flex-col space-y-2"
 				>
-					<div className="flex items-stretch space-x-2">
+					<div className="grid grid-flow-col grid-cols-[auto_auto_1fr] grid-rows-[[label]_auto_[field]_auto_[message]_auto] gap-2">
 						<FormField
 							control={form.control}
 							name="visible"
 							render={({
 								field: { value: checked, onChange, ...field },
 							}) => (
-								<FormItem className="space-y-2">
-									<FormLabel>Visible</FormLabel>
+								<FormItem className="contents">
+									<FormLabel className="[grid-row-start:label]">
+										Visible
+									</FormLabel>
 									<FormControl>
 										<Switch
 											{...field}
+											className="[grid-row-start:field]"
 											checked={checked}
 											onCheckedChange={onChange}
 										/>
 									</FormControl>
-									<FormMessage />
+									<FormMessage className="[grid-row-start:message]" />
 								</FormItem>
 							)}
 						/>
@@ -178,12 +187,18 @@ function EntityPropertyPanel({
 							control={form.control}
 							name="initiative"
 							render={({ field }) => (
-								<FormItem className="space-y-2">
-									<FormLabel>Initiative</FormLabel>
+								<FormItem className="contents">
+									<FormLabel className="[grid-row-start:label]">
+										Initiative
+									</FormLabel>
 									<FormControl>
-										<Input type="number" {...field} />
+										<Input
+											type="number"
+											{...field}
+											className="[grid-row-start:field]"
+										/>
 									</FormControl>
-									<FormMessage />
+									<FormMessage className="[grid-row-start:message]" />
 								</FormItem>
 							)}
 						/>
@@ -191,28 +206,39 @@ function EntityPropertyPanel({
 							control={form.control}
 							name="name"
 							render={({ field }) => (
-								<FormItem className="space-y-2 flex-1">
-									<FormLabel>Name</FormLabel>
+								<FormItem className="contents">
+									<FormLabel className="[grid-row-start:label]">
+										Name
+									</FormLabel>
 									<FormControl>
-										<Input {...field} />
+										<Input
+											{...field}
+											className="[grid-row-start:field]"
+										/>
 									</FormControl>
-									<FormMessage />
+									<FormMessage className="[grid-row-start:message]" />
 								</FormItem>
 							)}
 						/>
 					</div>
 
-					<div className="grid grid-flow-col grid-rows-3 auto-rows-auto gap-2">
+					<div className="grid grid-flow-col grid-rows-[[label]_auto_[field]_auto_[message]_auto] gap-2">
 						<FormField
 							control={form.control}
 							name="hp"
 							render={({ field }) => (
 								<FormItem className="contents">
-									<FormLabel>Health</FormLabel>
+									<FormLabel className="[grid-row-start:label]">
+										Health
+									</FormLabel>
 									<FormControl>
-										<Input type="number" {...field} />
+										<Input
+											type="number"
+											{...field}
+											className="[grid-row-start:field]"
+										/>
 									</FormControl>
-									<FormMessage />
+									<FormMessage className="[grid-row-start:message]" />
 								</FormItem>
 							)}
 						/>
@@ -221,11 +247,17 @@ function EntityPropertyPanel({
 							name="maxHp"
 							render={({ field }) => (
 								<FormItem className="contents">
-									<FormLabel>Max Health</FormLabel>
+									<FormLabel className="[grid-row-start:label]">
+										Max Health
+									</FormLabel>
 									<FormControl>
-										<Input type="number" {...field} />
+										<Input
+											type="number"
+											{...field}
+											className="[grid-row-start:field]"
+										/>
 									</FormControl>
-									<FormMessage />
+									<FormMessage className="[grid-row-start:message]" />
 								</FormItem>
 							)}
 						/>
@@ -234,13 +266,15 @@ function EntityPropertyPanel({
 							name="obfuscateHealth"
 							render={({ field: { onChange, ...field } }) => (
 								<FormItem className="contents">
-									<FormLabel>Obfuscate Health</FormLabel>
+									<FormLabel className="[grid-row-start:label]">
+										Obfuscate Health
+									</FormLabel>
 									<FormControl>
 										<Select
 											{...field}
 											onValueChange={onChange}
 										>
-											<SelectTrigger>
+											<SelectTrigger className="[grid-row-start:field]">
 												<SelectValue placeholder="Select obfuscation" />
 											</SelectTrigger>
 											<SelectContent>
@@ -266,159 +300,269 @@ function EntityPropertyPanel({
 											</SelectContent>
 										</Select>
 									</FormControl>
-									<FormMessage />
+									<FormMessage className="[grid-row-start:message]" />
 								</FormItem>
 							)}
 						/>
 					</div>
-					<Table>
-						<TableHeader>
-							<TableRow>
-								<TableHead>Tag Name</TableHead>
-								<TableHead>Tag Color</TableHead>
-								<TableHead />
-							</TableRow>
-						</TableHeader>
-						<TableBody>
-							{debuffFields.fields.map((field, index) => (
-								<TableRow key={index}>
-									<TableCell>
-										<FormField
-											control={form.control}
-											name={`debuffs.${index}.name`}
-											render={({
-												field: { value, onChange },
-											}) => (
-												<Input
-													value={tag.name}
-													onChange={(e) => {
-														onChange({
-															...entity,
-															creature: {
-																...entity.creature,
-																debuffs:
-																	entity.creature.debuffs!.map(
-																		(
-																			tag,
-																			i,
-																		) =>
-																			i ===
-																			index
-																				? {
-																						...tag,
-																						name: e
-																							.target
-																							.value,
-																					}
-																				: tag,
-																	),
-															},
-														});
-													}}
+					<FormField
+						control={form.control}
+						name="image"
+						render={({ field }) => (
+							<FormItem className="space-y-2">
+								<FormLabel>Image URL</FormLabel>
+								<FormControl>
+									<Input
+										type="text"
+										placeholder="https://example.com/image.png"
+										{...field}
+									/>
+								</FormControl>
+								<FormMessage />
+							</FormItem>
+						)}
+					/>
+					<Label>Debuffs</Label>
+					<div className="grid grid-cols-[[name]_auto_[description]_auto_[notes]_1fr_[color]_auto_[actions]_auto] align-items-stretch auto-rows-auto gap-2">
+						{debuffFields.fields.length === 0 ? (
+							<p className="col-span-4 text-muted-foreground">
+								No debuffs. Click the button below to add a new
+								debuff.
+							</p>
+						) : (
+							<>
+								<Label>Name</Label>
+								<Label>Description</Label>
+								<Label>Notes</Label>
+								<Label>Color</Label>
+								<Label />
+								{debuffFields.fields.map((field, index) => (
+									<Fragment key={field.id}>
+										{field.kind == 'preset' ? (
+											<hr />
+										) : (
+											<>
+												<FormField
+													control={form.control}
+													name={`debuffs.${index}.kind`}
+													render={({ field }) => (
+														<Input
+															type="hidden"
+															{...field}
+														/>
+													)}
 												/>
-											)}
-										/>
-									</TableCell>
-									<TableCell>
-										<Select
-											value={tag.color}
-											onValueChange={(e) => {
-												onChange({
-													...entity,
-													creature: {
-														...entity.creature,
-														debuffs:
-															entity.creature.debuffs!.map(
-																(
-																	tag,
-																	i,
-																): Debuff =>
-																	i === index
-																		? {
-																				...Debuff.flat(
-																					tag,
-																				),
-																				kind: 'custom',
-																				color: e,
-																			}
-																		: tag,
+												<FormField
+													control={form.control}
+													name={`debuffs.${index}.duration`}
+													render={({ field }) => (
+														<Input
+															type="hidden"
+															{...field}
+														/>
+													)}
+												/>
+												<FormField
+													control={form.control}
+													name={`debuffs.${index}.name`}
+													render={({ field }) => (
+														<FormItem className="contents">
+															<FormControl>
+																<Input
+																	{...field}
+																	className="[grid-column-start:name]"
+																/>
+															</FormControl>
+														</FormItem>
+													)}
+												/>
+												<FormField
+													control={form.control}
+													name={`debuffs.${index}.description`}
+													render={({ field }) => (
+														<FormItem className="contents">
+															<FormControl>
+																<Input
+																	{...field}
+																	className="[grid-column-start:description]"
+																/>
+															</FormControl>
+														</FormItem>
+													)}
+												/>
+												<FormField
+													control={form.control}
+													name={`debuffs.${index}.notes`}
+													render={({ field }) => (
+														<FormItem className="contents">
+															<FormControl>
+																<Input
+																	{...field}
+																	className="[grid-column-start:notes]"
+																/>
+															</FormControl>
+														</FormItem>
+													)}
+												/>
+												<FormField
+													control={form.control}
+													name={`debuffs.${index}.color`}
+													render={({
+														field: {
+															onChange,
+															value,
+															...field
+														},
+													}) => (
+														<FormItem className="contents">
+															<FormControl>
+																<Select
+																	value={
+																		value ??
+																		null
+																	}
+																	onValueChange={
+																		onChange
+																	}
+																	{...field}
+																>
+																	<SelectTrigger className="w-full [grid-column-start:color]">
+																		<SelectValue placeholder="Select color" />
+																	</SelectTrigger>
+																	<SelectContent>
+																		{colors.map(
+																			({
+																				label,
+																				...props
+																			}) => (
+																				<SelectItem
+																					{...props}
+																					key={
+																						props.value
+																					}
+																				>
+																					{
+																						label
+																					}
+																				</SelectItem>
+																			),
+																		)}
+																	</SelectContent>
+																</Select>
+															</FormControl>
+														</FormItem>
+													)}
+												/>
+
+												<Button
+													variant="destructive"
+													onClick={() => {
+														debuffFields.remove(
+															index,
+														);
+													}}
+												>
+													Delete
+												</Button>
+
+												<FormField
+													control={form.control}
+													name={`debuffs.${index}.name`}
+													render={() => (
+														<FormItem className="contents">
+															<FormMessage className="[grid-column-start:name]" />
+														</FormItem>
+													)}
+												/>
+												<FormField
+													control={form.control}
+													name={`debuffs.${index}.description`}
+													render={() => (
+														<FormItem className="contents">
+															<FormMessage className="[grid-column-start:description]" />
+														</FormItem>
+													)}
+												/>
+												<FormField
+													control={form.control}
+													name={`debuffs.${index}.notes`}
+													render={() => (
+														<FormItem className="contents">
+															<FormMessage className="[grid-column-start:notes]" />
+														</FormItem>
+													)}
+												/>
+												<FormField
+													control={form.control}
+													name={`debuffs.${index}.color`}
+													render={() => (
+														<FormItem className="contents">
+															<FormMessage className="[grid-column-start:color]" />
+														</FormItem>
+													)}
+												/>
+											</>
+										)}
+									</Fragment>
+								))}
+							</>
+						)}
+					</div>
+					<div className="mx-auto inline-flex items-stretch border rounded-md overflow-hidden divide-x divide-border bg-background">
+						<Button
+							variant="ghost"
+							className="cursor-pointer rounded-none p-0"
+							onClick={() => {
+								debuffFields.append({
+									kind: 'custom',
+									name: '',
+									color: '',
+								});
+							}}
+						>
+							<Plus />
+							<span className="sr-only">Add entity</span>
+						</Button>
+
+						<DropdownMenu>
+							<DropdownMenuTrigger asChild>
+								<Button
+									variant="ghost"
+									size="icon"
+									className="cursor-pointer rounded-none"
+								>
+									<ChevronDown />
+								</Button>
+							</DropdownMenuTrigger>
+							<DropdownMenuContent>
+								<DropdownMenuGroup>
+									<DropdownMenuLabel>
+										Presets
+									</DropdownMenuLabel>
+									{Object.entries(DebuffType).map(
+										([id, debuff]) => (
+											<DropdownMenuItem
+												key={id}
+												onClick={() => {
+													debuffFields.append({
+														kind: 'custom',
+														...Debuff.flat(
+															Debuff.of(
+																id as DebuffType,
 															),
-													},
-												});
-											}}
-										>
-											<SelectTrigger>
-												<SelectValue placeholder="Select color" />
-											</SelectTrigger>
-											<SelectContent>
-												{colors.map(
-													({ label, ...props }) => (
-														<SelectItem
-															{...props}
-															key={props.value}
-														>
-															{label}
-														</SelectItem>
-													),
-												)}
-											</SelectContent>
-										</Select>
-									</TableCell>
-									<TableCell>
-										<Button
-											variant="destructive"
-											onClick={() => {
-												const newTags = [
-													...(entity.creature
-														.debuffs ?? []),
-												];
-												newTags.splice(index, 1);
-												onChange({
-													...entity,
-													creature: {
-														...entity.creature,
-														debuffs: newTags,
-													},
-												});
-											}}
-										>
-											Delete
-										</Button>
-									</TableCell>
-								</TableRow>
-							))}
-							<TableRow>
-								<TableCell colSpan={3}></TableCell>
-							</TableRow>
-						</TableBody>
-						<TableCaption>
-							<Button
-								variant="outline"
-								size="icon"
-								className="cursor-pointer"
-								onClick={() => {
-									const newTags = [
-										...(entity.creature.debuffs ?? []),
-									];
-									newTags.push({
-										kind: 'custom',
-										name: '',
-										color: '',
-									});
-									onChange({
-										...entity,
-										creature: {
-											...entity.creature,
-											debuffs: newTags,
-										},
-									});
-								}}
-							>
-								<Plus className="h-4 w-4" />
-								<span className="sr-only">Add tag</span>
-							</Button>
-						</TableCaption>
-					</Table>
+														),
+													});
+												}}
+											>
+												{debuff.name}
+											</DropdownMenuItem>
+										),
+									)}
+								</DropdownMenuGroup>
+							</DropdownMenuContent>
+						</DropdownMenu>
+					</div>
+					<FormMessage />
 					<Button type="submit">Save</Button>
 				</form>
 			</Form>
