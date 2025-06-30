@@ -1,4 +1,4 @@
-import InitiativeTable from '@/components/initiative-table';
+import InitiativeTable from '@/components/InitiativeTable/InitiativeTable';
 import { useReducedDispatch, useReducedSelector } from '@/store/reduced-store';
 import { setCurrentTurnEntityId } from '@/store/reducers/reduced-initiative-slice';
 import { useEffect, useRef } from 'react';
@@ -40,9 +40,8 @@ function PlayerViewPanel() {
 	return (
 		<div>
 			<InitiativeTable
-				entities={entities}
+				entries={entities}
 				currentTurnEntityId={currentTurnEntityId}
-				onClickEntity={() => {}}
 				selectedEntityId={null}
 			/>
 		</div>

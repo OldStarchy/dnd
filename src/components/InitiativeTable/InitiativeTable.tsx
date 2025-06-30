@@ -1,8 +1,10 @@
-import { useCallback, useRef, type ReactNode } from 'react';
+import { Fragment, useCallback, useRef, type ReactNode } from 'react';
+import { Button } from '../ui/button';
 import {
 	Table,
 	TableBody,
 	TableCaption,
+	TableCell,
 	TableHead,
 	TableHeader,
 	TableRow,
@@ -12,20 +14,24 @@ import InitiativeTableRow from './InitiativeTableRow';
 
 export default function InitiativeTable({
 	entries,
-	onSwapEntities,
+	currentTurnEntityId = null,
+	selectedEntityId = null,
 	actions,
 	footer,
+	onSwapEntities,
 	onEntityClick,
 	onToggleTurn,
-	currentTurnEntityId = null,
+	onAdvanceTurnClick,
 }: {
 	entries: InitiativeTableEntry[];
-	onSwapEntities?: (a: number, b: number) => void;
+	currentTurnEntityId?: string | null;
+	selectedEntityId?: string | null;
 	actions?: (entity: InitiativeTableEntry, index: number) => ReactNode;
 	footer?: ReactNode;
+	onSwapEntities?: (a: number, b: number) => void;
 	onEntityClick?: (entity: InitiativeTableEntry) => void;
-	currentTurnEntityId?: string | null;
 	onToggleTurn?: (entity: InitiativeTableEntry, pressed: boolean) => void;
+	onAdvanceTurnClick?: () => void;
 }) {
 	const draggable = Boolean(onSwapEntities) || undefined;
 	const dragFromIndex = useRef<number | null>(null);
@@ -65,7 +71,7 @@ export default function InitiativeTable({
 		<Table>
 			<TableHeader>
 				<TableRow>
-					<TableHead className="px-4 w-0">Turn</TableHead>
+					<TableHead className="w-0">Turn</TableHead>
 					<TableHead>
 						<span title="Initiative">Init.</span>
 					</TableHead>
@@ -73,14 +79,14 @@ export default function InitiativeTable({
 					<TableHead>Race</TableHead>
 					<TableHead>Health</TableHead>
 					<TableHead>Debuffs</TableHead>
-					<TableHead className="pr-4" />
+					<TableHead />
 				</TableRow>
 			</TableHeader>
-			<TableBody>
-				{entries.map((entity, index) => (
+			{entries.map((entity, index) => (
+				<Fragment key={entity.id}>
 					<InitiativeTableRow
-						key={entity.id}
 						entry={entity}
+						selected={selectedEntityId === entity.id}
 						draggable={draggable}
 						currentTurn={currentTurnEntityId === entity.id}
 						onToggleTurn={
@@ -93,8 +99,26 @@ export default function InitiativeTable({
 						actions={actions && (() => actions(entity, index))}
 						onClick={onEntityClick && (() => onEntityClick(entity))}
 					/>
-				))}
-			</TableBody>
+					{entity.id === currentTurnEntityId &&
+						onAdvanceTurnClick && (
+							<TableBody>
+								<TableRow className="hover:bg-background data-[state=selected]:bg-background">
+									<TableCell
+										colSpan={8}
+										className="text-center"
+									>
+										<Button
+											variant="outline"
+											onClick={onAdvanceTurnClick}
+										>
+											Advance Turn
+										</Button>
+									</TableCell>
+								</TableRow>
+							</TableBody>
+						)}
+				</Fragment>
+			))}
 			{footer && (
 				<TableCaption className="text-muted-foreground mt-4 text-sm">
 					{footer}
