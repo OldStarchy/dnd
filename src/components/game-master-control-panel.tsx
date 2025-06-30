@@ -35,7 +35,7 @@ import {
 import { Debuff } from '@/type/Debuff';
 import { DropdownMenuTrigger } from '@radix-ui/react-dropdown-menu';
 import { addListener } from '@reduxjs/toolkit';
-import { ChevronDown, Plus } from 'lucide-react';
+import { ChevronDown, Plus, Trash } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import EntityPropertyPanel from './entity-property-panel';
 import InitiativeTable from './InitiativeTable/InitiativeTable';
@@ -289,9 +289,10 @@ function GameMasterControlPanel() {
 			className="flex-1 w-auto h-auto border"
 		>
 			<ResizablePanel defaultSize={50}>
-				<ScrollArea>
+				<ScrollArea className="h-full">
 					<InitiativeTable
 						entries={entitiesView}
+						selectedEntityId={selectedEntityId}
 						onEntityClick={({ id }) => setSelectedEntityId(id)}
 						currentTurnEntityId={currentTurnEntityId}
 						onToggleTurn={({ id }, pressed) => {
@@ -302,47 +303,147 @@ function GameMasterControlPanel() {
 						onSwapEntities={(a, b) =>
 							dispatch(swapEntities([a, b]))
 						}
-						footer={
-							<div className="inline-flex items-stretch border rounded-md overflow-hidden divide-x divide-border bg-background">
-								<Button
-									variant="ghost"
-									className="cursor-pointer rounded-none p-0"
-									onClick={createNewEntity}
-								>
-									<Plus />
-									<span className="sr-only">Add entity</span>
-								</Button>
+						actions={(entity) => (
+							<Button
+								variant="ghost"
+								className="opacity-0 group-hover:opacity-100"
+								onClick={() => {
+									dispatch(removeEntity(entity.id));
+								}}
+							>
+								<Trash />
+								<span className="sr-only">Edit entity</span>
+							</Button>
+						)}
+					/>
+					<div className="sticky bottom-0 left-0 w-full flex justify-center p-4">
+						<div className="inline-flex items-stretch border rounded-md overflow-hidden divide-x divide-border bg-background shadow shadow-black">
+							<Button
+								variant="ghost"
+								className="cursor-pointer rounded-none p-0"
+								onClick={createNewEntity}
+							>
+								<Plus />
+								<span className="sr-only">Add entity</span>
+							</Button>
 
-								<DropdownMenu>
-									<DropdownMenuTrigger asChild>
-										<Button
-											variant="ghost"
-											size="icon"
-											className="cursor-pointer rounded-none"
-										>
-											<ChevronDown />
-										</Button>
-									</DropdownMenuTrigger>
-									<DropdownMenuContent>
-										<DropdownMenuGroup>
-											<DropdownMenuLabel>
-												Players
-											</DropdownMenuLabel>
-											{characters.length > 0 ? (
-												characters.map((character) => (
-													<DropdownMenuItem
-														key={character.id}
-														onClick={() => {
+							<DropdownMenu>
+								<DropdownMenuTrigger asChild>
+									<Button
+										variant="ghost"
+										size="icon"
+										className="cursor-pointer rounded-none"
+									>
+										<ChevronDown />
+									</Button>
+								</DropdownMenuTrigger>
+								<DropdownMenuContent>
+									<DropdownMenuGroup>
+										<DropdownMenuLabel>
+											Players
+										</DropdownMenuLabel>
+										{characters.length > 0 ? (
+											characters.map((character) => (
+												<DropdownMenuItem
+													key={character.id}
+													onClick={() => {
+														const newEntity: Entity =
+															{
+																id: crypto.randomUUID(),
+																creature:
+																	character,
+																visible: false,
+																initiative: 0,
+																obfuscateHealth:
+																	HealthObfuscation.NO,
+															};
+														dispatch(
+															setEntity(
+																newEntity,
+															),
+														);
+														setSelectedEntityId(
+															newEntity.id,
+														);
+													}}
+												>
+													{character.name}
+												</DropdownMenuItem>
+											))
+										) : (
+											<DropdownMenuItem disabled>
+												Create some Player Character
+												Presets
+											</DropdownMenuItem>
+										)}
+									</DropdownMenuGroup>
+									<DropdownMenuSeparator />
+									<DropdownMenuGroup>
+										<DropdownMenuLabel>
+											Monsters
+										</DropdownMenuLabel>
+										{monsters.length > 0 ? (
+											monsters.map((monster) => (
+												<DropdownMenuItem
+													key={monster.index}
+													onClick={() => {
+														(async () => {
+															const api =
+																new Dnd5eApi();
+															const result = (
+																await api.api._2014MonstersDetail(
+																	monster.index,
+																)
+															).data;
+															const hitpoints =
+																result.hit_points_roll !==
+																undefined
+																	? Math.max(
+																			rollDice(
+																				result.hit_points_roll,
+																			),
+																			1,
+																		)
+																	: (result.hit_points ??
+																		0);
 															const newEntity: Entity =
 																{
 																	id: crypto.randomUUID(),
-																	creature:
-																		character,
 																	visible:
 																		false,
 																	initiative: 0,
+
 																	obfuscateHealth:
-																		HealthObfuscation.NO,
+																		HealthObfuscation.TEXT,
+																	creature: {
+																		id: result.index!,
+																		name: result.name!,
+																		race: result.name!,
+																		hp: hitpoints,
+																		maxHp: hitpoints,
+																		attributes:
+																			{
+																				strength:
+																					result.strength,
+																				dexterity:
+																					result.dexterity,
+																				constitution:
+																					result.constitution,
+																				intelligence:
+																					result.intelligence,
+																				wisdom: result.wisdom,
+																				charisma:
+																					result.charisma,
+																			},
+																		speed: result.speed,
+																		image:
+																			api.baseUrl +
+																			result.image,
+																		hitpointsRoll:
+																			result.hit_points_roll,
+																		debuffs:
+																			[],
+																	},
 																};
 															dispatch(
 																setEntity(
@@ -352,127 +453,29 @@ function GameMasterControlPanel() {
 															setSelectedEntityId(
 																newEntity.id,
 															);
-														}}
-													>
-														{character.name}
-													</DropdownMenuItem>
-												))
-											) : (
-												<DropdownMenuItem disabled>
-													Create some Player Character
-													Presets
+														})();
+													}}
+												>
+													{monster.name}
 												</DropdownMenuItem>
-											)}
-										</DropdownMenuGroup>
-										<DropdownMenuSeparator />
-										<DropdownMenuGroup>
-											<DropdownMenuLabel>
-												Monsters
-											</DropdownMenuLabel>
-											{monsters.length > 0 ? (
-												monsters.map((monster) => (
-													<DropdownMenuItem
-														key={monster.index}
-														onClick={() => {
-															(async () => {
-																const api =
-																	new Dnd5eApi();
-																const result = (
-																	await api.api._2014MonstersDetail(
-																		monster.index,
-																	)
-																).data;
-																const hitpoints =
-																	result.hit_points_roll !==
-																	undefined
-																		? Math.max(
-																				rollDice(
-																					result.hit_points_roll,
-																				),
-																				1,
-																			)
-																		: (result.hit_points ??
-																			0);
-																const newEntity: Entity =
-																	{
-																		id: crypto.randomUUID(),
-																		visible:
-																			false,
-																		initiative: 0,
-
-																		obfuscateHealth:
-																			HealthObfuscation.TEXT,
-																		creature:
-																			{
-																				id: result.index!,
-																				name: result.name!,
-																				race: result.name!,
-																				hp: hitpoints,
-																				maxHp: hitpoints,
-																				attributes:
-																					{
-																						strength:
-																							result.strength,
-																						dexterity:
-																							result.dexterity,
-																						constitution:
-																							result.constitution,
-																						intelligence:
-																							result.intelligence,
-																						wisdom: result.wisdom,
-																						charisma:
-																							result.charisma,
-																					},
-																				speed: result.speed,
-																				image:
-																					api.baseUrl +
-																					result.image,
-																				hitpointsRoll:
-																					result.hit_points_roll,
-																				debuffs:
-																					[],
-																			},
-																	};
-																dispatch(
-																	setEntity(
-																		newEntity,
-																	),
-																);
-																setSelectedEntityId(
-																	newEntity.id,
-																);
-															})();
-														}}
-													>
-														{monster.name}
-													</DropdownMenuItem>
-												))
-											) : (
-												<DropdownMenuItem disabled>
-													5e Monsters loading...
-												</DropdownMenuItem>
-											)}
-										</DropdownMenuGroup>
-									</DropdownMenuContent>
-								</DropdownMenu>
-							</div>
-						}
-					/>
+											))
+										) : (
+											<DropdownMenuItem disabled>
+												5e Monsters loading...
+											</DropdownMenuItem>
+										)}
+									</DropdownMenuGroup>
+								</DropdownMenuContent>
+							</DropdownMenu>
+						</div>
+					</div>
 				</ScrollArea>
 			</ResizablePanel>
 			<ResizableHandle />
 			<ResizablePanel defaultSize={50}>
 				<ScrollArea className="h-full">
 					{selectedEntity ? (
-						<div className="pl-4 pr-6">
-							<Button
-								variant="destructive"
-								onClick={() => {
-									dispatch(removeEntity(selectedEntity.id));
-								}}
-							>
-								Delete
-							</Button>
+						<div className="pl-4 pr-6 py-4">
 							<EntityPropertyPanel
 								entity={selectedEntity}
 								key={selectedEntity.id}

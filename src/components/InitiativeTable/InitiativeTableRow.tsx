@@ -11,7 +11,7 @@ import {
 	CollapsibleTrigger,
 } from '../ui/collapsible';
 import { Dialog, DialogContent, DialogHeader } from '../ui/dialog';
-import { TableCell, TableRow } from '../ui/table';
+import { TableBody, TableCell, TableRow } from '../ui/table';
 import { Toggle } from '../ui/toggle';
 
 export type InitiativeTableEntry = {
@@ -31,40 +31,45 @@ export default function InitiativeTableRow({
 	actions,
 	currentTurn,
 	onToggleTurn,
+	selected,
 	...props
 }: {
 	entry: InitiativeTableEntry;
 	onToggleTurn?: (pressed: boolean) => void;
 	currentTurn?: boolean;
 	actions?: () => ReactNode;
+	selected?: boolean;
 } & ComponentPropsWithoutRef<typeof TableRow>) {
 	const [dialogIsOpen, setDialogIsOpen] = useState(false);
+
 	return (
 		<>
 			<Collapsible defaultOpen={false} asChild>
-				<>
+				<TableBody className="group">
 					<TableRow
 						className={cn({
 							'text-muted-foreground':
 								entry.effect === 'invisible',
+							'bg-accent/50': selected,
 						})}
 						{...props}
 					>
-						<TableCell
-							className="px-4 w-0 flex"
-							onClick={(e) => e.stopPropagation()}
-						>
+						<TableCell className="w-0 flex">
 							<Toggle
 								disabled={onToggleTurn === undefined}
 								pressed={currentTurn}
 								onPressedChange={onToggleTurn}
-								className="cursor-pointer"
-							>
-								<ArrowRight
-									className={cn({
+								onClick={(e) => e.stopPropagation()}
+								variant="ghost"
+								className={cn(
+									'cursor-pointer opacity-0 group-hover:opacity-100',
+									{
 										'text-gray-700': !currentTurn,
-									})}
-								/>
+										'opacity-100': currentTurn,
+									},
+								)}
+							>
+								<ArrowRight />
 							</Toggle>
 						</TableCell>
 						<TableCell className="w-0">
@@ -103,26 +108,28 @@ export default function InitiativeTableRow({
 								))}
 							</div>
 						</TableCell>
-						<TableCell
-							className="flex justify-end pr-4"
-							onClick={(e) => e.stopPropagation()}
-						>
-							{actions?.()}
-							{entry.description && (
-								<CollapsibleTrigger asChild>
-									<Button
-										className="group"
-										variant="ghost"
-										size="icon"
-										aria-label="Toggle Details"
-									>
-										<span className="sr-only">
-											Toggle Details
-										</span>
-										<ChevronLeft className="h-4 w-4 transition-transform duration-200 group-data-[state=open]:-rotate-90" />
-									</Button>
-								</CollapsibleTrigger>
-							)}
+						<TableCell className="flex justify-end">
+							<div
+								className="flex gap-1"
+								onClick={(e) => e.stopPropagation()}
+							>
+								{entry.description && (
+									<CollapsibleTrigger asChild>
+										<Button
+											className="group opacity-0 group-hover:opacity-100"
+											variant="ghost"
+											size="icon"
+											aria-label="Toggle Details"
+										>
+											<span className="sr-only">
+												Toggle Details
+											</span>
+											<ChevronLeft className="h-4 w-4 transition-transform duration-200 group-data-[state=open]:-rotate-90" />
+										</Button>
+									</CollapsibleTrigger>
+								)}
+								{actions?.()}
+							</div>
 						</TableCell>
 					</TableRow>
 					<CollapsibleContent asChild>
@@ -157,7 +164,7 @@ export default function InitiativeTableRow({
 							</TableCell>
 						</TableRow>
 					</CollapsibleContent>
-				</>
+				</TableBody>
 			</Collapsible>
 			<Dialog open={dialogIsOpen} onOpenChange={setDialogIsOpen}>
 				<DialogContent>
