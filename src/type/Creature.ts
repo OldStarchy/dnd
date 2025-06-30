@@ -1,5 +1,3 @@
-import type { Debuff } from './Debuff';
-
 /**
  * Represents a creature (player, NPC, monster, etc.) in the game.
  */
@@ -29,6 +27,12 @@ export type Creature = {
 		wisdom?: number;
 		charisma?: number;
 	};
-	debuffs?: Debuff[];
+	debuffs?: {
+		name: string;
+		color: string;
+		description?: string;
+		notes?: string;
+		duration?: number;
+	}[];
 	notes?: string;
 };

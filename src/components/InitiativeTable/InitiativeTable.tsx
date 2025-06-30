@@ -1,7 +1,10 @@
 import { useCallback, useRef, type ReactNode } from 'react';
+import { Button } from '../ui/button';
 import {
 	Table,
+	TableBody,
 	TableCaption,
+	TableCell,
 	TableHead,
 	TableHeader,
 	TableRow,
@@ -11,22 +14,24 @@ import InitiativeTableRow from './InitiativeTableRow';
 
 export default function InitiativeTable({
 	entries,
-	onSwapEntities,
-	actions,
-	footer,
-	onEntityClick,
-	onToggleTurn,
 	currentTurnEntityId = null,
 	selectedEntityId = null,
+	actions,
+	footer,
+	onSwapEntities,
+	onEntityClick,
+	onToggleTurn,
+	onAdvanceTurnClick,
 }: {
 	entries: InitiativeTableEntry[];
-	onSwapEntities?: (a: number, b: number) => void;
+	currentTurnEntityId?: string | null;
+	selectedEntityId?: string | null;
 	actions?: (entity: InitiativeTableEntry, index: number) => ReactNode;
 	footer?: ReactNode;
+	onSwapEntities?: (a: number, b: number) => void;
 	onEntityClick?: (entity: InitiativeTableEntry) => void;
-	currentTurnEntityId?: string | null;
 	onToggleTurn?: (entity: InitiativeTableEntry, pressed: boolean) => void;
-	selectedEntityId?: string | null;
+	onAdvanceTurnClick?: () => void;
 }) {
 	const draggable = Boolean(onSwapEntities) || undefined;
 	const dragFromIndex = useRef<number | null>(null);
@@ -78,22 +83,42 @@ export default function InitiativeTable({
 				</TableRow>
 			</TableHeader>
 			{entries.map((entity, index) => (
-				<InitiativeTableRow
-					key={entity.id}
-					entry={entity}
-					selected={selectedEntityId === entity.id}
-					draggable={draggable}
-					currentTurn={currentTurnEntityId === entity.id}
-					onToggleTurn={
-						onToggleTurn &&
-						((pressed) => onToggleTurn(entity, pressed))
-					}
-					onDrag={draggable && handleDragStart(index)}
-					onDrop={draggable && handleDrop(index)}
-					onDragOver={draggable && handleDragOver}
-					actions={actions && (() => actions(entity, index))}
-					onClick={onEntityClick && (() => onEntityClick(entity))}
-				/>
+				<>
+					<InitiativeTableRow
+						key={entity.id}
+						entry={entity}
+						selected={selectedEntityId === entity.id}
+						draggable={draggable}
+						currentTurn={currentTurnEntityId === entity.id}
+						onToggleTurn={
+							onToggleTurn &&
+							((pressed) => onToggleTurn(entity, pressed))
+						}
+						onDrag={draggable && handleDragStart(index)}
+						onDrop={draggable && handleDrop(index)}
+						onDragOver={draggable && handleDragOver}
+						actions={actions && (() => actions(entity, index))}
+						onClick={onEntityClick && (() => onEntityClick(entity))}
+					/>
+					{entity.id === currentTurnEntityId &&
+						onAdvanceTurnClick && (
+							<TableBody>
+								<TableRow className="hover:bg-background data-[state=selected]:bg-background">
+									<TableCell
+										colSpan={8}
+										className="text-center"
+									>
+										<Button
+											variant="outline"
+											onClick={onAdvanceTurnClick}
+										>
+											Advance Turn
+										</Button>
+									</TableCell>
+								</TableRow>
+							</TableBody>
+						)}
+				</>
 			))}
 			{footer && (
 				<TableCaption className="text-muted-foreground mt-4 text-sm">

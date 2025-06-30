@@ -32,7 +32,6 @@ import {
 	type Entity,
 	type PlayerEntityView,
 } from '@/store/types/Entity';
-import { Debuff } from '@/type/Debuff';
 import { DropdownMenuTrigger } from '@radix-ui/react-dropdown-menu';
 import { addListener } from '@reduxjs/toolkit';
 import { ChevronDown, Plus, Trash } from 'lucide-react';
@@ -61,7 +60,7 @@ function reduceEntity(entity: Entity): PlayerEntityView {
 		name: entity.creature.name,
 		initiative: entity.initiative,
 		healthDisplay,
-		debuffs: entity.creature.debuffs?.map(Debuff.flat),
+		debuffs: entity.creature.debuffs,
 	};
 }
 
@@ -80,7 +79,7 @@ function reduceEntities(entities: Entity[]): PlayerEntityView[] {
 				name: entity.creature.name,
 				initiative: entity.initiative,
 				healthDisplay,
-				debuffs: entity.creature.debuffs?.map(Debuff.flat),
+				debuffs: entity.creature.debuffs,
 			};
 		});
 }
@@ -283,6 +282,48 @@ function GameMasterControlPanel() {
 		[entities],
 	);
 
+	const advanceTurn = useCallback(() => {
+		const currentIndex = entities.findIndex(
+			(entity) => entity.id === currentTurnEntityId,
+		);
+		if (currentIndex === -1) return;
+		const currentEntity = entities[currentIndex];
+
+		const nextIndex = (currentIndex + 1) % entities.length;
+		const nextEntity = entities[nextIndex];
+		if (
+			currentEntity.creature.debuffs?.some(
+				(debuff) => debuff.duration !== undefined,
+			)
+		) {
+			const newDebuffs = currentEntity.creature.debuffs
+				.map((debuff) => {
+					if (debuff.duration !== undefined) {
+						return {
+							...debuff,
+							duration: debuff.duration - 1,
+						};
+					}
+					return debuff;
+				})
+				.filter(
+					(debuff) =>
+						debuff.duration === undefined || debuff.duration > 0,
+				);
+
+			dispatch(
+				setEntity({
+					...currentEntity,
+					creature: {
+						...currentEntity.creature,
+						debuffs: newDebuffs,
+					},
+				}),
+			);
+		}
+		dispatch(setCurrentTurnEntityId(nextEntity.id));
+	}, [entities, currentTurnEntityId, dispatch]);
+
 	return (
 		<ResizablePanelGroup
 			direction={splitDirection}
@@ -303,6 +344,7 @@ function GameMasterControlPanel() {
 						onSwapEntities={(a, b) =>
 							dispatch(swapEntities([a, b]))
 						}
+						onAdvanceTurnClick={advanceTurn}
 						actions={(entity) => (
 							<Button
 								variant="ghost"

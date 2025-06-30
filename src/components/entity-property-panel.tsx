@@ -63,31 +63,18 @@ const colors = [
 	},
 ];
 
-const DebuffSchema = z
-	.object({
-		kind: z.literal('custom'),
-		name: z.string().min(1, 'Name is required'),
-		color: z.string().min(1, 'Color is required'),
-		notes: z.string().optional(),
-		description: z.string().optional(),
-		duration: z.coerce
-			.number()
-			.int()
-			.min(0, 'Duration must be a non-negative integer')
-			.optional(),
-	})
-	.or(
-		z.object({
-			kind: z.literal('preset'),
-			type: z.string(),
-			notes: z.string().optional(),
-			duration: z.coerce
-				.number()
-				.int()
-				.min(0, 'Duration must be a non-negative integer')
-				.optional(),
-		}),
-	);
+const DebuffSchema = z.object({
+	name: z.string().min(1, 'Name is required'),
+	color: z.string().min(1, 'Color is required'),
+	notes: z.string().optional(),
+	description: z.string().optional(),
+	duration: z.coerce
+		.number()
+		.int()
+		.min(0, 'Duration must be a non-negative integer')
+		.optional()
+		.transform((val) => (val === 0 ? undefined : val)),
+});
 
 const EntityPropertySchema = z.object({
 	name: z.string().min(3, 'Name must be at least 3 characters long'),
@@ -139,7 +126,7 @@ function EntityPropertyPanel({
 				name: data.name || entity.creature.name,
 				hp: data.hp ?? entity.creature.hp,
 				maxHp: data.maxHp ?? entity.creature.maxHp,
-				debuffs: data.debuffs as Debuff[],
+				debuffs: data.debuffs,
 				image: data.image ?? entity.creature.image,
 			},
 			initiative: data.initiative ?? entity.initiative,
@@ -323,7 +310,7 @@ function EntityPropertyPanel({
 						)}
 					/>
 					<Label>Debuffs</Label>
-					<div className="grid grid-cols-[[name]_auto_[description]_auto_[notes]_1fr_[color]_auto_[actions]_auto] align-items-stretch auto-rows-auto gap-2">
+					<div className="grid grid-cols-[[duration]_auto_[name]_auto_[description]_auto_[notes]_1fr_[color]_auto_[actions]_auto] align-items-stretch auto-rows-auto gap-2">
 						{debuffFields.fields.length === 0 ? (
 							<p className="col-span-4 text-muted-foreground">
 								No debuffs. Click the button below to add a new
@@ -331,178 +318,165 @@ function EntityPropertyPanel({
 							</p>
 						) : (
 							<>
-								<Label>Name</Label>
+								<Label className="[grid-column-start:name]">
+									Name
+								</Label>
 								<Label>Description</Label>
 								<Label>Notes</Label>
 								<Label>Color</Label>
 								<Label />
 								{debuffFields.fields.map((field, index) => (
 									<Fragment key={field.id}>
-										{field.kind == 'preset' ? (
-											<hr />
-										) : (
-											<>
-												<FormField
-													control={form.control}
-													name={`debuffs.${index}.kind`}
-													render={({ field }) => (
+										<FormField
+											control={form.control}
+											name={`debuffs.${index}.duration`}
+											render={({ field }) => (
+												<FormItem className="contents">
+													<FormControl>
 														<Input
-															type="hidden"
+															type="number"
+															min={0}
+															className="[grid-column-start:duration] min-w-0 w-15"
 															{...field}
 														/>
-													)}
-												/>
-												<FormField
-													control={form.control}
-													name={`debuffs.${index}.duration`}
-													render={({ field }) => (
+													</FormControl>
+												</FormItem>
+											)}
+										/>
+										<FormField
+											control={form.control}
+											name={`debuffs.${index}.name`}
+											render={({ field }) => (
+												<FormItem className="contents">
+													<FormControl>
 														<Input
-															type="hidden"
 															{...field}
+															className="[grid-column-start:name]"
 														/>
-													)}
-												/>
-												<FormField
-													control={form.control}
-													name={`debuffs.${index}.name`}
-													render={({ field }) => (
-														<FormItem className="contents">
-															<FormControl>
-																<Input
-																	{...field}
-																	className="[grid-column-start:name]"
-																/>
-															</FormControl>
-														</FormItem>
-													)}
-												/>
-												<FormField
-													control={form.control}
-													name={`debuffs.${index}.description`}
-													render={({ field }) => (
-														<FormItem className="contents">
-															<FormControl>
-																<Input
-																	{...field}
-																	className="[grid-column-start:description]"
-																/>
-															</FormControl>
-														</FormItem>
-													)}
-												/>
-												<FormField
-													control={form.control}
-													name={`debuffs.${index}.notes`}
-													render={({ field }) => (
-														<FormItem className="contents">
-															<FormControl>
-																<Input
-																	{...field}
-																	className="[grid-column-start:notes]"
-																/>
-															</FormControl>
-														</FormItem>
-													)}
-												/>
-												<FormField
-													control={form.control}
-													name={`debuffs.${index}.color`}
-													render={({
-														field: {
-															onChange,
-															value,
-															...field
-														},
-													}) => (
-														<FormItem className="contents">
-															<FormControl>
-																<Select
-																	value={
-																		value ??
-																		null
-																	}
-																	onValueChange={
-																		onChange
-																	}
-																	{...field}
-																>
-																	<SelectTrigger className="w-full [grid-column-start:color]">
-																		<SelectValue placeholder="Select color" />
-																	</SelectTrigger>
-																	<SelectContent>
-																		{colors.map(
-																			({
-																				label,
-																				...props
-																			}) => (
-																				<SelectItem
-																					{...props}
-																					key={
-																						props.value
-																					}
-																				>
-																					{
-																						label
-																					}
-																				</SelectItem>
-																			),
-																		)}
-																	</SelectContent>
-																</Select>
-															</FormControl>
-														</FormItem>
-													)}
-												/>
-
-												<Button
-													variant="destructive"
-													onClick={() => {
-														debuffFields.remove(
-															index,
-														);
-													}}
-												>
-													Delete
-												</Button>
-
-												<FormField
-													control={form.control}
-													name={`debuffs.${index}.name`}
-													render={() => (
-														<FormItem className="contents">
-															<FormMessage className="[grid-column-start:name]" />
-														</FormItem>
-													)}
-												/>
-												<FormField
-													control={form.control}
-													name={`debuffs.${index}.description`}
-													render={() => (
-														<FormItem className="contents">
-															<FormMessage className="[grid-column-start:description]" />
-														</FormItem>
-													)}
-												/>
-												<FormField
-													control={form.control}
-													name={`debuffs.${index}.notes`}
-													render={() => (
-														<FormItem className="contents">
-															<FormMessage className="[grid-column-start:notes]" />
-														</FormItem>
-													)}
-												/>
-												<FormField
-													control={form.control}
-													name={`debuffs.${index}.color`}
-													render={() => (
-														<FormItem className="contents">
-															<FormMessage className="[grid-column-start:color]" />
-														</FormItem>
-													)}
-												/>
-											</>
-										)}
+													</FormControl>
+												</FormItem>
+											)}
+										/>
+										<FormField
+											control={form.control}
+											name={`debuffs.${index}.description`}
+											render={({ field }) => (
+												<FormItem className="contents">
+													<FormControl>
+														<Input
+															{...field}
+															className="[grid-column-start:description]"
+														/>
+													</FormControl>
+												</FormItem>
+											)}
+										/>
+										<FormField
+											control={form.control}
+											name={`debuffs.${index}.notes`}
+											render={({ field }) => (
+												<FormItem className="contents">
+													<FormControl>
+														<Input
+															{...field}
+															className="[grid-column-start:notes]"
+														/>
+													</FormControl>
+												</FormItem>
+											)}
+										/>
+										<FormField
+											control={form.control}
+											name={`debuffs.${index}.color`}
+											render={({
+												field: {
+													onChange,
+													value,
+													...field
+												},
+											}) => (
+												<FormItem className="contents">
+													<FormControl>
+														<Select
+															value={
+																value ?? null
+															}
+															onValueChange={
+																onChange
+															}
+															{...field}
+														>
+															<SelectTrigger className="w-full [grid-column-start:color]">
+																<SelectValue placeholder="Select color" />
+															</SelectTrigger>
+															<SelectContent>
+																{colors.map(
+																	({
+																		label,
+																		...props
+																	}) => (
+																		<SelectItem
+																			{...props}
+																			key={
+																				props.value
+																			}
+																		>
+																			{
+																				label
+																			}
+																		</SelectItem>
+																	),
+																)}
+															</SelectContent>
+														</Select>
+													</FormControl>
+												</FormItem>
+											)}
+										/>
+										<Button
+											variant="destructive"
+											onClick={() => {
+												debuffFields.remove(index);
+											}}
+										>
+											Delete
+										</Button>
+										<FormField
+											control={form.control}
+											name={`debuffs.${index}.name`}
+											render={() => (
+												<FormItem className="contents">
+													<FormMessage className="[grid-column-start:name]" />
+												</FormItem>
+											)}
+										/>
+										<FormField
+											control={form.control}
+											name={`debuffs.${index}.description`}
+											render={() => (
+												<FormItem className="contents">
+													<FormMessage className="[grid-column-start:description]" />
+												</FormItem>
+											)}
+										/>
+										<FormField
+											control={form.control}
+											name={`debuffs.${index}.notes`}
+											render={() => (
+												<FormItem className="contents">
+													<FormMessage className="[grid-column-start:notes]" />
+												</FormItem>
+											)}
+										/>
+										<FormField
+											control={form.control}
+											name={`debuffs.${index}.color`}
+											render={() => (
+												<FormItem className="contents">
+													<FormMessage className="[grid-column-start:color]" />
+												</FormItem>
+											)}
+										/>
 									</Fragment>
 								))}
 							</>
@@ -514,7 +488,6 @@ function EntityPropertyPanel({
 							className="cursor-pointer rounded-none p-0"
 							onClick={() => {
 								debuffFields.append({
-									kind: 'custom',
 									name: '',
 									color: '',
 								});
@@ -545,7 +518,6 @@ function EntityPropertyPanel({
 												key={id}
 												onClick={() => {
 													debuffFields.append({
-														kind: 'custom',
 														...Debuff.flat(
 															Debuff.of(
 																id as DebuffType,

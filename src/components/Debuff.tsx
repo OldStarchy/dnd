@@ -15,6 +15,7 @@ export default function Debuff({
 	const badge = (
 		<Badge className={cn(className, flat.color)} {...props}>
 			{flat.name}
+			{debuff.duration !== undefined ? ` (${debuff.duration})` : ''}
 		</Badge>
 	);
 

@@ -1,5 +1,4 @@
 import { cn } from '@/lib/utils';
-import { Debuff as DebuffObj } from '@/type/Debuff';
 import { ArrowRight, ChevronLeft } from 'lucide-react';
 import { useState, type ComponentPropsWithoutRef, type ReactNode } from 'react';
 import Debuff from '../Debuff';
@@ -21,7 +20,12 @@ export type InitiativeTableEntry = {
 	initiative: number;
 	healthDisplay: string;
 	effect?: 'invisible';
-	debuffs: DebuffObj[];
+	debuffs: {
+		name: string;
+		color: string;
+		description?: string;
+		notes?: string;
+	}[];
 	description?: string;
 	image?: string;
 };
@@ -103,8 +107,11 @@ export default function InitiativeTableRow({
 						<TableCell>{entry.healthDisplay}</TableCell>
 						<TableCell className="pr-4">
 							<div className="flex space-x-2">
-								{entry.debuffs?.map((tag, index) => (
-									<Debuff debuff={tag} key={index} />
+								{entry.debuffs?.map((debuff, index) => (
+									<Debuff
+										debuff={{ ...debuff, kind: 'custom' }}
+										key={index}
+									/>
 								))}
 							</div>
 						</TableCell>
