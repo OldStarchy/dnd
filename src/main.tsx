@@ -19,10 +19,6 @@ const router = createBrowserRouter([
 				Component: Home,
 			},
 			{
-				path: '/popout',
-				Component: PopoutView,
-			},
-			{
 				path: '/characters',
 				Component: CustomCreatureEditor,
 			},
@@ -35,6 +31,10 @@ const router = createBrowserRouter([
 				Component: Sandbox,
 			},
 		],
+	},
+	{
+		path: '/popout',
+		Component: PopoutView,
 	},
 ]);
 
