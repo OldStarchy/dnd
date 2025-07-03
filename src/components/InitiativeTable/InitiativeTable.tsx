@@ -9,7 +9,7 @@ import {
 	TableHeader,
 	TableRow,
 } from '../ui/table';
-import type { InitiativeTableEntry } from './InitiativeTableRow';
+import type { InitiativeTableEntry } from './InitiativeTableEntry';
 import InitiativeTableRow from './InitiativeTableRow';
 
 export default function InitiativeTable({

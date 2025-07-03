@@ -1,7 +1,7 @@
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { HealthObfuscation, type Entity } from '@/store/types/Entity';
-import { Debuff, DebuffType } from '@/type/Debuff';
+import { Debuff, debuffSpec } from '@/type/Debuff';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { ChevronDown, Plus } from 'lucide-react';
 import { useFieldArray, useForm } from 'react-hook-form';
@@ -63,20 +63,7 @@ const colors = [
 	},
 ];
 
-const DebuffSchema = z.object({
-	name: z.string().min(1, 'Name is required'),
-	color: z.string().min(1, 'Color is required'),
-	notes: z.string().optional(),
-	description: z.string().optional(),
-	duration: z.coerce
-		.number()
-		.int()
-		.min(0, 'Duration must be a non-negative integer')
-		.optional()
-		.transform((val) => (val === 0 ? undefined : val)),
-});
-
-const EntityPropertySchema = z.object({
+const entityPropertySpec = z.object({
 	name: z.string().min(1, 'Name must be at least 1 characters long'),
 	initiative: z.coerce
 		.number()
@@ -93,9 +80,9 @@ const EntityPropertySchema = z.object({
 	hp: z.coerce.number().int(),
 	maxHp: z.coerce.number().int().min(1, 'Max Health must be at least 1'),
 	obfuscateHealth: z.nativeEnum(HealthObfuscation),
-	debuffs: z.array(DebuffSchema),
+	debuffs: z.array(debuffSpec),
 });
-type EntityPropertySchema = z.infer<typeof EntityPropertySchema>;
+type EntityPropertySchema = z.infer<typeof entityPropertySpec>;
 
 function EntityPropertyPanel({
 	entity,
@@ -105,7 +92,7 @@ function EntityPropertyPanel({
 	onChange: (entity: Entity) => void;
 }) {
 	const form = useForm<EntityPropertySchema>({
-		resolver: zodResolver(EntityPropertySchema),
+		resolver: zodResolver(entityPropertySpec),
 		defaultValues: {
 			name: entity.creature.name,
 			initiative: entity.initiative,
@@ -512,17 +499,13 @@ function EntityPropertyPanel({
 									<DropdownMenuLabel>
 										Presets
 									</DropdownMenuLabel>
-									{Object.entries(DebuffType).map(
+									{Object.entries(Debuff).map(
 										([id, debuff]) => (
 											<DropdownMenuItem
 												key={id}
 												onClick={() => {
 													debuffFields.append({
-														...Debuff.flat(
-															Debuff.of(
-																id as DebuffType,
-															),
-														),
+														...debuff,
 													});
 												}}
 											>

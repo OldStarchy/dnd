@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { render } from 'vitest-browser-react';
 import { ThemeProvider } from '../theme-provider';
 import InitiativeTable from './InitiativeTable';
-import type { InitiativeTableEntry } from './InitiativeTableRow';
+import type { InitiativeTableEntry } from './InitiativeTableEntry';
 
 describe('InitiativeTable', () => {
 	it('shows the charactres info', async () => {

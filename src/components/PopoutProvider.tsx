@@ -13,7 +13,7 @@ import {
 	useEffect,
 	useRef,
 } from 'react';
-import type { InitiativeTableEntry } from './InitiativeTable/InitiativeTableRow';
+import type { InitiativeTableEntry } from './InitiativeTable/InitiativeTableEntry';
 
 const PopoutContext = createContext<{ setOpen(open: boolean): void } | null>(
 	null,

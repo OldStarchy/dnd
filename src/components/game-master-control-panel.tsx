@@ -28,7 +28,7 @@ import { ChevronDown, Plus, Trash } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import EntityPropertyPanel from './entity-property-panel';
 import InitiativeTable from './InitiativeTable/InitiativeTable';
-import type { InitiativeTableEntry } from './InitiativeTable/InitiativeTableRow';
+import type { InitiativeTableEntry } from './InitiativeTable/InitiativeTableEntry';
 import { usePopout } from './PopoutProvider';
 import {
 	DropdownMenu,

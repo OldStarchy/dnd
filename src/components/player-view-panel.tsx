@@ -1,7 +1,7 @@
 import InitiativeTable from '@/components/InitiativeTable/InitiativeTable';
 import { MessagePortClient } from '@/sync/MessagePortClient';
 import { useEffect, useRef, useState } from 'react';
-import type { InitiativeTableEntry } from './InitiativeTable/InitiativeTableRow';
+import type { InitiativeTableEntry } from './InitiativeTable/InitiativeTableEntry';
 
 function PlayerViewPanel() {
 	const [initiativeTableEntries, setInitiativeTableEntries] = useState<

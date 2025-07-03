@@ -1,12 +1,12 @@
 import sybilProfile from '@/components/InitiativeTable/fixtures/sybil_profile.png';
 import '@/index.css';
+import { Debuff } from '@/type/Debuff';
 import { describe, expect, it } from 'vitest';
 import { render } from 'vitest-browser-react';
 import { ThemeProvider } from '../theme-provider';
 import { Table } from '../ui/table';
-import InitiativeTableRow, {
-	type InitiativeTableEntry,
-} from './InitiativeTableRow';
+import { type InitiativeTableEntry } from './InitiativeTableEntry';
+import InitiativeTableRow from './InitiativeTableRow';
 
 describe('InitiativeTableRow', () => {
 	it('shows the charactres info', async () => {
@@ -100,12 +100,10 @@ describe('InitiativeTableRow', () => {
 			healthDisplay: 'Healthy',
 			debuffs: [
 				{
-					kind: 'preset',
-					type: 'poisoned',
+					...Debuff.poisoned,
 					notes: "Hit by Such and Such's poison arrow",
 				},
 				{
-					kind: 'custom',
 					name: 'Slowed',
 					color: 'bg-blue-500',
 					description: 'Speed is halved',
