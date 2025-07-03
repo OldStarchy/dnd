@@ -80,7 +80,7 @@ function GameMasterControlPanel() {
 		null,
 	);
 
-	const { setOpen } = usePopout();
+	const popoutControl = usePopout();
 
 	const selectedEntity = entities.find(
 		(entity) => entity.id === selectedEntityId,
@@ -183,7 +183,7 @@ function GameMasterControlPanel() {
 		>
 			<ResizablePanel defaultSize={50}>
 				<ScrollArea className="h-full">
-					<Button onClick={() => setOpen(true)}>
+					<Button onClick={() => popoutControl.open()}>
 						Open in Popout
 					</Button>
 					<InitiativeTable

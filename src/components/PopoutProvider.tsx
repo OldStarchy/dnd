@@ -4,20 +4,12 @@ import {
 	HealthObfuscation,
 	type Entity,
 } from '@/store/types/Entity';
-import { MessagePortServer } from '@/sync/MessagePortServer';
+import PopoutServer from '@/sync/PopoutServer';
 import type { Server } from '@/sync/Server';
-import {
-	createContext,
-	useCallback,
-	useContext,
-	useEffect,
-	useRef,
-} from 'react';
+import { createContext, useContext, useEffect, useRef, useState } from 'react';
 import type { InitiativeTableEntry } from './InitiativeTable/InitiativeTableEntry';
 
-const PopoutContext = createContext<{ setOpen(open: boolean): void } | null>(
-	null,
-);
+const PopoutContext = createContext<PopoutServer | null>(null);
 
 function stripEntityListForPopout(entities: Entity[]): InitiativeTableEntry[] {
 	return entities
@@ -59,37 +51,14 @@ function stripEntityListForPopout(entities: Entity[]): InitiativeTableEntry[] {
 		});
 }
 
-export function PopoutProvider({ children }: { children: React.ReactNode }) {
-	const serverRef = useRef<Server | null>(null);
-	const windowRef = useRef<Window | null>(null);
+const servers: Server[] = [];
 
+export function PopoutProvider({ children }: { children: React.ReactNode }) {
 	const initiativeState = usePrimarySelector((state) => state.initiative);
 	const initiativeStateRef = useRef(initiativeState);
 	initiativeStateRef.current = initiativeState;
-
-	useEffect(() => {
-		if (!serverRef.current) {
-			return;
-		}
-		serverRef.current.notify({
-			type: 'initiative-table-update',
-			data: stripEntityListForPopout(initiativeState.entities),
-		});
-	}, [initiativeState.entities]);
-
-	const prepareServer = useCallback((win: Window) => {
-		serverRef.current?.[Symbol.dispose]();
-
-		const channel = new MessageChannel();
-		const { port1, port2 } = channel;
-
-		win.postMessage(
-			{ type: 'INIT_PORT', port: port2 },
-			{ transfer: [port2] },
-		);
-
-		port1.start();
-		serverRef.current = new MessagePortServer(port1, {
+	const [server, _setServer] = useState<PopoutServer>(() => {
+		const server = new PopoutServer({
 			async handleRequest(request) {
 				// Handle requests from the popout window here
 				console.log('Received request:', request);
@@ -106,9 +75,6 @@ export function PopoutProvider({ children }: { children: React.ReactNode }) {
 							),
 						});
 						break;
-					case 'heartbeat':
-						this.notify({ type: 'heartbeat' });
-						break;
 					default: {
 						// @ts-expect-error unused
 						const _exhaustiveCheck: never = notification;
@@ -116,52 +82,39 @@ export function PopoutProvider({ children }: { children: React.ReactNode }) {
 				}
 			},
 		});
-	}, []);
+		if (
+			!servers.some((existingServer, i) => {
+				if (existingServer === server) {
+					console.log(`Server ${i}`);
+					return true;
+				}
+				return false;
+			})
+		) {
+			console.log(`new ${servers.length} server created`);
+			servers.push(server);
+		}
+		return server;
+	});
 
 	useEffect(() => {
-		window.addEventListener('message', (event) => {
-			if (event.data === 'POPUP_READY') {
-				windowRef.current = event.source as Window;
-				prepareServer(windowRef.current);
-			}
+		return () => {
+			server[Symbol.dispose]();
+		};
+	}, [server]);
+
+	useEffect(() => {
+		if (!server.isOpen()) {
+			return;
+		}
+		server.notify({
+			type: 'initiative-table-update',
+			data: stripEntityListForPopout(initiativeState.entities),
 		});
-	}, [prepareServer]);
-
-	const setOpen = useCallback(
-		(open: boolean) => {
-			if (open) {
-				if (windowRef.current && !windowRef.current.closed) {
-					windowRef.current.focus();
-
-					if (windowRef.current.location.pathname !== '/popout') {
-						windowRef.current.location.href = '/popout';
-					}
-				} else {
-					const win = window.open(
-						'/popout',
-						'Popout',
-						'width=800,height=600,scrollbars=yes,resizable=yes',
-					);
-
-					if (!win) {
-						console.error('Failed to open popout window');
-						return;
-					}
-					win.addEventListener('load', () => prepareServer(win));
-
-					windowRef.current = win;
-				}
-			} else {
-				if (windowRef.current && !windowRef.current.closed) {
-					windowRef.current.close();
-				}
-			}
-		},
-		[prepareServer],
-	);
+	}, [server, initiativeState.entities]);
 
 	return (
-		<PopoutContext.Provider value={{ setOpen }}>
+		<PopoutContext.Provider value={server}>
 			{children}
 		</PopoutContext.Provider>
 	);
