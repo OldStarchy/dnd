@@ -12,23 +12,7 @@ import {
 import { Dialog, DialogContent, DialogHeader } from '../ui/dialog';
 import { TableBody, TableCell, TableRow } from '../ui/table';
 import { Toggle } from '../ui/toggle';
-
-export type InitiativeTableEntry = {
-	id: string;
-	name: string;
-	race: string;
-	initiative: number;
-	healthDisplay: string;
-	effect?: 'invisible';
-	debuffs: {
-		name: string;
-		color: string;
-		description?: string;
-		notes?: string;
-	}[];
-	description?: string;
-	image?: string;
-};
+import type { InitiativeTableEntry } from './InitiativeTableEntry';
 
 export default function InitiativeTableRow({
 	entry,
@@ -109,7 +93,7 @@ export default function InitiativeTableRow({
 							<div className="flex space-x-2">
 								{entry.debuffs?.map((debuff, index) => (
 									<Debuff
-										debuff={{ ...debuff, kind: 'custom' }}
+										debuff={{ ...debuff }}
 										key={index}
 									/>
 								))}

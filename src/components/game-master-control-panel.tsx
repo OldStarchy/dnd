@@ -19,26 +19,18 @@ import {
 	swapEntities,
 } from '@/store/reducers/initiativeSlice';
 import {
-	actions as reducedActions,
-	removeEntity as reducedRemoveEntity,
-	setCurrentTurnEntityId as reducedSetCurrentTurnEntityId,
-	setDefault as reducedSetDefault,
-	setEntity as reducedSetEntity,
-	swapEntities as reducedSwapEntities,
-} from '@/store/reducers/reduced-initiative-slice';
-import {
 	getObfuscatedHealthText,
 	HealthObfuscation,
 	type Entity,
-	type PlayerEntityView,
 } from '@/store/types/Entity';
 import { DropdownMenuTrigger } from '@radix-ui/react-dropdown-menu';
-import { addListener } from '@reduxjs/toolkit';
 import { ChevronDown, Plus, Trash } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import EntityPropertyPanel from './entity-property-panel';
 import InitiativeTable from './InitiativeTable/InitiativeTable';
-import type { InitiativeTableEntry } from './InitiativeTable/InitiativeTableRow';
+import type { InitiativeTableEntry } from './InitiativeTable/InitiativeTableEntry';
+import { usePopout } from './PopoutProvider';
+import { useShareCode } from './ShareProvider';
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -47,44 +39,10 @@ import {
 	DropdownMenuLabel,
 	DropdownMenuSeparator,
 } from './ui/dropdown-menu';
-
-function reduceEntity(entity: Entity): PlayerEntityView {
-	const healthDisplay = getObfuscatedHealthText(
-		entity.creature.hp,
-		entity.creature.maxHp,
-		entity.obfuscateHealth,
-	);
-
-	return {
-		id: entity.id,
-		name: entity.creature.name,
-		initiative: entity.initiative,
-		healthDisplay,
-		debuffs: entity.creature.debuffs,
-	};
-}
-
-function reduceEntities(entities: Entity[]): PlayerEntityView[] {
-	return entities
-		.filter((entity) => entity.visible)
-		.map((entity) => {
-			const healthDisplay = getObfuscatedHealthText(
-				entity.creature.hp,
-				entity.creature.maxHp,
-				entity.obfuscateHealth,
-			);
-
-			return {
-				id: entity.id,
-				name: entity.creature.name,
-				initiative: entity.initiative,
-				healthDisplay,
-				debuffs: entity.creature.debuffs,
-			};
-		});
-}
+import { Input } from './ui/input';
 
 function GameMasterControlPanel() {
+	const shareCodes = useShareCode();
 	const [splitDirection] = useLocalStorage('layoutDirection', (v) =>
 		v !== 'vertical' ? 'horizontal' : 'vertical',
 	);
@@ -125,110 +83,7 @@ function GameMasterControlPanel() {
 		null,
 	);
 
-	const [popupWindow, setPopupWindow] = useState<Window | null>(null);
-
-	const togglePopup = useCallback(() => {
-		setPopupWindow((prev) => {
-			if (prev) {
-				prev.close();
-				return null;
-			} else {
-				return window.open('/popout', 'popout', 'width=800,height=600');
-			}
-		});
-	}, []);
-
-	useEffect(() => {
-		if (!popupWindow) return;
-
-		const closeCheck = () => {
-			if (popupWindow?.closed) {
-				setPopupWindow(null);
-			}
-		};
-
-		const interval = setInterval(closeCheck, 1000);
-
-		popupWindow.focus();
-		const { port1, port2 } = new MessageChannel();
-		port1.start();
-
-		let ready = false;
-
-		const dispatchOther = (
-			action: ReturnType<
-				(typeof reducedActions)[keyof typeof reducedActions]
-			>,
-		) => {
-			if (ready) {
-				port1.postMessage({
-					type: 'FORWARDED_ACTION',
-					payload: action,
-				});
-			}
-		};
-
-		const unsubs = [
-			dispatch(
-				addListener({
-					actionCreator: setEntity,
-					effect: (action) =>
-						dispatchOther(
-							reducedSetEntity(reduceEntity(action.payload)),
-						),
-				}),
-			),
-			dispatch(
-				addListener({
-					actionCreator: removeEntity,
-					effect: (action) => {
-						dispatchOther(reducedRemoveEntity(action.payload));
-					},
-				}),
-			),
-			dispatch(
-				addListener({
-					actionCreator: setDefault,
-					effect: (action) => {
-						dispatchOther(
-							reducedSetDefault(reduceEntities(action.payload)),
-						);
-					},
-				}),
-			),
-			dispatch(
-				addListener({
-					actionCreator: swapEntities,
-					effect: (action) => {
-						dispatchOther(reducedSwapEntities(action.payload));
-					},
-				}),
-			),
-		];
-
-		const handleReady = (event: MessageEvent) => {
-			if (event.data?.type === 'READY') {
-				port1.removeEventListener('message', handleReady);
-				ready = true;
-				dispatchOther(reducedSetDefault(reduceEntities(entities)));
-				dispatchOther(
-					reducedSetCurrentTurnEntityId(currentTurnEntityId),
-				);
-			}
-		};
-		port1.addEventListener('message', handleReady);
-
-		popupWindow.addEventListener('load', () => {
-			popupWindow.postMessage({ type: 'INIT_PORT', port: port2 }, '*', [
-				port2,
-			]);
-		});
-
-		return () => {
-			clearInterval(interval);
-			unsubs.forEach((unsub) => unsub());
-		};
-	}, [popupWindow, entities, currentTurnEntityId, dispatch]);
+	const { setOpen } = usePopout();
 
 	const selectedEntity = entities.find(
 		(entity) => entity.id === selectedEntityId,
@@ -331,6 +186,14 @@ function GameMasterControlPanel() {
 		>
 			<ResizablePanel defaultSize={50}>
 				<ScrollArea className="h-full">
+					<Button onClick={() => setOpen(true)}>
+						Open in Popout
+					</Button>
+					<Input
+						type="text"
+						value={shareCodes.roomCode ?? ''}
+						readOnly
+					/>
 					<InitiativeTable
 						entries={entitiesView}
 						selectedEntityId={selectedEntityId}
@@ -559,8 +422,8 @@ function rollDice(str: string): number {
 
 	let total = 0;
 	for (let i = 0; i < count; i++) {
-		total += Math.floor(Math.random() * sides) + 1 + modifier;
+		total += Math.floor(Math.random() * sides) + 1;
 	}
-	return total;
+	return total + modifier;
 }
 export default GameMasterControlPanel;

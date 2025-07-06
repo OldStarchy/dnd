@@ -8,7 +8,6 @@ import { ThemeProvider } from './theme-provider';
 describe('Debuff', () => {
 	it('renders without notes', () => {
 		const debuff: DebuffObj = {
-			kind: 'custom',
 			name: 'Stunned',
 			color: 'bg-red-500',
 		};
@@ -25,7 +24,6 @@ describe('Debuff', () => {
 
 	it.skip('renders notes only on hover', async () => {
 		const debuff: DebuffObj = {
-			kind: 'custom',
 			name: 'Poisoned',
 			color: 'bg-green-500',
 			notes: 'Takes damage over time',

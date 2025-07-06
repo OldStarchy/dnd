@@ -1,48 +1,36 @@
 import InitiativeTable from '@/components/InitiativeTable/InitiativeTable';
-import { useReducedDispatch, useReducedSelector } from '@/store/reduced-store';
-import { setCurrentTurnEntityId } from '@/store/reducers/reduced-initiative-slice';
-import { useEffect, useRef } from 'react';
+import { useState } from 'react';
+import { useClient } from './ClientProvider';
+import type { InitiativeTableEntry } from './InitiativeTable/InitiativeTableEntry';
 
 function PlayerViewPanel() {
-	const portFromMain = useRef<MessagePort>(null);
-	const { entities, currentTurnEntityId } = useReducedSelector(
-		(state) => state.reducedInitiative,
-	);
-	const dispatch = useReducedDispatch();
+	const [initiativeTableEntries, setInitiativeTableEntries] = useState<
+		InitiativeTableEntry[]
+	>([]);
+	const [currentTurnEntityId, _setCurrentTurnEntityId] = useState<
+		string | null
+	>(null);
 
-	useEffect(() => {
-		dispatch(setCurrentTurnEntityId(null));
-		const messageHandler = (event: MessageEvent) => {
-			if (event.data?.type === 'INIT_PORT' && event.ports?.length) {
-				const port = event.ports[0];
-				port.start();
-				port.onmessage = (event: MessageEvent) => {
-					const data = event.data;
-					if (data && data.type === 'FORWARDED_ACTION') {
-						dispatch(data.payload);
-					}
-				};
-
-				portFromMain.current = port;
-
-				port.postMessage({
-					type: 'READY',
-				});
+	useClient({
+		handleNotification: (update) => {
+			switch (update.type) {
+				case 'initiativeTableUpdate': {
+					setInitiativeTableEntries(update.data);
+					break;
+				}
+				default: {
+					// @ts-expect-error unused
+					const _exhaustiveCheck: never = update;
+				}
 			}
-		};
-		window.addEventListener('message', messageHandler);
-		return () => {
-			window.removeEventListener('message', messageHandler);
-			portFromMain.current?.close();
-			portFromMain.current = null;
-		};
-	}, [dispatch]);
+		},
+	});
+
 	return (
 		<div>
 			<InitiativeTable
-				entries={entities}
+				entries={initiativeTableEntries}
 				currentTurnEntityId={currentTurnEntityId}
-				selectedEntityId={null}
 			/>
 		</div>
 	);

@@ -95,82 +95,112 @@ function Layout() {
 export default Layout;
 
 export function AppSidebar() {
+	const mainEntries = [
+		{
+			label: 'Room',
+			children: [
+				{
+					label: 'Create/Join Room',
+					icon: <Users2 />,
+					to: '/room',
+				},
+			],
+		},
+		{
+			label: 'Initiative Tracker',
+			children: [
+				{
+					label: 'Game Master View',
+					icon: <Crown />,
+					to: '/',
+				},
+				{
+					label: 'Player View',
+					icon: <Sword />,
+					to: '/popout',
+				},
+			],
+		},
+		{
+			label: 'Character Presets',
+			children: [
+				{
+					label: 'Custom Heroes & Creatures',
+					icon: <Users2 />,
+					to: '/characters',
+				},
+				{
+					label: '5e Monsters',
+					icon: <Dog />,
+					to: '/monsters',
+				},
+			],
+		},
+	];
+
+	const footerEntries = [
+		{
+			label: 'Feedback',
+			icon: <Speech />,
+			external: true,
+			to: 'https://github.com/OldStarchy/dnd/discussions',
+		},
+		{
+			label: 'Tutorials',
+			icon: <GraduationCap />,
+			to: '/help',
+		},
+		{
+			label: 'Sandbox',
+			icon: <BugPlay />,
+			to: '/sandbox',
+		},
+	];
+
 	return (
 		<Sidebar>
 			{/* <SidebarHeader></SidebarHeader> */}
 			<SidebarContent>
-				<SidebarGroup>
-					<SidebarGroupLabel>Initiative Tracker</SidebarGroupLabel>
-					<SidebarMenu>
-						<SidebarMenuItem>
-							<SidebarMenuButton asChild>
-								<Link to="/">
-									<Crown />
-									Game Master View
-								</Link>
-							</SidebarMenuButton>
-						</SidebarMenuItem>
-						<SidebarMenuItem>
-							<SidebarMenuButton asChild>
-								<Link to="/popout">
-									<Sword />
-									Player View
-								</Link>
-							</SidebarMenuButton>
-						</SidebarMenuItem>
-					</SidebarMenu>
-				</SidebarGroup>
-				<SidebarGroup>
-					<SidebarGroupLabel>Character Presets</SidebarGroupLabel>
-					<SidebarMenu>
-						<SidebarMenuItem>
-							<SidebarMenuButton asChild>
-								<Link to="/characters">
-									<Users2 />
-									Custom Heroes & Creatures
-								</Link>
-							</SidebarMenuButton>
-						</SidebarMenuItem>
-						<SidebarMenuItem>
-							<SidebarMenuButton asChild>
-								<Link to="/monsters">
-									<Dog />
-									5e Monsters
-								</Link>
-							</SidebarMenuButton>
-						</SidebarMenuItem>
-					</SidebarMenu>
-				</SidebarGroup>
+				{mainEntries.map((group) => (
+					<SidebarGroup key={group.label}>
+						<SidebarGroupLabel>{group.label}</SidebarGroupLabel>
+						<SidebarMenu>
+							{group.children.map((item) => (
+								<SidebarMenuItem key={item.label}>
+									<SidebarMenuButton asChild>
+										<Link to={item.to}>
+											{item.icon}
+											{item.label}
+										</Link>
+									</SidebarMenuButton>
+								</SidebarMenuItem>
+							))}
+						</SidebarMenu>
+					</SidebarGroup>
+				))}
 			</SidebarContent>
 			<SidebarFooter>
 				<SidebarMenu>
-					<SidebarMenuItem>
-						<SidebarMenuButton asChild>
-							<a
-								href="https://github.com/OldStarchy/dnd/discussions"
-								target="_BLANK"
-							>
-								<Speech />
-								Feedback
-							</a>
-						</SidebarMenuButton>
-					</SidebarMenuItem>
-					<SidebarMenuItem>
-						<SidebarMenuButton asChild>
-							<Link to="/help" target="_BLANK">
-								<GraduationCap />
-								Tutorials
-							</Link>
-						</SidebarMenuButton>
-					</SidebarMenuItem>
-					<SidebarMenuItem>
-						<SidebarMenuButton asChild>
-							<Link to="/sandbox">
-								<BugPlay />
-								Sandbox
-							</Link>
-						</SidebarMenuButton>
-					</SidebarMenuItem>
+					{footerEntries.map((item) => (
+						<SidebarMenuItem key={item.label}>
+							<SidebarMenuButton asChild>
+								<a
+									href={item.to}
+									target={
+										item.external ? '_blank' : undefined
+									}
+									rel={
+										item.external
+											? 'noopener noreferrer'
+											: undefined
+									}
+								>
+									{item.icon}
+									{item.label}
+								</a>
+							</SidebarMenuButton>
+						</SidebarMenuItem>
+					))}
 					<SidebarMenuItem>
 						<DropdownMenu>
 							<DropdownMenuTrigger asChild>

@@ -8,6 +8,7 @@ function useCustomCreatureList() {
 			name: 'Sybil Snow',
 			hp: 11,
 			maxHp: 11,
+			race: 'Human',
 		},
 	]);
 }
