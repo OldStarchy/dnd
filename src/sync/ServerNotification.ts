@@ -3,7 +3,7 @@ import { z } from 'zod';
 
 export const serverNotificationSpec = z.union([
 	z.object({
-		type: z.literal('initiative-table-update'),
+		type: z.literal('initiativeTableUpdate'),
 		data: z.array(initiativeTableEntrySpec),
 	}),
 	z.object({

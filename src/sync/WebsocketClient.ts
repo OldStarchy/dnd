@@ -7,8 +7,8 @@ import type { ClientNotification } from './ClientNotification';
 import { serverMessageSpec } from './ServerMessage';
 import type { ServerResponse } from './ServerResponse';
 
-export class MessagePortClient implements Client, Disposable {
-	private port: MessagePort;
+export class WebsocketClient implements Client, Disposable {
+	private port: WebSocket;
 	private messageHandler: ServerMessageHandler;
 	private pendingResponses: Map<
 		string,
@@ -18,11 +18,13 @@ export class MessagePortClient implements Client, Disposable {
 		}
 	> = new Map();
 
-	constructor(port: MessagePort, messageHandler: ServerMessageHandler) {
+	constructor(port: WebSocket, messageHandler: ServerMessageHandler) {
 		this.port = port;
 		this.messageHandler = messageHandler;
 
 		this.port.addEventListener('message', this.#handleMessage);
+
+		this.port.addEventListener('open', () => this.trySend());
 	}
 
 	[Symbol.dispose]() {
@@ -33,7 +35,28 @@ export class MessagePortClient implements Client, Disposable {
 		this.handleMessageData(event.data);
 	};
 
+	private sendQueue: string[] = [];
+	private send(message: ClientMessage): void {
+		this.sendQueue.push(JSON.stringify(message));
+		this.trySend();
+	}
+	private trySend() {
+		if (this.port.readyState === WebSocket.OPEN) {
+			while (this.sendQueue.length > 0)
+				this.port.send(this.sendQueue.shift()!);
+		}
+	}
+
 	private async handleMessageData(data: unknown): Promise<void> {
+		if (typeof data !== 'string') {
+			console.error('Received non-string data:', data);
+			return;
+		}
+		data = JSON.parse(data);
+		if (typeof data !== 'object' || data === null) {
+			console.error('Received non-object data:', data);
+			return;
+		}
 		const parsedData = serverMessageSpec.safeParse(data);
 		if (!parsedData.success) {
 			console.error('Invalid message data received:', data);
@@ -76,10 +99,10 @@ export class MessagePortClient implements Client, Disposable {
 		});
 
 		this.pendingResponses.set(id, { resolve, reject });
-		this.port.postMessage({
+		this.send({
 			type: 'request',
 			data: { id, request },
-		} as ClientMessage);
+		});
 
 		return promise.finally(() => {
 			this.pendingResponses.delete(id);
@@ -87,9 +110,9 @@ export class MessagePortClient implements Client, Disposable {
 	}
 
 	notify(notification: ClientNotification): void {
-		this.port.postMessage({
+		this.send({
 			type: 'notification',
 			data: notification,
-		} as ClientMessage);
+		});
 	}
 }

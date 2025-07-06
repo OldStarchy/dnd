@@ -1,15 +1,22 @@
 import { z } from 'zod';
 import { serverNotificationSpec } from './ServerNotification';
+import { systemMessageSpec } from './systemMessageSpec';
 
 export const serverMessageSpec = z.union([
 	z.object({
 		type: z.literal('notification'),
-		notification: serverNotificationSpec,
+		data: serverNotificationSpec,
 	}),
 	z.object({
 		type: z.literal('response'),
-		id: z.string(),
-		response: z.any(), // TODO: Replace with a more specific schema if possible
+		data: z.object({
+			id: z.string(),
+			response: z.any(), // TODO: Replace with a more specific schema if possible
+		}),
+	}),
+	z.object({
+		type: z.literal('system-message'),
+		data: systemMessageSpec,
 	}),
 ]);
 

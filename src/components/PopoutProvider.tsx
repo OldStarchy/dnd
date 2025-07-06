@@ -72,7 +72,7 @@ export function PopoutProvider({ children }: { children: React.ReactNode }) {
 			return;
 		}
 		serverRef.current.notify({
-			type: 'initiative-table-update',
+			type: 'initiativeTableUpdate',
 			data: stripEntityListForPopout(initiativeState.entities),
 		});
 	}, [initiativeState.entities]);
@@ -100,7 +100,7 @@ export function PopoutProvider({ children }: { children: React.ReactNode }) {
 				switch (notification.type) {
 					case 'ready':
 						this.notify({
-							type: 'initiative-table-update',
+							type: 'initiativeTableUpdate',
 							data: stripEntityListForPopout(
 								initiativeStateRef.current.entities,
 							),

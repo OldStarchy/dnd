@@ -5,6 +5,12 @@ import type { ServerResponse } from './ServerResponse';
 
 export type ServerMessageHandler = {
 	handleNotification(this: Client, notification: ServerNotification): void;
+	handleSystemMessage?(
+		this: Client,
+		message:
+			| { type: 'room_created'; code: string }
+			| { type: 'token'; token: string },
+	): void;
 };
 
 export interface Client extends Disposable {

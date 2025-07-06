@@ -30,6 +30,7 @@ import EntityPropertyPanel from './entity-property-panel';
 import InitiativeTable from './InitiativeTable/InitiativeTable';
 import type { InitiativeTableEntry } from './InitiativeTable/InitiativeTableEntry';
 import { usePopout } from './PopoutProvider';
+import { useShareCode } from './ShareProvider';
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -38,8 +39,10 @@ import {
 	DropdownMenuLabel,
 	DropdownMenuSeparator,
 } from './ui/dropdown-menu';
+import { Input } from './ui/input';
 
 function GameMasterControlPanel() {
+	const shareCodes = useShareCode();
 	const [splitDirection] = useLocalStorage('layoutDirection', (v) =>
 		v !== 'vertical' ? 'horizontal' : 'vertical',
 	);
@@ -186,6 +189,11 @@ function GameMasterControlPanel() {
 					<Button onClick={() => setOpen(true)}>
 						Open in Popout
 					</Button>
+					<Input
+						type="text"
+						value={shareCodes.roomCode ?? ''}
+						readOnly
+					/>
 					<InitiativeTable
 						entries={entitiesView}
 						selectedEntityId={selectedEntityId}
@@ -414,8 +422,8 @@ function rollDice(str: string): number {
 
 	let total = 0;
 	for (let i = 0; i < count; i++) {
-		total += Math.floor(Math.random() * sides) + 1 + modifier;
+		total += Math.floor(Math.random() * sides) + 1;
 	}
-	return total;
+	return total + modifier;
 }
 export default GameMasterControlPanel;
