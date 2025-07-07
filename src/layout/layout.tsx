@@ -184,8 +184,8 @@ export function AppSidebar() {
 					{footerEntries.map((item) => (
 						<SidebarMenuItem key={item.label}>
 							<SidebarMenuButton asChild>
-								<a
-									href={item.to}
+								<Link
+									to={item.to}
 									target={
 										item.external ? '_blank' : undefined
 									}
@@ -197,7 +197,7 @@ export function AppSidebar() {
 								>
 									{item.icon}
 									{item.label}
-								</a>
+								</Link>
 							</SidebarMenuButton>
 						</SidebarMenuItem>
 					))}
@@ -214,16 +214,28 @@ export function AppSidebar() {
 								className="w-[--radix-popper-anchor-width]"
 							>
 								<DropdownMenuItem asChild>
-									<a href="#">
+									<Link
+										to="#"
+										onClick={(e) => {
+											e.preventDefault();
+											alert('Not implemented yet');
+										}}
+									>
 										<LogOut />
 										Log Out
-									</a>
+									</Link>
 								</DropdownMenuItem>
 								<DropdownMenuItem asChild>
-									<a href="#">
+									<Link
+										to="#"
+										onClick={(e) => {
+											e.preventDefault();
+											alert('Not implemented yet');
+										}}
+									>
 										<Cog />
 										My Account
-									</a>
+									</Link>
 								</DropdownMenuItem>
 							</DropdownMenuContent>
 						</DropdownMenu>

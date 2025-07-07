@@ -1,4 +1,5 @@
 import useMonsterList from '@/hooks/useMonsterList';
+import { Link } from 'react-router';
 
 function Monsters() {
 	const { monsters, loading } = useMonsterList();
@@ -8,14 +9,14 @@ function Monsters() {
 			<h1 className="text-lg font-bold">Monsters</h1>
 			<p>
 				This list of monsters is supplied by the{' '}
-				<a
+				<Link
 					className="text-blue-500 hover:underline"
-					href="https://www.dnd5eapi.co/"
+					to="https://www.dnd5eapi.co/"
 					target="_blank"
 					rel="noopener noreferrer"
 				>
 					D&D 5e API
-				</a>
+				</Link>
 			</p>
 			<hr />
 			{loading ? (
