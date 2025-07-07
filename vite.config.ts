@@ -15,5 +15,5 @@ export default defineConfig({
 		host: true, // equivalent to 0.0.0.0
 		port: 5173,
 	},
-	base: process.env.DEPLOYMENT_BASE_URL || '/',
+	base: (process.env.DEPLOYMENT_BASE_URL || '/').replace(/\/?$/, '/'),
 });
