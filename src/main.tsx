@@ -46,42 +46,47 @@ function PlayerLayout() {
 	);
 }
 
-const router = createBrowserRouter([
+const router = createBrowserRouter(
+	[
+		{
+			Component: GmLayout,
+			children: [
+				{
+					index: true,
+					Component: Home,
+				},
+				{
+					path: '/room',
+					Component: RoomView,
+				},
+				{
+					path: '/characters',
+					Component: CustomCreatureEditor,
+				},
+				{
+					path: '/monsters',
+					Component: Monsters,
+				},
+				{
+					path: '/sandbox',
+					Component: Sandbox,
+				},
+			],
+		},
+		{
+			Component: PlayerLayout,
+			children: [
+				{
+					path: '/popout',
+					Component: PopoutView,
+				},
+			],
+		},
+	],
 	{
-		Component: GmLayout,
-		children: [
-			{
-				index: true,
-				Component: Home,
-			},
-			{
-				path: '/room',
-				Component: RoomView,
-			},
-			{
-				path: '/characters',
-				Component: CustomCreatureEditor,
-			},
-			{
-				path: '/monsters',
-				Component: Monsters,
-			},
-			{
-				path: '/sandbox',
-				Component: Sandbox,
-			},
-		],
+		basename: (import.meta.env.VITE_BASE_URL || '/').replace(/\/?$/, '/'),
 	},
-	{
-		Component: PlayerLayout,
-		children: [
-			{
-				path: '/popout',
-				Component: PopoutView,
-			},
-		],
-	},
-]);
+);
 
 createRoot(document.getElementById('root')!).render(
 	<StrictMode>
