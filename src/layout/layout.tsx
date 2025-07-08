@@ -97,6 +97,7 @@ export default Layout;
 
 export function AppSidebar() {
 	const [settingsOpen, setSettingsOpen] = useState(false);
+	const [userDropdownOpen, setUserDropdownOpen] = useState(false);
 
 	const mainEntries = [
 		{
@@ -205,7 +206,10 @@ export function AppSidebar() {
 						</SidebarMenuItem>
 					))}
 					<SidebarMenuItem>
-						<DropdownMenu>
+						<DropdownMenu
+							open={userDropdownOpen}
+							onOpenChange={setUserDropdownOpen}
+						>
 							<DropdownMenuTrigger asChild>
 								<SidebarMenuButton>
 									<User2 /> Username
@@ -233,6 +237,7 @@ export function AppSidebar() {
 										to="#"
 										onClick={(e) => {
 											e.preventDefault();
+											setUserDropdownOpen(false);
 											setSettingsOpen(true);
 										}}
 									>
