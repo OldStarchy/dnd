@@ -14,17 +14,12 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { Provider } from 'react-redux';
 import { createBrowserRouter, Outlet, RouterProvider } from 'react-router';
-import { BackendApiProvider } from './hooks/useBackendApi';
-import { BackendApi } from './sync/BackendApi';
+import { ConfigurableBackendApiProvider } from './hooks/useBackendApi';
 import RoomView from './views/Room';
 
-// const backendApi = new BackendApi('http://127.0.0.1:3000');
-const backendApi = new BackendApi(window.location.origin);
-console.log('Backend API initialized with host:', backendApi.httpHost);
-console.log('Backend API initialized with ws:', backendApi.wsHost);
 function GmLayout() {
 	return (
-		<BackendApiProvider value={backendApi}>
+		<ConfigurableBackendApiProvider>
 			<Provider store={primaryStore}>
 				<ShareProvider>
 					<PopoutProvider>
@@ -32,17 +27,17 @@ function GmLayout() {
 					</PopoutProvider>
 				</ShareProvider>
 			</Provider>
-		</BackendApiProvider>
+		</ConfigurableBackendApiProvider>
 	);
 }
 
 function PlayerLayout() {
 	return (
-		<BackendApiProvider value={backendApi}>
+		<ConfigurableBackendApiProvider>
 			<WebsocketClientProvider>
 				<Outlet />
 			</WebsocketClientProvider>
-		</BackendApiProvider>
+		</ConfigurableBackendApiProvider>
 	);
 }
 
