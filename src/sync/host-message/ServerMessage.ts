@@ -1,6 +1,6 @@
 import { z } from 'zod';
+import { systemMessageSpec } from '../systemMessageSpec';
 import { serverNotificationSpec } from './ServerNotification';
-import { systemMessageSpec } from './systemMessageSpec';
 
 export const serverMessageSpec = z.union([
 	z.object({

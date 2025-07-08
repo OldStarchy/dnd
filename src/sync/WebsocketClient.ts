@@ -1,11 +1,11 @@
 import type { Client, ServerMessageHandler } from './Client';
-import type { ClientRequest } from './ClientRequest';
-import type { ServerNotification } from './ServerNotification';
+import type { ServerNotification } from './host-message/ServerNotification';
+import type { ClientRequest } from './member-message/ClientRequest';
 
-import type { ClientMessage } from './ClientMessage';
-import type { ClientNotification } from './ClientNotification';
-import { serverMessageSpec } from './ServerMessage';
-import type { ServerResponse } from './ServerResponse';
+import { serverMessageSpec } from './host-message/ServerMessage';
+import type { ServerResponse } from './host-message/ServerResponse';
+import type { ClientMessage } from './member-message/ClientMessage';
+import type { ClientNotification } from './member-message/ClientNotification';
 
 export class WebsocketClient implements Client, Disposable {
 	private port: WebSocket;

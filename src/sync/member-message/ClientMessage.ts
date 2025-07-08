@@ -1,6 +1,10 @@
 import { z } from 'zod';
+import { systemMessageSpec } from '../systemMessageSpec';
 import { clientNotificationSpec } from './ClientNotification';
-import { systemMessageSpec } from './systemMessageSpec';
+export const clientRequestSpec = z.object({
+	id: z.string(),
+	request: z.unknown().refine((x) => x !== undefined), // TODO: Replace with a more specific schema if possible
+});
 
 export const clientMessageSpec = z.union([
 	z.object({
@@ -9,10 +13,7 @@ export const clientMessageSpec = z.union([
 	}),
 	z.object({
 		type: z.literal('request'),
-		data: z.object({
-			id: z.string(),
-			request: z.unknown().refine((x) => x !== undefined), // TODO: Replace with a more specific schema if possible
-		}),
+		data: clientRequestSpec,
 	}),
 	z.object({
 		type: z.literal('system-message'),

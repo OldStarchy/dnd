@@ -1,7 +1,7 @@
-import type { ClientNotification } from './ClientNotification';
-import type { ClientRequest } from './ClientRequest';
-import type { ServerNotification } from './ServerNotification';
-import type { ServerResponse } from './ServerResponse';
+import type { ServerNotification } from './host-message/ServerNotification';
+import type { ServerResponse } from './host-message/ServerResponse';
+import type { ClientNotification } from './member-message/ClientNotification';
+import type { ClientRequest } from './member-message/ClientRequest';
 import type { SystemMessage } from './systemMessageSpec';
 
 export type ClientMessageHandler = {

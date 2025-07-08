@@ -1,9 +1,9 @@
-import { clientMessageSpec } from './ClientMessage';
-import type { ClientNotification } from './ClientNotification';
-import type { ClientRequest } from './ClientRequest';
+import type { ServerMessage } from './host-message/ServerMessage';
+import type { ServerNotification } from './host-message/ServerNotification';
+import { clientMessageSpec } from './member-message/ClientMessage';
+import type { ClientNotification } from './member-message/ClientNotification';
+import type { ClientRequest } from './member-message/ClientRequest';
 import type { ClientMessageHandler, Server } from './Server';
-import type { ServerMessage } from './ServerMessage';
-import type { ServerNotification } from './ServerNotification';
 
 export class WebsocketServer implements Server, Disposable {
 	private port: WebSocket;

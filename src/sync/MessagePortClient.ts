@@ -1,11 +1,62 @@
 import type { Client, ServerMessageHandler } from './Client';
-import type { ClientRequest } from './ClientRequest';
-import type { ServerNotification } from './ServerNotification';
+import {
+	serverNotificationSpec,
+	type ServerNotification,
+} from './host-message/ServerNotification';
+import type { ClientRequest } from './member-message/ClientRequest';
 
-import type { ClientMessage } from './ClientMessage';
-import type { ClientNotification } from './ClientNotification';
-import { serverMessageSpec } from './ServerMessage';
-import type { ServerResponse } from './ServerResponse';
+import { serverMessageSpec } from './host-message/ServerMessage';
+import {
+	serverResponseSpec,
+	type ServerResponse,
+} from './host-message/ServerResponse';
+import {
+	clientRequestSpec,
+	type ClientMessage,
+} from './member-message/ClientMessage';
+import { type ClientNotification } from './member-message/ClientNotification';
+import { RemoteApi, type RemoteApiHandler } from './RemoteApi';
+import type { Transport, TransportHandler } from './Transport';
+import { PortTransport } from './transports/PortTransport';
+
+class Client2 extends RemoteApi<
+	ClientRequest,
+	ServerResponse,
+	ClientNotification,
+	ServerNotification
+> {
+	constructor(
+		transport: (handler: TransportHandler<string>) => Transport<string>,
+		handler: RemoteApiHandler<
+			Client2,
+			ClientRequest,
+			ServerResponse,
+			ServerNotification
+		>,
+	) {
+		super(
+			clientRequestSpec,
+			serverResponseSpec,
+			serverNotificationSpec,
+			transport,
+			handler,
+		);
+	}
+}
+
+const port = new MessageChannel().port1;
+new Client2((h) => new PortTransport(port, h), {
+	handleNotification(notification) {
+		console.log('Received notification:', notification);
+	},
+	handleRequest(request) {
+		console.log('Received request:', request);
+		return Promise.resolve({} as ServerResponse); // Replace with actual response handling logic
+	},
+	handleClose() {
+		console.log('Connection closed');
+	},
+});
 
 export class MessagePortClient implements Client, Disposable {
 	private port: MessagePort;
