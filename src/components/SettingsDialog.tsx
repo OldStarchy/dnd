@@ -41,7 +41,8 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
 				<DialogHeader>
 					<DialogTitle>Settings</DialogTitle>
 					<DialogDescription>
-						Configure your server connection settings. Leave blank to use the current page's server.
+						Configure your server connection settings. Leave blank
+						to use the current page's server.
 					</DialogDescription>
 				</DialogHeader>
 				<div className="grid gap-4 py-4">
@@ -55,10 +56,13 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
 								type="url"
 								placeholder="https://your-server.com"
 								value={tempServerUrl}
-								onChange={(e) => setTempServerUrl(e.target.value)}
+								onChange={(e) =>
+									setTempServerUrl(e.target.value)
+								}
 							/>
 							<p className="text-xs text-muted-foreground">
-								Enter the full URL of your D&D server (e.g. https://your-server.com)
+								Enter the full URL of your D&D server (e.g.
+								https://your-server.com)
 							</p>
 						</div>
 					</div>
@@ -70,9 +74,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
 					<Button variant="outline" onClick={handleCancel}>
 						Cancel
 					</Button>
-					<Button onClick={handleSave}>
-						Save
-					</Button>
+					<Button onClick={handleSave}>Save</Button>
 				</DialogFooter>
 			</DialogContent>
 		</Dialog>

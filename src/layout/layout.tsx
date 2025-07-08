@@ -245,9 +245,9 @@ export function AppSidebar() {
 					</SidebarMenuItem>
 				</SidebarMenu>
 			</SidebarFooter>
-			<SettingsDialog 
-				open={settingsOpen} 
-				onOpenChange={setSettingsOpen} 
+			<SettingsDialog
+				open={settingsOpen}
+				onOpenChange={setSettingsOpen}
 			/>
 		</Sidebar>
 	);

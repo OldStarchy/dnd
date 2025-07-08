@@ -17,7 +17,7 @@ export default defineConfig({
 					name: 'unit',
 					environment: 'node',
 					include: ['src/**/*.test.ts'],
-					exclude: ['src/generated/**'],
+					exclude: ['src/generated/**', '**/use[A-Z]*.ts'],
 				},
 				resolve: {
 					alias: aliasConfig,
@@ -28,7 +28,7 @@ export default defineConfig({
 				test: {
 					name: 'browser',
 					environment: 'browser',
-					include: ['src/**/*.test.tsx'],
+					include: ['src/**/*.test.tsx', 'src/**/use[A-Z]*.test.ts'],
 					exclude: ['src/generated/**'],
 					css: true,
 					browser: {
