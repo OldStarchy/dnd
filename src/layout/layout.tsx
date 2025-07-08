@@ -221,29 +221,31 @@ export function AppSidebar() {
 								className="w-[--radix-popper-anchor-width]"
 							>
 								<DropdownMenuItem asChild>
-									<Link
-										to="#"
+									<Button
 										onClick={(e) => {
 											e.preventDefault();
 											alert('Not implemented yet');
 										}}
+										variant="ghost"
+										className="w-full justify-start"
 									>
 										<LogOut />
 										Log Out
-									</Link>
+									</Button>
 								</DropdownMenuItem>
 								<DropdownMenuItem asChild>
-									<Link
-										to="#"
+									<Button
 										onClick={(e) => {
 											e.preventDefault();
 											setUserDropdownOpen(false);
 											setSettingsOpen(true);
 										}}
+										variant="ghost"
+										className="w-full  justify-start"
 									>
 										<Cog />
 										Settings
-									</Link>
+									</Button>
 								</DropdownMenuItem>
 							</DropdownMenuContent>
 						</DropdownMenu>

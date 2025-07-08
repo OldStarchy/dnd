@@ -10,7 +10,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useServerConfig } from '@/hooks/useServerConfig';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 interface SettingsDialogProps {
 	open: boolean;
@@ -20,6 +20,12 @@ interface SettingsDialogProps {
 export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
 	const [serverUrl, setServerUrl] = useServerConfig();
 	const [tempServerUrl, setTempServerUrl] = useState(serverUrl);
+
+	useEffect(() => {
+		if (!open) {
+			setTempServerUrl(serverUrl);
+		}
+	}, [open, serverUrl]);
 
 	const handleSave = () => {
 		setServerUrl(tempServerUrl);
