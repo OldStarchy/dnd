@@ -1,5 +1,6 @@
+import { useServerConfig } from '@/hooks/useServerConfig';
 import { BackendApi } from '@/sync/BackendApi';
-import { createContext, useContext } from 'react';
+import { createContext, useContext, useMemo, type ReactNode } from 'react';
 
 const BackendApiContext = createContext<BackendApi | null>(null);
 
@@ -11,6 +12,27 @@ export function useBackendApi(): BackendApi {
 		);
 	}
 	return api;
+}
+
+interface ConfigurableBackendApiProviderProps {
+	children: ReactNode;
+}
+
+export function ConfigurableBackendApiProvider({
+	children,
+}: ConfigurableBackendApiProviderProps) {
+	const [serverUrl] = useServerConfig();
+
+	const api = useMemo(() => {
+		const host = serverUrl || window.location.origin;
+		return new BackendApi(host);
+	}, [serverUrl]);
+
+	return (
+		<BackendApiContext.Provider value={api}>
+			{children}
+		</BackendApiContext.Provider>
+	);
 }
 
 export const BackendApiProvider = BackendApiContext.Provider;

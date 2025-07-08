@@ -1,4 +1,5 @@
 import { ModeToggle } from '@/components/mode-toggle';
+import { SettingsDialog } from '@/components/SettingsDialog';
 import { Button } from '@/components/ui/button';
 import {
 	DropdownMenu,
@@ -35,7 +36,7 @@ import {
 	User2,
 	Users2,
 } from 'lucide-react';
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import { Link, Outlet } from 'react-router';
 
 function Layout() {
@@ -95,6 +96,9 @@ function Layout() {
 export default Layout;
 
 export function AppSidebar() {
+	const [settingsOpen, setSettingsOpen] = useState(false);
+	const [userDropdownOpen, setUserDropdownOpen] = useState(false);
+
 	const mainEntries = [
 		{
 			label: 'Room',
@@ -202,7 +206,10 @@ export function AppSidebar() {
 						</SidebarMenuItem>
 					))}
 					<SidebarMenuItem>
-						<DropdownMenu>
+						<DropdownMenu
+							open={userDropdownOpen}
+							onOpenChange={setUserDropdownOpen}
+						>
 							<DropdownMenuTrigger asChild>
 								<SidebarMenuButton>
 									<User2 /> Username
@@ -214,34 +221,41 @@ export function AppSidebar() {
 								className="w-[--radix-popper-anchor-width]"
 							>
 								<DropdownMenuItem asChild>
-									<Link
-										to="#"
+									<Button
 										onClick={(e) => {
 											e.preventDefault();
 											alert('Not implemented yet');
 										}}
+										variant="ghost"
+										className="w-full justify-start"
 									>
 										<LogOut />
 										Log Out
-									</Link>
+									</Button>
 								</DropdownMenuItem>
 								<DropdownMenuItem asChild>
-									<Link
-										to="#"
+									<Button
 										onClick={(e) => {
 											e.preventDefault();
-											alert('Not implemented yet');
+											setUserDropdownOpen(false);
+											setSettingsOpen(true);
 										}}
+										variant="ghost"
+										className="w-full  justify-start"
 									>
 										<Cog />
-										My Account
-									</Link>
+										Settings
+									</Button>
 								</DropdownMenuItem>
 							</DropdownMenuContent>
 						</DropdownMenu>
 					</SidebarMenuItem>
 				</SidebarMenu>
 			</SidebarFooter>
+			<SettingsDialog
+				open={settingsOpen}
+				onOpenChange={setSettingsOpen}
+			/>
 		</Sidebar>
 	);
 }
