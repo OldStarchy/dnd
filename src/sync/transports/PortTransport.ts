@@ -14,7 +14,11 @@ export class PortTransport implements Transport<string> {
 		this.closeHandler = handler.handleClose.bind(this);
 
 		this.port.start();
-		handler.handleOpen.call(this);
+		try {
+			handler.handleOpen.call(this);
+		} catch (error) {
+			console.error('Error in handleOpen:', error);
+		}
 	}
 
 	#handleMessage = (event: MessageEvent): void => {
@@ -22,12 +26,16 @@ export class PortTransport implements Transport<string> {
 			console.warn('Received non-string message:', event.data);
 			return;
 		}
-		this.messageHandler(event.data);
+		try {
+			this.messageHandler(event.data);
+		} catch (error) {
+			console.error('Error in handleMessage:', error);
+		}
 	};
 
 	/**
 	 * MessagePort doesn't have a reliable way to check if it's open,
-	 * so we assume it's always open once created.
+	 * so we assume it's open once created until we call close.
 	 */
 	isOpen(): boolean {
 		return this.open;
@@ -42,13 +50,26 @@ export class PortTransport implements Transport<string> {
 	}
 
 	close(): void {
-		this.open = false;
-		this.port.close();
-		this.port.removeEventListener('message', this.#handleMessage);
-		this.port = null as unknown as MessagePort;
+		if (!this.open) {
+			return; // Already closed
+		}
 
-		this.closeHandler?.call(this);
-		this.closeHandler = undefined;
+		this.open = false;
+
+		if (this.port) {
+			this.port.removeEventListener('message', this.#handleMessage);
+			this.port.close();
+			this.port = null as unknown as MessagePort;
+		}
+
+		if (this.closeHandler) {
+			try {
+				this.closeHandler.call(this);
+			} catch (error) {
+				console.error('Error in handleClose:', error);
+			}
+			this.closeHandler = undefined;
+		}
 	}
 
 	[Symbol.dispose](): void {
