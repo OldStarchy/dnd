@@ -65,13 +65,23 @@ export class RemoteApi<
 		const self = this;
 		this.transport = transport({
 			handleMessage(data: string): void {
-				data = JSON.parse(data);
-				const parsedData = incomingMessageSpec.safeParse(data);
+				let parsedJson: unknown;
+				try {
+					parsedJson = JSON.parse(data);
+				} catch (error) {
+					console.error(
+						'Failed to parse message as JSON:',
+						data,
+						error,
+					);
+					return;
+				}
+				const parsedData = incomingMessageSpec.safeParse(parsedJson);
 
 				if (!parsedData.success) {
 					console.error(
 						'Invalid message data received:',
-						data,
+						parsedJson,
 						parsedData.error,
 					);
 					return;
@@ -94,16 +104,28 @@ export class RemoteApi<
 							data: TRequest;
 						};
 						(async () => {
-							const response = await handler.handleRequest.call(
-								self,
-								request as TRequest,
-							);
+							try {
+								const response =
+									await handler.handleRequest.call(
+										self,
+										request as TRequest,
+									);
 
-							self.send({
-								type: 'response',
-								id,
-								data: response as TResult,
-							});
+								self.send({
+									type: 'response',
+									id,
+									data: response as TResult,
+								});
+							} catch (error) {
+								self.send({
+									type: 'response-error',
+									id,
+									error:
+										error instanceof Error
+											? error.message
+											: String(error),
+								});
+							}
 						})();
 						return;
 					}
@@ -153,7 +175,7 @@ export class RemoteApi<
 				handler.handleClose.call(self);
 			},
 			handleOpen(): void {
-				// No-op, can be used for initialization if needed
+				self.flushSendQueue();
 			},
 		});
 	}
@@ -167,7 +189,8 @@ export class RemoteApi<
 		message:
 			| { type: 'notification'; data: TNotificationSend }
 			| { type: 'request'; id: string; data: TRequest }
-			| { type: 'response'; id: string; data: TResult },
+			| { type: 'response'; id: string; data: TResult }
+			| { type: 'response-error'; id: string; error: string },
 	): Promise<void> {
 		const def = deferred<void>();
 		this.sendQueue.push([JSON.stringify(message), def]);
