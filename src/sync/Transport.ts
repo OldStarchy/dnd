@@ -13,3 +13,7 @@ export interface Transport<TData = string> {
 	isOpen(): boolean;
 	[Symbol.dispose](): void;
 }
+
+export type TransportFactory<TData = string> = (
+	handler: TransportHandler<TData>,
+) => Transport<TData>;

@@ -1,7 +1,7 @@
 import type { Deferred } from '@/deferred';
 import deferred from '@/deferred';
 import z from 'zod';
-import type { Transport, TransportHandler } from './Transport';
+import type { Transport, TransportFactory } from './Transport';
 
 export interface RemoteApiHandler<
 	TRemoteApi,
@@ -14,6 +14,9 @@ export interface RemoteApiHandler<
 	handleClose(): void;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type ZodSchema<T> = z.ZodType<any, any, T> | z.ZodEffects<any, T, any>;
+
 export class RemoteApi<
 	TRequest,
 	TResult,
@@ -24,10 +27,10 @@ export class RemoteApi<
 	private requestCallbacks: Map<string, Deferred<TResult>> = new Map();
 
 	constructor(
-		requestSchema: z.Schema<TRequest>,
-		responseSchema: z.Schema<TResult>,
-		notificationReceiveSchema: z.Schema<TNotificationReceive>,
-		transport: (handler: TransportHandler<string>) => Transport<string>,
+		requestSchema: ZodSchema<TRequest>,
+		responseSchema: ZodSchema<TResult>,
+		notificationReceiveSchema: ZodSchema<TNotificationReceive>,
+		transportFactory: TransportFactory<string>,
 		handler: RemoteApiHandler<
 			RemoteApi<
 				TRequest,
@@ -63,7 +66,7 @@ export class RemoteApi<
 		]);
 		// eslint-disable-next-line @typescript-eslint/no-this-alias
 		const self = this;
-		this.transport = transport({
+		this.transport = transportFactory({
 			handleMessage(data: string): void {
 				let parsedJson: unknown;
 				try {

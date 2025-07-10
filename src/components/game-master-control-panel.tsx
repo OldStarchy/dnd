@@ -10,6 +10,7 @@ import { Dnd5eApi } from '@/generated/dnd5eapi/Dnd5eApi';
 import useCustomCreatureList from '@/hooks/useCustomCreatureList';
 import useLocalStorage from '@/hooks/useLocalStorage';
 import useMonsterList from '@/hooks/useMonsterList';
+import { useShareCode } from '@/hooks/useShareCode';
 import { usePrimaryDispatch, usePrimarySelector } from '@/store/primary-store';
 import {
 	removeEntity,
@@ -30,7 +31,6 @@ import EntityPropertyPanel from './entity-property-panel';
 import InitiativeTable from './InitiativeTable/InitiativeTable';
 import type { InitiativeTableEntry } from './InitiativeTable/InitiativeTableEntry';
 import { usePopout } from './PopoutProvider';
-import { useShareCode } from './ShareProvider';
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -314,8 +314,7 @@ function GameMasterControlPanel() {
 															const newEntity: Entity =
 																{
 																	id: crypto.randomUUID(),
-																	visible:
-																		false,
+																	visible: false,
 																	initiative: 0,
 
 																	obfuscateHealth:

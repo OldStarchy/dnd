@@ -4,8 +4,9 @@ import {
 	HealthObfuscation,
 	type Entity,
 } from '@/store/types/Entity';
-import { MessagePortServer } from '@/sync/MessagePortServer';
-import type { Server } from '@/sync/Server';
+import { RemoteServer } from '@/sync/RemoteServer';
+import { PortTransport } from '@/sync/transports/PortTransport';
+import { DND_CONNECT, DND_PLEASE_RECONNECT } from '@/sync/windowMessage';
 import {
 	createContext,
 	useCallback,
@@ -60,7 +61,7 @@ function stripEntityListForPopout(entities: Entity[]): InitiativeTableEntry[] {
 }
 
 export function PopoutProvider({ children }: { children: React.ReactNode }) {
-	const serverRef = useRef<Server | null>(null);
+	const serverRef = useRef<RemoteServer | null>(null);
 	const windowRef = useRef<Window | null>(null);
 
 	const initiativeState = usePrimarySelector((state) => state.initiative);
@@ -84,43 +85,51 @@ export function PopoutProvider({ children }: { children: React.ReactNode }) {
 		const { port1, port2 } = channel;
 
 		win.postMessage(
-			{ type: 'INIT_PORT', port: port2 },
+			{ type: DND_CONNECT, port: port2 },
 			{ transfer: [port2] },
 		);
 
 		port1.start();
-		serverRef.current = new MessagePortServer(port1, {
-			async handleRequest(request) {
-				// Handle requests from the popout window here
-				console.log('Received request:', request);
-				// NYI
-				return {};
-			},
-			handleNotification(notification) {
-				switch (notification.type) {
-					case 'ready':
-						this.notify({
-							type: 'initiativeTableUpdate',
-							data: stripEntityListForPopout(
-								initiativeStateRef.current.entities,
-							),
-						});
-						break;
-					case 'heartbeat':
-						this.notify({ type: 'heartbeat' });
-						break;
-					default: {
-						// @ts-expect-error unused
-						const _exhaustiveCheck: never = notification;
+		const server = new RemoteServer(
+			(handler) => new PortTransport(port1, handler),
+			{
+				async handleRequest(request) {
+					// Handle requests from the popout window here
+					console.log('Received request:', request);
+					// NYI
+					return {};
+				},
+				handleNotification(notification) {
+					switch (notification.type) {
+						case 'ready':
+							server.notify({
+								type: 'initiativeTableUpdate',
+								data: stripEntityListForPopout(
+									initiativeStateRef.current.entities,
+								),
+							});
+							break;
+						case 'heartbeat':
+							server.notify({ type: 'heartbeat' });
+							break;
+						default: {
+							// @ts-expect-error unused
+							const _exhaustiveCheck: never = notification;
+						}
 					}
-				}
+				},
+				handleClose() {
+					// Handle connection close
+				},
 			},
-		});
+		);
+
+		serverRef.current = server;
 	}, []);
 
 	useEffect(() => {
 		window.addEventListener('message', (event) => {
-			if (event.data === 'POPUP_READY') {
+			if (event.data === DND_PLEASE_RECONNECT) {
 				windowRef.current = event.source as Window;
 				prepareServer(windowRef.current);
 			}
@@ -133,12 +142,14 @@ export function PopoutProvider({ children }: { children: React.ReactNode }) {
 				if (windowRef.current && !windowRef.current.closed) {
 					windowRef.current.focus();
 
-					if (windowRef.current.location.pathname !== '/popout') {
-						windowRef.current.location.href = '/popout';
+					if (
+						windowRef.current.location.pathname !== '/popout?local'
+					) {
+						windowRef.current.location.href = '/popout?local';
 					}
 				} else {
 					const win = window.open(
-						'/popout',
+						'/popout?local',
 						'Popout',
 						'width=800,height=600,scrollbars=yes,resizable=yes',
 					);
