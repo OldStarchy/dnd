@@ -1,9 +1,24 @@
 import { z } from 'zod';
-import { systemMessageSpec } from './systemMessageSpec';
 
-const systemResponseSpec = z.object({
-	type: z.literal('systemMessage'),
-	data: systemMessageSpec,
+const roomCreated = z.object({
+	type: z.literal('roomCreated'),
+	token: z.string(),
+	roomCode: z.string(),
+});
+const roomFound = z.object({
+	type: z.literal('roomFound'),
+	roomCode: z.string(),
+});
+const roomJoined = z.object({
+	type: z.literal('roomJoined'),
+	token: z.string(),
+});
+const userJoined = z.object({
+	type: z.literal('userJoined'),
+	token: z.string(),
+});
+const connectionReplaced = z.object({
+	type: z.literal('connectionReplaced'),
 });
 
 export class BackendApi {
@@ -28,15 +43,12 @@ export class BackendApi {
 		}
 
 		const data = await response.json();
-		const parsed = systemResponseSpec.safeParse(data);
+		const parsed = roomCreated.safeParse(data);
 		if (!parsed.success) {
 			throw new Error(`Invalid response format: ${parsed.error.message}`);
 		}
 
-		const message = parsed.data.data;
-		if (message.type !== 'roomCreated') {
-			throw new Error(`Unexpected message type: ${message.type}`);
-		}
+		const message = parsed.data;
 		return {
 			token: message.token,
 			roomCode: message.roomCode,
@@ -69,15 +81,12 @@ export class BackendApi {
 		}
 
 		const data = await response.json();
-		const parsed = systemResponseSpec.safeParse(data);
+		const parsed = roomFound.safeParse(data);
 		if (!parsed.success) {
 			throw new Error(`Invalid response format: ${parsed.error.message}`);
 		}
 
-		const message = parsed.data.data;
-		if (message.type !== 'roomFound') {
-			throw new Error(`Unexpected message type: ${message.type}`);
-		}
+		const message = parsed.data;
 		return { roomCode: message.roomCode };
 	}
 
@@ -94,15 +103,12 @@ export class BackendApi {
 		}
 
 		const data = await response.json();
-		const parsed = systemResponseSpec.safeParse(data);
+		const parsed = roomJoined.safeParse(data);
 		if (!parsed.success) {
 			throw new Error(`Invalid response format: ${parsed.error.message}`);
 		}
 
-		const message = parsed.data.data;
-		if (message.type !== 'roomJoined') {
-			throw new Error(`Unexpected message type: ${message.type}`);
-		}
+		const message = parsed.data;
 		return { token: message.token };
 	}
 
