@@ -12,16 +12,14 @@ const roomJoined = z.object({
 });
 
 export class BackendApi {
-	readonly httpHost: string;
-	readonly wsHost: string;
+	readonly host: string;
 
 	constructor(host: string) {
-		this.httpHost = host;
-		this.wsHost = host.replace(/^http/, 'ws');
+		this.host = host;
 	}
 
 	async createRoom(): Promise<{ token: string; roomCode: string }> {
-		const response = await fetch(`${this.httpHost}/room`, {
+		const response = await fetch(`${this.host}/room`, {
 			method: 'POST',
 			headers: {
 				'Content-Type': 'application/json',
@@ -47,7 +45,7 @@ export class BackendApi {
 	}
 
 	async deleteRoom(roomCode: string): Promise<void> {
-		const response = await fetch(`${this.httpHost}/room/${roomCode}`, {
+		const response = await fetch(`${this.host}/room/${roomCode}`, {
 			method: 'DELETE',
 			headers: {
 				'Content-Type': 'application/json',
@@ -60,7 +58,7 @@ export class BackendApi {
 	}
 
 	async getRoom(token: string): Promise<{ roomCode: string }> {
-		const response = await fetch(`${this.httpHost}/room`, {
+		const response = await fetch(`${this.host}/room`, {
 			method: 'GET',
 			headers: {
 				'Content-Type': 'application/json',
@@ -83,7 +81,7 @@ export class BackendApi {
 	}
 
 	async joinRoom(roomCode: string): Promise<{ token: string }> {
-		const response = await fetch(`${this.httpHost}/room/${roomCode}/join`, {
+		const response = await fetch(`${this.host}/room/${roomCode}/join`, {
 			method: 'GET',
 			headers: {
 				'Content-Type': 'application/json',
@@ -105,7 +103,9 @@ export class BackendApi {
 	}
 
 	connectToRoom(token: string): WebSocket {
-		const ws = new WebSocket(`${this.wsHost}/ws/${token}`);
+		const ws = new WebSocket(
+			`${this.host.replace(/^http/, 'ws')}/ws/${token}`,
+		);
 
 		return ws;
 	}
