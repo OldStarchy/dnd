@@ -82,10 +82,11 @@ export class BackendApi {
 
 	async joinRoom(roomCode: string): Promise<{ token: string }> {
 		const response = await fetch(`${this.host}/room/${roomCode}/join`, {
-			method: 'GET',
+			method: 'POST',
 			headers: {
 				'Content-Type': 'application/json',
 			},
+			body: JSON.stringify({}),
 		});
 
 		if (!response.ok) {
