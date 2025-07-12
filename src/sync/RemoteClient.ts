@@ -1,12 +1,12 @@
 import {
 	hostNotificationSpec,
-	type ServerNotification,
+	type HostNotification,
 } from './host-message/HostNotification';
 import {
 	hostResponseSpec,
 	type HostResponse,
 } from './host-message/HostResponse';
-import type { MemberNotification } from './member-message/MemberNotification';
+import { type MemberNotification } from './member-message/MemberNotification';
 import {
 	memberRequestSchema,
 	type MemberRequest,
@@ -15,7 +15,7 @@ import { RemoteApi } from './RemoteApi';
 import type { TransportFactory } from './Transport';
 
 export interface ClientHandler {
-	handleNotification(notification: ServerNotification): void;
+	handleNotification(notification: HostNotification): void;
 	handleClose(): void;
 }
 
@@ -23,7 +23,7 @@ export class RemoteClient extends RemoteApi<
 	MemberRequest,
 	HostResponse,
 	MemberNotification,
-	ServerNotification
+	HostNotification
 > {
 	constructor(
 		transportFactory: TransportFactory<string>,
@@ -35,7 +35,7 @@ export class RemoteClient extends RemoteApi<
 			hostNotificationSpec,
 			transportFactory,
 			{
-				handleNotification(notification: ServerNotification): void {
+				handleNotification(notification: HostNotification): void {
 					handler.handleNotification(notification);
 				},
 				handleRequest(): Promise<HostResponse> {

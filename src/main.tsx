@@ -18,6 +18,7 @@ import {
 	type RouteObject,
 } from 'react-router';
 import { ConfigurableBackendApiProvider } from './components/ConfigurableBackendApiProvider';
+import RoomView from './views/Room';
 function GmLayout() {
 	return (
 		<Provider store={primaryStore}>
@@ -39,6 +40,10 @@ const routes: RouteObject[] = [
 				Component: Home,
 			},
 			{
+				path: '/room',
+				Component: RoomView,
+			},
+			{
 				path: '/characters',
 				Component: CustomCreatureEditor,
 			},
@@ -53,7 +58,7 @@ const routes: RouteObject[] = [
 		],
 	},
 	{
-		path: '/popout/:token',
+		path: '/popout/',
 		Component: PopoutView,
 	},
 ];

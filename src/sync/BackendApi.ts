@@ -1,24 +1,14 @@
 import { z } from 'zod';
 
 const roomCreated = z.object({
-	type: z.literal('roomCreated'),
 	token: z.string(),
 	roomCode: z.string(),
 });
 const roomFound = z.object({
-	type: z.literal('roomFound'),
 	roomCode: z.string(),
 });
 const roomJoined = z.object({
-	type: z.literal('roomJoined'),
 	token: z.string(),
-});
-const userJoined = z.object({
-	type: z.literal('userJoined'),
-	token: z.string(),
-});
-const connectionReplaced = z.object({
-	type: z.literal('connectionReplaced'),
 });
 
 export class BackendApi {
@@ -31,11 +21,12 @@ export class BackendApi {
 	}
 
 	async createRoom(): Promise<{ token: string; roomCode: string }> {
-		const response = await fetch(`${this.httpHost}/new`, {
-			method: 'GET',
+		const response = await fetch(`${this.httpHost}/room`, {
+			method: 'POST',
 			headers: {
 				'Content-Type': 'application/json',
 			},
+			body: JSON.stringify({}),
 		});
 
 		if (!response.ok) {
@@ -56,7 +47,7 @@ export class BackendApi {
 	}
 
 	async deleteRoom(roomCode: string): Promise<void> {
-		const response = await fetch(`${this.httpHost}/delete/${roomCode}`, {
+		const response = await fetch(`${this.httpHost}/room/${roomCode}`, {
 			method: 'DELETE',
 			headers: {
 				'Content-Type': 'application/json',
@@ -68,11 +59,12 @@ export class BackendApi {
 		}
 	}
 
-	async checkToken(token: string): Promise<{ roomCode: string }> {
-		const response = await fetch(`${this.httpHost}/check/${token}`, {
+	async getRoom(token: string): Promise<{ roomCode: string }> {
+		const response = await fetch(`${this.httpHost}/room`, {
 			method: 'GET',
 			headers: {
 				'Content-Type': 'application/json',
+				Authorization: `Bearer ${token}`,
 			},
 		});
 
@@ -91,7 +83,7 @@ export class BackendApi {
 	}
 
 	async joinRoom(roomCode: string): Promise<{ token: string }> {
-		const response = await fetch(`${this.httpHost}/join/${roomCode}`, {
+		const response = await fetch(`${this.httpHost}/room/${roomCode}/join`, {
 			method: 'GET',
 			headers: {
 				'Content-Type': 'application/json',
@@ -116,11 +108,5 @@ export class BackendApi {
 		const ws = new WebSocket(`${this.wsHost}/ws/${token}`);
 
 		return ws;
-		// return new Promise((resolve, reject) => {
-		// 	ws.onopen = () => resolve(ws);
-		// 	ws.onerror = (error) =>
-		// 		reject(new Error(`WebSocket error: ${error}`));
-		// 	ws.onclose = () => reject(new Error('WebSocket connection closed'));
-		// });
 	}
 }

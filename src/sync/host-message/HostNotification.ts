@@ -32,4 +32,4 @@ export const hostNotificationSpec = z.union([
 	}),
 ]);
 
-export type ServerNotification = z.infer<typeof hostNotificationSpec>;
+export type HostNotification = z.infer<typeof hostNotificationSpec>;

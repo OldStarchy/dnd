@@ -1,9 +1,9 @@
 import { ClientContext } from '@/context/ClientContext';
 import { useBackendApi } from '@/hooks/useBackendApi';
-import useLocalStorage from '@/hooks/useLocalStorage';
+import { useSessionToken } from '@/hooks/useSessionToken';
 import { RemoteClient, type ClientHandler } from '@/sync/RemoteClient';
 import type { TransportFactory } from '@/sync/Transport';
-import type { ServerNotification } from '@/sync/host-message/HostNotification';
+import type { HostNotification } from '@/sync/host-message/HostNotification';
 import { PortTransport } from '@/sync/transports/PortTransport';
 import { WebSocketTransport } from '@/sync/transports/WebSocketTransport';
 import { DND_CONNECT, DND_PLEASE_RECONNECT } from '@/sync/windowMessage';
@@ -29,7 +29,7 @@ export function ClientProvider({
 		const client = new RemoteClient(transportFactory, {
 			handleClose() {},
 			...handler.current,
-			handleNotification(update: ServerNotification) {
+			handleNotification(update: HostNotification) {
 				switch (update.type) {
 					case 'heartbeat': {
 						if (heartbeatRef.current > 5) {
@@ -116,7 +116,7 @@ export function MessagePortClientProvider({
 
 export function WebsocketClientProvider({ children }: { children: ReactNode }) {
 	const backendApi = useBackendApi();
-	const [token] = useLocalStorage('connectionToken');
+	const [token] = useSessionToken();
 
 	return (
 		<ClientProvider

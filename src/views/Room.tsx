@@ -8,7 +8,7 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { useBackendApi } from '@/hooks/useBackendApi';
-import useLocalStorage from '@/hooks/useLocalStorage';
+import { useSessionToken } from '@/hooks/useSessionToken';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Link } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
@@ -25,8 +25,7 @@ const createJoinFormSpec = z.object({
 type CreateJoinFormSpec = z.infer<typeof createJoinFormSpec>;
 
 function RoomView() {
-	const [connectionToken, setConnectionToken] =
-		useLocalStorage('connectionToken');
+	const [connectionToken, setConnectionToken] = useSessionToken();
 
 	const [_reconnectRoomCode, setReconnectRoomCode] = useState<string | null>(
 		null,
@@ -36,7 +35,7 @@ function RoomView() {
 
 	useEffect(() => {
 		if (connectionToken) {
-			backendApi.checkToken(connectionToken).then(
+			backendApi.getRoom(connectionToken).then(
 				(result) => {
 					if (result.roomCode) {
 						setReconnectRoomCode(result.roomCode);

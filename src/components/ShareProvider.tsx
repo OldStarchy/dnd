@@ -1,6 +1,6 @@
 import { ShareContext } from '@/context/ShareContext';
 import { useBackendApi } from '@/hooks/useBackendApi';
-import useLocalStorage from '@/hooks/useLocalStorage';
+import { useSessionToken } from '@/hooks/useSessionToken';
 import { usePrimarySelector } from '@/store/primary-store';
 import {
 	getObfuscatedHealthText,
@@ -55,8 +55,7 @@ function stripEntityListForPopout(entities: Entity[]): InitiativeTableEntry[] {
 export function ShareProvider({ children }: { children: React.ReactNode }) {
 	const serverRef = useRef<RemoteServer | null>(null);
 	const [roomCode, setRoomCode] = useState<string | null>(null);
-	const [connectionToken, setConnectionToken] =
-		useLocalStorage('connectionToken');
+	const [connectionToken, setConnectionToken] = useSessionToken();
 
 	const initiativeState = usePrimarySelector((state) => state.initiative);
 	const initiativeStateRef = useRef(initiativeState);
@@ -68,7 +67,7 @@ export function ShareProvider({ children }: { children: React.ReactNode }) {
 		if (!connectionToken) {
 			return;
 		}
-		backendApi.checkToken(connectionToken).then((result) => {
+		backendApi.getRoom(connectionToken).then((result) => {
 			if (result.roomCode) {
 				setRoomCode(result.roomCode);
 			} else {
