@@ -14,6 +14,7 @@ import { createRoot } from 'react-dom/client';
 import { Provider } from 'react-redux';
 import {
 	createBrowserRouter,
+	createHashRouter,
 	RouterProvider,
 	type RouteObject,
 } from 'react-router';
@@ -62,7 +63,11 @@ const routes: RouteObject[] = [
 		Component: PopoutView,
 	},
 ];
-const router = createBrowserRouter(routes);
+
+const useHashRouter = import.meta.env.VITE_SPA === 'true';
+const router = useHashRouter
+	? createHashRouter(routes)
+	: createBrowserRouter(routes);
 
 createRoot(document.getElementById('root')!).render(
 	<StrictMode>

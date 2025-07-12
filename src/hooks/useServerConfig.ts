@@ -1,6 +1,6 @@
 import useLocalStorage from './useLocalStorage';
 
-const DEFAULT_SERVER_URL = import.meta.env.VITE_DEFAULT_SERVER_URL || '';
+const DEFAULT_SERVER_URL = import.meta.env.VITE_BASE_URL || '';
 
 export function useServerConfig(): [string, (url: string) => void] {
 	const [serverUrl, setServerUrl] = useLocalStorage(
