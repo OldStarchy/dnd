@@ -6,6 +6,7 @@ const roomCreated = z.object({
 });
 const roomFound = z.object({
 	roomCode: z.string(),
+	isGm: z.boolean(),
 });
 const roomJoined = z.object({
 	token: z.string(),
@@ -57,7 +58,7 @@ export class BackendApi {
 		}
 	}
 
-	async getRoom(token: string): Promise<{ roomCode: string }> {
+	async getRoom(token: string): Promise<{ roomCode: string; isGm: boolean }> {
 		const response = await fetch(`${this.host}/room`, {
 			method: 'GET',
 			headers: {
@@ -77,7 +78,7 @@ export class BackendApi {
 		}
 
 		const message = parsed.data;
-		return { roomCode: message.roomCode };
+		return { roomCode: message.roomCode, isGm: message.isGm };
 	}
 
 	async joinRoom(roomCode: string): Promise<{ token: string }> {
