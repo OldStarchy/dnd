@@ -1,56 +1,12 @@
+import useCustomCreatureList from '@/hooks/useCustomCreatureList';
 import { usePrimarySelector } from '@/store/primary-store';
-import {
-	getObfuscatedHealthText,
-	HealthObfuscation,
-	type Entity,
-} from '@/store/types/Entity';
 import { RemoteServer } from '@/sync/RemoteServer';
 import { PortTransport } from '@/sync/transports/PortTransport';
 import { DND_CONNECT, DND_PLEASE_RECONNECT } from '@/sync/windowMessage';
 import { useCallback, useEffect, useRef } from 'react';
 import { useHref } from 'react-router';
 import { PopoutContext } from '../context/PopoutContext';
-import type { InitiativeTableEntry } from './InitiativeTable/InitiativeTableEntry';
-
-function stripEntityListForPopout(entities: Entity[]): InitiativeTableEntry[] {
-	return entities
-		.filter((entity) => entity.visible)
-		.map((entity) => {
-			let healthDisplay!: string;
-
-			switch (entity.obfuscateHealth) {
-				case HealthObfuscation.NO:
-					healthDisplay = `${entity.creature.hp}/${entity.creature.maxHp}`;
-					break;
-				case HealthObfuscation.TEXT: {
-					healthDisplay = getObfuscatedHealthText(
-						entity.creature.hp,
-						entity.creature.maxHp,
-						entity.obfuscateHealth,
-					);
-					break;
-				}
-				case HealthObfuscation.HIDDEN:
-					healthDisplay = '?';
-					break;
-				default: {
-					// @ts-expect-error unused
-					const _exhaustiveCheck: never = entity.obfuscateHealth;
-				}
-			}
-			const ety: InitiativeTableEntry = {
-				initiative: entity.initiative,
-				name: entity.creature.name,
-				race: entity.creature.race,
-				images: entity.creature.images,
-				description: entity.creature.notes,
-				id: entity.id,
-				healthDisplay,
-				debuffs: entity.creature.debuffs ?? [],
-			};
-			return ety;
-		});
-}
+import { stripEntityListForPopout } from './ShareProvider';
 
 export function PopoutProvider({ children }: { children: React.ReactNode }) {
 	const serverRef = useRef<RemoteServer | null>(null);
@@ -60,13 +16,20 @@ export function PopoutProvider({ children }: { children: React.ReactNode }) {
 	const initiativeStateRef = useRef(initiativeState);
 	initiativeStateRef.current = initiativeState;
 
+	const [creatures] = useCustomCreatureList();
+	const creaturesRef = useRef(creatures);
+	creaturesRef.current = creatures;
+
 	useEffect(() => {
 		if (!serverRef.current) {
 			return;
 		}
 		serverRef.current.notify({
 			type: 'initiativeTableUpdate',
-			data: stripEntityListForPopout(initiativeState.entities),
+			data: stripEntityListForPopout(
+				initiativeState.entities,
+				creaturesRef.current,
+			),
 		});
 	}, [initiativeState.entities]);
 
@@ -98,6 +61,7 @@ export function PopoutProvider({ children }: { children: React.ReactNode }) {
 								type: 'initiativeTableUpdate',
 								data: stripEntityListForPopout(
 									initiativeStateRef.current.entities,
+									creaturesRef.current,
 								),
 							});
 							break;

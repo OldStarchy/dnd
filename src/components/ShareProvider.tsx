@@ -1,5 +1,6 @@
 import { ShareContext } from '@/context/ShareContext';
 import { useBackendApi } from '@/hooks/useBackendApi';
+import useCustomCreatureList from '@/hooks/useCustomCreatureList';
 import { useSessionToken } from '@/hooks/useSessionToken';
 import { usePrimarySelector } from '@/store/primary-store';
 import {
@@ -9,23 +10,34 @@ import {
 } from '@/store/types/Entity';
 import { RemoteServer } from '@/sync/RemoteServer';
 import { WebSocketTransport } from '@/sync/transports/WebSocketTransport';
-import { useEffect, useRef, useState } from 'react';
+import type { Creature } from '@/type/Creature';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { InitiativeTableEntry } from './InitiativeTable/InitiativeTableEntry';
 
-function stripEntityListForPopout(entities: Entity[]): InitiativeTableEntry[] {
+export function stripEntityListForPopout(
+	entities: Entity[],
+	creatures: Creature[],
+): InitiativeTableEntry[] {
 	return entities
 		.filter((entity) => entity.visible)
 		.map((entity) => {
 			let healthDisplay!: string;
 
+			const creature = (() => {
+				if (entity.creature.type === 'unique') {
+					const id = entity.creature.id;
+					return creatures.find((c) => c.id === id)!;
+				} else return entity.creature.data;
+			})();
+
 			switch (entity.obfuscateHealth) {
 				case HealthObfuscation.NO:
-					healthDisplay = `${entity.creature.hp}/${entity.creature.maxHp}`;
+					healthDisplay = `${creature.hp}/${creature.maxHp}`;
 					break;
 				case HealthObfuscation.TEXT: {
 					healthDisplay = getObfuscatedHealthText(
-						entity.creature.hp,
-						entity.creature.maxHp,
+						creature.hp,
+						creature.maxHp,
 						entity.obfuscateHealth,
 					);
 					break;
@@ -39,14 +51,10 @@ function stripEntityListForPopout(entities: Entity[]): InitiativeTableEntry[] {
 				}
 			}
 			const ety: InitiativeTableEntry = {
-				initiative: entity.initiative,
-				name: entity.creature.name,
-				race: entity.creature.race,
-				images: entity.creature.images,
-				description: entity.creature.notes,
 				id: entity.id,
+				initiative: entity.initiative,
 				healthDisplay,
-				debuffs: entity.creature.debuffs ?? [],
+				creature: entity.creature,
 			};
 			return ety;
 		});
@@ -62,6 +70,10 @@ export function ShareProvider({ children }: { children: React.ReactNode }) {
 	initiativeStateRef.current = initiativeState;
 
 	const backendApi = useBackendApi();
+
+	const [creatures] = useCustomCreatureList();
+	const creaturesRef = useRef(creatures);
+	creaturesRef.current = creatures;
 
 	useEffect(() => {
 		if (!connectionToken) {
@@ -82,7 +94,10 @@ export function ShareProvider({ children }: { children: React.ReactNode }) {
 		}
 		serverRef.current.notify({
 			type: 'initiativeTableUpdate',
-			data: stripEntityListForPopout(initiativeState.entities),
+			data: stripEntityListForPopout(
+				initiativeState.entities,
+				creaturesRef.current,
+			),
 		});
 	}, [initiativeState.entities]);
 
@@ -111,6 +126,7 @@ export function ShareProvider({ children }: { children: React.ReactNode }) {
 								type: 'initiativeTableUpdate',
 								data: stripEntityListForPopout(
 									initiativeStateRef.current.entities,
+									creaturesRef.current,
 								),
 							});
 							break;
@@ -134,7 +150,10 @@ export function ShareProvider({ children }: { children: React.ReactNode }) {
 
 	return (
 		<ShareContext.Provider
-			value={{ roomCode, sessionToken: connectionToken }}
+			value={useMemo(
+				() => ({ roomCode, sessionToken: connectionToken }),
+				[roomCode, connectionToken],
+			)}
 		>
 			{children}
 		</ShareContext.Provider>

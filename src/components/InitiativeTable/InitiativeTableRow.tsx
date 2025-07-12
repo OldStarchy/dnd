@@ -1,3 +1,4 @@
+import useCustomCreatureList from '@/hooks/useCustomCreatureList';
 import { cn } from '@/lib/utils';
 import { ArrowRight, ChevronLeft } from 'lucide-react';
 import { useState, type ComponentPropsWithoutRef, type ReactNode } from 'react';
@@ -39,6 +40,18 @@ export default function InitiativeTableRow({
 	fieldVisibility: FieldVisibility;
 } & ComponentPropsWithoutRef<typeof TableRow>) {
 	const [dialogIsOpen, setDialogIsOpen] = useState(false);
+	//TODO: pull creature information from a provider, and use either a local
+	// storage provider for gm or a sync provider for players
+	const [creatures] = useCustomCreatureList();
+
+	const creature = (() => {
+		if (entry.creature.type === 'unique') {
+			const id = entry.creature.id;
+			creatures.find((c) => c.id === id);
+		} else {
+			return entry.creature.data;
+		}
+	})();
 
 	return (
 		<>
@@ -80,15 +93,15 @@ export default function InitiativeTableRow({
 								<TableCell className="w-0">
 									<Avatar>
 										<AvatarImage
-											src={entry.images?.[0]}
-											alt={entry.name}
+											src={creature.images?.[0]}
+											alt={creature.name}
 											className="cursor-zoom-in"
 											onClick={() =>
 												setDialogIsOpen(true)
 											}
 										/>
 										<AvatarFallback>
-											{entry.name
+											{creature.name
 												.replace(/[^a-zA-Z0-9 ]+/g, ' ')
 												.replace(
 													/(?:^| )(\w)\w+/g,
