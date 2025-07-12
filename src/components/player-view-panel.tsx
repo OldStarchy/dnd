@@ -29,6 +29,15 @@ function PlayerViewPanel() {
 	return (
 		<div>
 			<InitiativeTable
+				fieldVisibility={{
+					initiative: true,
+					name: true,
+					race: false,
+					ac: false,
+					health: true,
+					debuffs: true,
+					description: true,
+				}}
 				entries={initiativeTableEntries}
 				currentTurnEntityId={currentTurnEntityId}
 			/>

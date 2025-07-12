@@ -69,14 +69,9 @@ const entityPropertySpec = z.object({
 		.number()
 		.int()
 		.min(0, 'Initiative must be a non-negative integer'),
-	image: z
-		.string()
-
-		.optional()
-		.transform(
-			(val) => val && new URL(val, window.location.toString()).toString(),
-		),
+	images: z.array(z.string().optional()).optional(),
 	visible: z.boolean(),
+	ac: z.coerce.number().int().min(0, 'AC must be a non-negative integer'),
 	hp: z.coerce.number().int(),
 	maxHp: z.coerce.number().int().min(1, 'Max Health must be at least 1'),
 	obfuscateHealth: z.nativeEnum(HealthObfuscation),
@@ -95,8 +90,9 @@ function EntityPropertyPanel({
 		resolver: zodResolver(entityPropertySpec),
 		defaultValues: {
 			name: entity.creature.name,
+			ac: entity.creature.ac,
 			initiative: entity.initiative,
-			image: entity.creature.image,
+			images: entity.creature.images,
 			visible: entity.visible,
 			hp: entity.creature.hp,
 			maxHp: entity.creature.maxHp,
@@ -106,15 +102,19 @@ function EntityPropertyPanel({
 	});
 
 	function handleSubmit(data: EntityPropertySchema) {
+		// TODO: don't return new objects unless there are changes as it triggers updates to other players
 		onChange({
 			...entity,
 			creature: {
 				...entity.creature,
 				name: data.name || entity.creature.name,
+				ac: data.ac ?? entity.creature.ac,
 				hp: data.hp ?? entity.creature.hp,
 				maxHp: data.maxHp ?? entity.creature.maxHp,
 				debuffs: data.debuffs,
-				image: data.image ?? entity.creature.image,
+				images: (data.images ?? entity.creature.images ?? []).filter(
+					(i) => i !== undefined,
+				),
 			},
 			initiative: data.initiative ?? entity.initiative,
 			obfuscateHealth: data.obfuscateHealth ?? entity.obfuscateHealth,
@@ -199,6 +199,25 @@ function EntityPropertyPanel({
 					<div className="grid grid-flow-col grid-rows-[[label]_auto_[field]_auto_[message]_auto] gap-2">
 						<FormField
 							control={form.control}
+							name="ac"
+							render={({ field }) => (
+								<FormItem className="contents">
+									<FormLabel className="[grid-row-start:label]">
+										AC
+									</FormLabel>
+									<FormControl>
+										<Input
+											type="number"
+											{...field}
+											className="[grid-row-start:field]"
+										/>
+									</FormControl>
+									<FormMessage className="[grid-row-start:message]" />
+								</FormItem>
+							)}
+						/>
+						<FormField
+							control={form.control}
 							name="hp"
 							render={({ field }) => (
 								<FormItem className="contents">
@@ -281,7 +300,7 @@ function EntityPropertyPanel({
 					</div>
 					<FormField
 						control={form.control}
-						name="image"
+						name="images.0"
 						render={({ field }) => (
 							<FormItem className="space-y-2">
 								<FormLabel>Image URL</FormLabel>

@@ -42,7 +42,7 @@ function stripEntityListForPopout(entities: Entity[]): InitiativeTableEntry[] {
 				initiative: entity.initiative,
 				name: entity.creature.name,
 				race: entity.creature.race,
-				image: entity.creature.image,
+				images: entity.creature.images,
 				description: entity.creature.notes,
 				id: entity.id,
 				healthDisplay,

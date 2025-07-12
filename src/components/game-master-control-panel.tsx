@@ -27,10 +27,10 @@ import {
 import { DropdownMenuTrigger } from '@radix-ui/react-dropdown-menu';
 import { ChevronDown, Plus, Trash } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { usePopout } from '../hooks/usePopout';
 import EntityPropertyPanel from './entity-property-panel';
 import InitiativeTable from './InitiativeTable/InitiativeTable';
 import type { InitiativeTableEntry } from './InitiativeTable/InitiativeTableEntry';
-import { usePopout } from './PopoutProvider';
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -69,7 +69,7 @@ function GameMasterControlPanel() {
 						name: 'Sybil Snow',
 						race: 'Human',
 						notes: "Sybil is a cool chick who doesn't afraid of anything.",
-						image: sybilProfile,
+						images: [sybilProfile],
 						hp: 11,
 						maxHp: 11,
 						debuffs: [],
@@ -114,8 +114,9 @@ function GameMasterControlPanel() {
 				const ety: InitiativeTableEntry = {
 					initiative: entity.initiative,
 					name: entity.creature.name,
+					ac: entity.creature.ac,
 					race: entity.creature.race,
-					image: entity.creature.image,
+					images: entity.creature.images,
 					description: entity.creature.notes,
 					id: entity.id,
 					healthDisplay:
@@ -195,6 +196,15 @@ function GameMasterControlPanel() {
 						readOnly
 					/>
 					<InitiativeTable
+						fieldVisibility={{
+							initiative: true,
+							name: true,
+							race: true,
+							ac: true,
+							health: true,
+							debuffs: true,
+							description: true,
+						}}
 						entries={entitiesView}
 						selectedEntityId={selectedEntityId}
 						onEntityClick={({ id }) => setSelectedEntityId(id)}
@@ -340,9 +350,10 @@ function GameMasterControlPanel() {
 																					result.charisma,
 																			},
 																		speed: result.speed,
-																		image:
+																		images: [
 																			api.baseUrl +
-																			result.image,
+																				result.image,
+																		],
 																		hitpointsRoll:
 																			result.hit_points_roll,
 																		debuffs:

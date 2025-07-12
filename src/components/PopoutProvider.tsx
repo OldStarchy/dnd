@@ -7,19 +7,10 @@ import {
 import { RemoteServer } from '@/sync/RemoteServer';
 import { PortTransport } from '@/sync/transports/PortTransport';
 import { DND_CONNECT, DND_PLEASE_RECONNECT } from '@/sync/windowMessage';
-import {
-	createContext,
-	useCallback,
-	useContext,
-	useEffect,
-	useRef,
-} from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { useHref } from 'react-router';
+import { PopoutContext } from '../context/PopoutContext';
 import type { InitiativeTableEntry } from './InitiativeTable/InitiativeTableEntry';
-
-const PopoutContext = createContext<{ setOpen(open: boolean): void } | null>(
-	null,
-);
 
 function stripEntityListForPopout(entities: Entity[]): InitiativeTableEntry[] {
 	return entities
@@ -51,7 +42,7 @@ function stripEntityListForPopout(entities: Entity[]): InitiativeTableEntry[] {
 				initiative: entity.initiative,
 				name: entity.creature.name,
 				race: entity.creature.race,
-				image: entity.creature.image,
+				images: entity.creature.images,
 				description: entity.creature.notes,
 				id: entity.id,
 				healthDisplay,
@@ -169,7 +160,7 @@ export function PopoutProvider({ children }: { children: React.ReactNode }) {
 				}
 			}
 		},
-		[prepareServer],
+		[prepareServer, popoutUrl],
 	);
 
 	return (
@@ -177,12 +168,4 @@ export function PopoutProvider({ children }: { children: React.ReactNode }) {
 			{children}
 		</PopoutContext.Provider>
 	);
-}
-
-export function usePopout() {
-	const context = useContext(PopoutContext);
-	if (!context) {
-		throw new Error('usePopout must be used within a PopoutProvider');
-	}
-	return context;
 }

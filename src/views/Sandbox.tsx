@@ -1,5 +1,5 @@
+import CreatureForm from '@/components/CreatureForm';
 import sybilProfile from '@/components/InitiativeTable/fixtures/sybil_profile.png';
-import InitiativeTable from '@/components/InitiativeTable/InitiativeTable';
 import type { InitiativeTableEntry } from '@/components/InitiativeTable/InitiativeTableEntry';
 import { Debuff } from '@/type/Debuff';
 
@@ -24,13 +24,14 @@ function Sandbox() {
 			effect: undefined,
 			description:
 				'Sybil is a skilled Bladesinger with a determened personality and a hidden past. Attuned to both swordplay and magic, she carries an arcane focus in the form of a ring set with a pearlescent opal.',
-			image: sybilProfile,
+			images: [sybilProfile],
 		},
 	];
 
 	return (
 		<>
-			<InitiativeTable entries={creature} />
+			{/* <InitiativeTable entries={creature} /> */}
+			<CreatureForm onSubmit={() => {}} />
 		</>
 	);
 }

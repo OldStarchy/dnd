@@ -163,7 +163,7 @@ describe('InitiativeTableRow', () => {
 			debuffs: [],
 			effect: undefined,
 			description: undefined,
-			image: sybilProfile,
+			images: [sybilProfile],
 		};
 
 		const screen = render(
@@ -189,7 +189,7 @@ describe('InitiativeTableRow', () => {
 			debuffs: [],
 			effect: undefined,
 			description: undefined,
-			image: sybilProfile,
+			images: [sybilProfile],
 		};
 
 		const screen = render(

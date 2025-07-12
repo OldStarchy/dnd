@@ -12,6 +12,18 @@ import {
 import type { InitiativeTableEntry } from './InitiativeTableEntry';
 import InitiativeTableRow from './InitiativeTableRow';
 
+const defaultFieldVisibility = {
+	initiative: true,
+	name: true,
+	race: true,
+	ac: true,
+	health: true,
+	debuffs: true,
+	description: true,
+};
+
+export type FieldVisibility = typeof defaultFieldVisibility;
+
 export default function InitiativeTable({
 	entries,
 	currentTurnEntityId = null,
@@ -22,6 +34,7 @@ export default function InitiativeTable({
 	onEntityClick,
 	onToggleTurn,
 	onAdvanceTurnClick,
+	fieldVisibility: vis,
 }: {
 	entries: InitiativeTableEntry[];
 	currentTurnEntityId?: string | null;
@@ -32,6 +45,7 @@ export default function InitiativeTable({
 	onEntityClick?: (entity: InitiativeTableEntry) => void;
 	onToggleTurn?: (entity: InitiativeTableEntry, pressed: boolean) => void;
 	onAdvanceTurnClick?: () => void;
+	fieldVisibility: FieldVisibility;
 }) {
 	const draggable = Boolean(onSwapEntities) || undefined;
 	const dragFromIndex = useRef<number | null>(null);
@@ -72,19 +86,23 @@ export default function InitiativeTable({
 			<TableHeader>
 				<TableRow>
 					<TableHead className="w-0">Turn</TableHead>
-					<TableHead>
-						<span title="Initiative">Init.</span>
-					</TableHead>
-					<TableHead colSpan={2}>Name</TableHead>
-					<TableHead>Race</TableHead>
-					<TableHead>Health</TableHead>
-					<TableHead>Debuffs</TableHead>
+					{vis.initiative && (
+						<TableHead>
+							<span title="Initiative">Init.</span>
+						</TableHead>
+					)}
+					{vis.name && <TableHead colSpan={2}>Name</TableHead>}
+					{vis.race && <TableHead>Race</TableHead>}
+					{vis.ac && <TableHead>AC</TableHead>}
+					{vis.health && <TableHead>Health</TableHead>}
+					{vis.debuffs && <TableHead>Debuffs</TableHead>}
 					<TableHead />
 				</TableRow>
 			</TableHeader>
 			{entries.map((entity, index) => (
 				<Fragment key={entity.id}>
 					<InitiativeTableRow
+						fieldVisibility={vis}
 						entry={entity}
 						selected={selectedEntityId === entity.id}
 						draggable={draggable}

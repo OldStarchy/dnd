@@ -5,6 +5,13 @@ import Debuff from '../Debuff';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Button } from '../ui/button';
 import {
+	Carousel,
+	CarouselContent,
+	CarouselItem,
+	CarouselNext,
+	CarouselPrevious,
+} from '../ui/carousel';
+import {
 	Collapsible,
 	CollapsibleContent,
 	CollapsibleTrigger,
@@ -12,6 +19,7 @@ import {
 import { Dialog, DialogContent, DialogHeader } from '../ui/dialog';
 import { TableBody, TableCell, TableRow } from '../ui/table';
 import { Toggle } from '../ui/toggle';
+import type { FieldVisibility } from './InitiativeTable';
 import type { InitiativeTableEntry } from './InitiativeTableEntry';
 
 export default function InitiativeTableRow({
@@ -20,6 +28,7 @@ export default function InitiativeTableRow({
 	currentTurn,
 	onToggleTurn,
 	selected,
+	fieldVisibility: vis,
 	...props
 }: {
 	entry: InitiativeTableEntry;
@@ -27,6 +36,7 @@ export default function InitiativeTableRow({
 	currentTurn?: boolean;
 	actions?: () => ReactNode;
 	selected?: boolean;
+	fieldVisibility: FieldVisibility;
 } & ComponentPropsWithoutRef<typeof TableRow>) {
 	const [dialogIsOpen, setDialogIsOpen] = useState(false);
 
@@ -60,51 +70,64 @@ export default function InitiativeTableRow({
 								<ArrowRight />
 							</Toggle>
 						</TableCell>
-						<TableCell className="w-0">
-							{entry.initiative}
-						</TableCell>
-						<TableCell className="w-0">
-							<Avatar>
-								<AvatarImage
-									src={entry.image}
-									alt={entry.name}
-									className="cursor-zoom-in"
-									onClick={() => setDialogIsOpen(true)}
-								/>
-								<AvatarFallback>
-									{entry.name
-										.replace(/[^a-zA-Z0-9 ]+/g, ' ')
-										.replace(
-											/(?:^| )(\w)\w+/g,
-											(_, initial: string) =>
-												initial.toUpperCase(),
-										)}
-								</AvatarFallback>
-							</Avatar>
-						</TableCell>
-						<TableCell>
-							{entry.effect === 'invisible'
-								? `(${entry.name})`
-								: entry.name}
-						</TableCell>
-						<TableCell>{entry.race}</TableCell>
-						<TableCell>{entry.healthDisplay}</TableCell>
-						<TableCell className="pr-4">
-							<div className="flex space-x-2">
-								{entry.debuffs?.map((debuff, index) => (
-									<Debuff
-										debuff={{ ...debuff }}
-										key={index}
-									/>
-								))}
-							</div>
-						</TableCell>
+						{vis.initiative && (
+							<TableCell className="w-0">
+								{entry.initiative}
+							</TableCell>
+						)}
+						{vis.name && (
+							<>
+								<TableCell className="w-0">
+									<Avatar>
+										<AvatarImage
+											src={entry.images?.[0]}
+											alt={entry.name}
+											className="cursor-zoom-in"
+											onClick={() =>
+												setDialogIsOpen(true)
+											}
+										/>
+										<AvatarFallback>
+											{entry.name
+												.replace(/[^a-zA-Z0-9 ]+/g, ' ')
+												.replace(
+													/(?:^| )(\w)\w+/g,
+													(_, initial: string) =>
+														initial.toUpperCase(),
+												)}
+										</AvatarFallback>
+									</Avatar>
+								</TableCell>
+								<TableCell>
+									{entry.effect === 'invisible'
+										? `(${entry.name})`
+										: entry.name}
+								</TableCell>
+							</>
+						)}
+						{vis.race && <TableCell>{entry.race}</TableCell>}
+						{vis.ac && <TableCell>{entry.ac}</TableCell>}
+						{vis.health && (
+							<TableCell>{entry.healthDisplay}</TableCell>
+						)}
+						{vis.debuffs && (
+							<TableCell className="pr-4">
+								<div className="flex space-x-2">
+									{entry.debuffs?.map((debuff, index) => (
+										<Debuff
+											debuff={{ ...debuff }}
+											key={index}
+										/>
+									))}
+								</div>
+							</TableCell>
+						)}
 						<TableCell className="flex justify-end">
 							<div
 								className="flex gap-1"
 								onClick={(e) => e.stopPropagation()}
 							>
-								{entry.description && (
+								{entry.description && vis.description && (
 									<CollapsibleTrigger asChild>
 										<Button
 											className="group opacity-0 group-hover:opacity-100"
@@ -128,9 +151,9 @@ export default function InitiativeTableRow({
 							<TableCell colSpan={8}>
 								<CollapsibleContent asChild>
 									<div className="flex gap-x-4">
-										{entry.image && (
+										{(entry.images?.length ?? 0) > 0 && (
 											<img
-												src={entry.image}
+												src={entry.images?.[0]}
 												alt={`${entry.name} - Profile`}
 												width={64}
 												className="cursor-zoom-in"
@@ -142,11 +165,14 @@ export default function InitiativeTableRow({
 										<div className="max-w-96">
 											<p
 												className={cn('text-sm', {
-													'text-muted-foreground':
-														!entry.description,
+													'text-muted-foreground': !(
+														vis.description &&
+														entry.description
+													),
 												})}
 											>
-												{entry.description ??
+												{(vis.description &&
+													entry.description) ||
 													'No description available.'}
 											</p>
 										</div>
@@ -160,7 +186,25 @@ export default function InitiativeTableRow({
 			<Dialog open={dialogIsOpen} onOpenChange={setDialogIsOpen}>
 				<DialogContent>
 					<DialogHeader>{entry.name}</DialogHeader>
-					<img src={entry.image} alt={entry.name} />
+					{(entry.images?.length ?? 0) > 1 ? (
+						<Carousel className="mx-8">
+							<CarouselContent>
+								{entry.images?.map((image, index) => (
+									<>
+										<CarouselItem key={index}>
+											<img src={image} alt={entry.name} />
+										</CarouselItem>
+									</>
+								))}
+							</CarouselContent>
+							<CarouselPrevious />
+							<CarouselNext />
+						</Carousel>
+					) : (
+						entry.images?.[0] && (
+							<img src={entry.images?.[0]} alt={entry.name} />
+						)
+					)}
 				</DialogContent>
 			</Dialog>
 		</>

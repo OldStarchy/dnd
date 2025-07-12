@@ -6,18 +6,26 @@ import {
 	type SetStateAction,
 } from 'react';
 
-function useLocalStorage(
-	key: string,
+declare global {
+	// eslint-disable-next-line @typescript-eslint/no-empty-object-type
+	interface LocalStorageKeys {}
+}
+
+function useLocalStorage<TKey extends keyof LocalStorageKeys>(
+	key: TKey,
 ): [string | null, Dispatch<SetStateAction<string | null>>];
-function useLocalStorage<T extends string | null>(
-	key: string,
-	readTransformer: (stored: string | null) => T,
-): [T, Dispatch<SetStateAction<string | null>>];
-function useLocalStorage<T>(
-	key: string,
-	readTransformer: (stored: string | null) => T,
-	writeTransformer: (value: T) => string,
-): [T, Dispatch<SetStateAction<T>>];
+function useLocalStorage<
+	TKey extends keyof LocalStorageKeys,
+	TValue extends string | null,
+>(
+	key: TKey,
+	readTransformer: (stored: string | null) => TValue,
+): [TValue, Dispatch<SetStateAction<string | null>>];
+function useLocalStorage<TKey extends keyof LocalStorageKeys, TValue>(
+	key: TKey,
+	readTransformer: (stored: string | null) => TValue,
+	writeTransformer: (value: TValue) => string,
+): [TValue, Dispatch<SetStateAction<TValue>>];
 
 function useLocalStorage<T>(
 	key: string,
@@ -68,7 +76,7 @@ function useLocalStorage<T>(
 			);
 			// setValue(newValue); // handled by storage event below
 		},
-		[key],
+		[key, readTransformer, writeTransformer],
 	);
 
 	useEffect(() => {
@@ -85,7 +93,7 @@ function useLocalStorage<T>(
 		return () => {
 			window.removeEventListener('storage', handleStorageChange);
 		};
-	}, [key]);
+	}, [key, readTransformer, writeTransformer]);
 
 	return [
 		value as T | string | null,

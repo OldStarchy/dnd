@@ -39,6 +39,12 @@ import {
 import { useCallback, useState } from 'react';
 import { Link, Outlet } from 'react-router';
 
+declare global {
+	interface LocalStorageKeys {
+		layoutDirection: string;
+	}
+}
+
 function Layout() {
 	const [splitDirection, setSplitDirection] = useLocalStorage(
 		'layoutDirection',

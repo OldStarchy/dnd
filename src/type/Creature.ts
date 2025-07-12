@@ -4,10 +4,10 @@
 export type Creature = {
 	id: string;
 	name: string;
-	image?: string;
+	images?: string[];
 	hp: number;
 	maxHp: number;
-	race: string;
+	race?: string;
 	hitpointsRoll?: string; // e.g., "2d10+5"
 	ac?: number;
 	speed?: {
