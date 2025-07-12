@@ -14,6 +14,7 @@ import {
 	useEffect,
 	useRef,
 } from 'react';
+import { useHref } from 'react-router';
 import type { InitiativeTableEntry } from './InitiativeTable/InitiativeTableEntry';
 
 const PopoutContext = createContext<{ setOpen(open: boolean): void } | null>(
@@ -136,20 +137,20 @@ export function PopoutProvider({ children }: { children: React.ReactNode }) {
 		});
 	}, [prepareServer]);
 
+	const popoutUrl = useHref('/popout?local');
+
 	const setOpen = useCallback(
 		(open: boolean) => {
 			if (open) {
 				if (windowRef.current && !windowRef.current.closed) {
 					windowRef.current.focus();
 
-					if (
-						windowRef.current.location.pathname !== '/popout?local'
-					) {
-						windowRef.current.location.href = '/popout?local';
+					if (windowRef.current.location.toString() !== popoutUrl) {
+						windowRef.current.location.href = popoutUrl;
 					}
 				} else {
 					const win = window.open(
-						'/popout?local',
+						popoutUrl,
 						'Popout',
 						'width=800,height=600,scrollbars=yes,resizable=yes',
 					);
