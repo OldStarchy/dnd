@@ -15,9 +15,15 @@ export type HostRequest = z.infer<typeof hostRequestSchema>;
 export type MemberResponse = z.infer<typeof memberResponseSchema>;
 
 export interface ServerHandler {
-	handleNotification(notification: MemberNotification): void;
-	handleRequest(request: HostRequest): Promise<MemberResponse>;
-	handleClose(): void;
+	handleNotification(
+		this: RemoteServer,
+		notification: MemberNotification,
+	): void;
+	handleRequest(
+		this: RemoteServer,
+		request: HostRequest,
+	): Promise<MemberResponse>;
+	handleClose(this: RemoteServer): void;
 }
 
 const serverNotificationSpec = z.union([
@@ -49,13 +55,13 @@ export class RemoteServer extends RemoteApi<
 			transportFactory,
 			{
 				handleNotification(notification: MemberNotification): void {
-					handler.handleNotification(notification);
+					handler.handleNotification.call(this, notification);
 				},
 				handleRequest(request: HostRequest): Promise<MemberResponse> {
-					return handler.handleRequest(request);
+					return handler.handleRequest.call(this, request);
 				},
 				handleClose(): void {
-					handler.handleClose();
+					handler.handleClose.call(this);
 				},
 			},
 		);

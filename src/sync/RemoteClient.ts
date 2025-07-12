@@ -15,8 +15,11 @@ import { RemoteApi } from './RemoteApi';
 import type { TransportFactory } from './Transport';
 
 export interface ClientHandler {
-	handleNotification(notification: HostNotification): void;
-	handleClose(): void;
+	handleNotification(
+		this: RemoteClient,
+		notification: HostNotification,
+	): void;
+	handleClose(this: RemoteClient): void;
 }
 
 export class RemoteClient extends RemoteApi<
@@ -36,14 +39,14 @@ export class RemoteClient extends RemoteApi<
 			transportFactory,
 			{
 				handleNotification(notification: HostNotification): void {
-					handler.handleNotification(notification);
+					handler.handleNotification.call(this, notification);
 				},
 				handleRequest(): Promise<HostResponse> {
 					// Clients don't handle requests in this architecture
 					throw new Error('Clients should not receive requests');
 				},
 				handleClose(): void {
-					handler.handleClose();
+					handler.handleClose.call(this);
 				},
 			},
 		);

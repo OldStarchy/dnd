@@ -11,7 +11,7 @@ export interface RemoteApiHandler<
 > {
 	handleNotification(this: TRemoteApi, notification: TNotification): void;
 	handleRequest(this: TRemoteApi, request: TRequest): Promise<TResult>;
-	handleClose(): void;
+	handleClose(this: TRemoteApi): void;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

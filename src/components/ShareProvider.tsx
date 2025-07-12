@@ -107,7 +107,7 @@ export function ShareProvider({ children }: { children: React.ReactNode }) {
 				handleNotification(notification) {
 					switch (notification.type) {
 						case 'ready':
-							server.notify({
+							this.notify({
 								type: 'initiativeTableUpdate',
 								data: stripEntityListForPopout(
 									initiativeStateRef.current.entities,
@@ -115,7 +115,7 @@ export function ShareProvider({ children }: { children: React.ReactNode }) {
 							});
 							break;
 						case 'heartbeat':
-							server.notify({ type: 'heartbeat' });
+							this.notify({ type: 'heartbeat' });
 							break;
 						default: {
 							// @ts-expect-error unused
