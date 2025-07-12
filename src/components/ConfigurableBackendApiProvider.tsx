@@ -13,7 +13,7 @@ export function ConfigurableBackendApiProvider({
 	const [serverUrl] = useServerConfig();
 
 	const api = useMemo(() => {
-		const host = serverUrl || window.location.origin;
+		const host = serverUrl || `${window.location.origin}/api`;
 		return new BackendApi(host);
 	}, [serverUrl]);
 
