@@ -1,20 +1,16 @@
+import { ShareContext } from '@/context/ShareContext';
 import { useBackendApi } from '@/hooks/useBackendApi';
-import useLocalStorage from '@/hooks/useLocalStorage';
+import { useSessionToken } from '@/hooks/useSessionToken';
 import { usePrimarySelector } from '@/store/primary-store';
 import {
 	getObfuscatedHealthText,
 	HealthObfuscation,
 	type Entity,
 } from '@/store/types/Entity';
-import type { Server } from '@/sync/Server';
-import { WebsocketServer } from '@/sync/WebsocketServer';
-import { createContext, useContext, useEffect, useRef, useState } from 'react';
+import { RemoteServer } from '@/sync/RemoteServer';
+import { WebSocketTransport } from '@/sync/transports/WebSocketTransport';
+import { useEffect, useRef, useState } from 'react';
 import type { InitiativeTableEntry } from './InitiativeTable/InitiativeTableEntry';
-
-const ShareContext = createContext<{
-	roomCode: string | null;
-	sessionToken: string | null;
-} | null>(null);
 
 function stripEntityListForPopout(entities: Entity[]): InitiativeTableEntry[] {
 	return entities
@@ -57,10 +53,9 @@ function stripEntityListForPopout(entities: Entity[]): InitiativeTableEntry[] {
 }
 
 export function ShareProvider({ children }: { children: React.ReactNode }) {
-	const serverRef = useRef<Server | null>(null);
+	const serverRef = useRef<RemoteServer | null>(null);
 	const [roomCode, setRoomCode] = useState<string | null>(null);
-	const [connectionToken, setConnectionToken] =
-		useLocalStorage('connectionToken');
+	const [connectionToken, setConnectionToken] = useSessionToken();
 
 	const initiativeState = usePrimarySelector((state) => state.initiative);
 	const initiativeStateRef = useRef(initiativeState);
@@ -72,7 +67,7 @@ export function ShareProvider({ children }: { children: React.ReactNode }) {
 		if (!connectionToken) {
 			return;
 		}
-		backendApi.checkToken(connectionToken).then((result) => {
+		backendApi.getRoom(connectionToken).then((result) => {
 			if (result.roomCode) {
 				setRoomCode(result.roomCode);
 			} else {
@@ -96,8 +91,12 @@ export function ShareProvider({ children }: { children: React.ReactNode }) {
 			return;
 		}
 
-		serverRef.current = new WebsocketServer(
-			backendApi.connectToRoom(connectionToken),
+		const server = new RemoteServer(
+			(handler) =>
+				new WebSocketTransport(
+					backendApi.connectToRoom(connectionToken),
+					handler,
+				),
 			{
 				async handleRequest(request) {
 					// Handle requests from the popout window here
@@ -124,8 +123,13 @@ export function ShareProvider({ children }: { children: React.ReactNode }) {
 						}
 					}
 				},
+				handleClose() {
+					// Handle connection close
+				},
 			},
 		);
+
+		serverRef.current = server;
 	}, [connectionToken, backendApi]);
 
 	return (
@@ -135,12 +139,4 @@ export function ShareProvider({ children }: { children: React.ReactNode }) {
 			{children}
 		</ShareContext.Provider>
 	);
-}
-
-export function useShareCode() {
-	const context = useContext(ShareContext);
-	if (!context) {
-		throw new Error('useShareCode must be used within a ShareProvider');
-	}
-	return context;
 }

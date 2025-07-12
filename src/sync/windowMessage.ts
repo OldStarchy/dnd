@@ -1,0 +1,2 @@
+export const DND_PLEASE_RECONNECT = 'DND_PLEASE_RECONNECT';
+export const DND_CONNECT = 'DND_CONNECT';

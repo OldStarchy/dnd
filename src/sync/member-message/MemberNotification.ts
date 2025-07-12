@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-export const clientNotificationSpec = z.union([
+export const memberNotificationSpec = z.union([
 	z.object({
 		type: z.literal('ready'),
 	}),
@@ -9,4 +9,4 @@ export const clientNotificationSpec = z.union([
 	}),
 ]);
 
-export type ClientNotification = z.infer<typeof clientNotificationSpec>;
+export type MemberNotification = z.infer<typeof memberNotificationSpec>;

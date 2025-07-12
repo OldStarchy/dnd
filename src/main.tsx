@@ -1,4 +1,3 @@
-import { WebsocketClientProvider } from '@/components/ClientProvider';
 import { PopoutProvider } from '@/components/PopoutProvider';
 import { ShareProvider } from '@/components/ShareProvider';
 import { ThemeProvider } from '@/components/theme-provider';
@@ -13,80 +12,69 @@ import Sandbox from '@/views/Sandbox';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { Provider } from 'react-redux';
-import { createBrowserRouter, Outlet, RouterProvider } from 'react-router';
-import { ConfigurableBackendApiProvider } from './hooks/useBackendApi';
+import {
+	createBrowserRouter,
+	createHashRouter,
+	RouterProvider,
+	type RouteObject,
+} from 'react-router';
+import { ConfigurableBackendApiProvider } from './components/ConfigurableBackendApiProvider';
 import RoomView from './views/Room';
-
 function GmLayout() {
 	return (
-		<ConfigurableBackendApiProvider>
-			<Provider store={primaryStore}>
-				<ShareProvider>
-					<PopoutProvider>
-						<Layout />
-					</PopoutProvider>
-				</ShareProvider>
-			</Provider>
-		</ConfigurableBackendApiProvider>
+		<Provider store={primaryStore}>
+			<ShareProvider>
+				<PopoutProvider>
+					<Layout />
+				</PopoutProvider>
+			</ShareProvider>
+		</Provider>
 	);
 }
 
-function PlayerLayout() {
-	return (
-		<ConfigurableBackendApiProvider>
-			<WebsocketClientProvider>
-				<Outlet />
-			</WebsocketClientProvider>
-		</ConfigurableBackendApiProvider>
-	);
-}
-
-const router = createBrowserRouter(
-	[
-		{
-			Component: GmLayout,
-			children: [
-				{
-					index: true,
-					Component: Home,
-				},
-				{
-					path: '/room',
-					Component: RoomView,
-				},
-				{
-					path: '/characters',
-					Component: CustomCreatureEditor,
-				},
-				{
-					path: '/monsters',
-					Component: Monsters,
-				},
-				{
-					path: '/sandbox',
-					Component: Sandbox,
-				},
-			],
-		},
-		{
-			Component: PlayerLayout,
-			children: [
-				{
-					path: '/popout',
-					Component: PopoutView,
-				},
-			],
-		},
-	],
+const routes: RouteObject[] = [
 	{
-		basename: (import.meta.env.VITE_BASE_URL || '/').replace(/\/?$/, '/'),
+		Component: GmLayout,
+		children: [
+			{
+				index: true,
+				Component: Home,
+			},
+			{
+				path: '/room',
+				Component: RoomView,
+			},
+			{
+				path: '/characters',
+				Component: CustomCreatureEditor,
+			},
+			{
+				path: '/monsters',
+				Component: Monsters,
+			},
+			{
+				path: '/sandbox',
+				Component: Sandbox,
+			},
+		],
 	},
-);
+	{
+		path: '/popout/',
+		Component: PopoutView,
+	},
+];
+
+const useHashRouter = import.meta.env.VITE_SPA === 'true';
+const router = useHashRouter
+	? createHashRouter(routes)
+	: createBrowserRouter(routes);
 
 createRoot(document.getElementById('root')!).render(
 	<StrictMode>
-		<ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
-			<RouterProvider router={router} />
-		</ThemeProvider>
+		<ConfigurableBackendApiProvider>
+			<ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
+				<RouterProvider router={router} />
+			</ThemeProvider>
+		</ConfigurableBackendApiProvider>
 	</StrictMode>,
 );

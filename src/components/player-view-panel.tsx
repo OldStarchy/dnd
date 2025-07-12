@@ -1,6 +1,6 @@
 import InitiativeTable from '@/components/InitiativeTable/InitiativeTable';
+import { useClient } from '@/hooks/useClient';
 import { useState } from 'react';
-import { useClient } from './ClientProvider';
 import type { InitiativeTableEntry } from './InitiativeTable/InitiativeTableEntry';
 
 function PlayerViewPanel() {

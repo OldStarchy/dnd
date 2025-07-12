@@ -1,18 +1,7 @@
+import { BackendApiContext } from '@/context/BackendApiContext';
 import { useServerConfig } from '@/hooks/useServerConfig';
 import { BackendApi } from '@/sync/BackendApi';
-import { createContext, useContext, useMemo, type ReactNode } from 'react';
-
-const BackendApiContext = createContext<BackendApi | null>(null);
-
-export function useBackendApi(): BackendApi {
-	const api = useContext(BackendApiContext);
-	if (!api) {
-		throw new Error(
-			'useBackendApi must be used within a BackendApiProvider',
-		);
-	}
-	return api;
-}
+import { useMemo, type ReactNode } from 'react';
 
 interface ConfigurableBackendApiProviderProps {
 	children: ReactNode;
@@ -24,7 +13,7 @@ export function ConfigurableBackendApiProvider({
 	const [serverUrl] = useServerConfig();
 
 	const api = useMemo(() => {
-		const host = serverUrl || window.location.origin;
+		const host = serverUrl || `${window.location.origin}/api`;
 		return new BackendApi(host);
 	}, [serverUrl]);
 

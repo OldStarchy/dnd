@@ -14,6 +14,10 @@ export default defineConfig({
 	server: {
 		host: true, // equivalent to 0.0.0.0
 		port: 5173,
+		hmr: {
+			protocol: 'ws',
+			clientPort: 5173,
+		},
 	},
 	base: (process.env.VITE_BASE_URL || '/').replace(/\/?$/, '/'),
 });

@@ -1,26 +1,31 @@
 import { z } from 'zod';
-import { systemMessageSpec } from './systemMessageSpec';
 
-const systemResponseSpec = z.object({
-	type: z.literal('systemMessage'),
-	data: systemMessageSpec,
+const roomCreated = z.object({
+	token: z.string(),
+	roomCode: z.string(),
+});
+const roomFound = z.object({
+	roomCode: z.string(),
+	isGm: z.boolean(),
+});
+const roomJoined = z.object({
+	token: z.string(),
 });
 
 export class BackendApi {
-	readonly httpHost: string;
-	readonly wsHost: string;
+	readonly host: string;
 
 	constructor(host: string) {
-		this.httpHost = host;
-		this.wsHost = host.replace(/^http/, 'ws');
+		this.host = host;
 	}
 
 	async createRoom(): Promise<{ token: string; roomCode: string }> {
-		const response = await fetch(`${this.httpHost}/new`, {
-			method: 'GET',
+		const response = await fetch(`${this.host}/room`, {
+			method: 'POST',
 			headers: {
 				'Content-Type': 'application/json',
 			},
+			body: JSON.stringify({}),
 		});
 
 		if (!response.ok) {
@@ -28,15 +33,12 @@ export class BackendApi {
 		}
 
 		const data = await response.json();
-		const parsed = systemResponseSpec.safeParse(data);
+		const parsed = roomCreated.safeParse(data);
 		if (!parsed.success) {
 			throw new Error(`Invalid response format: ${parsed.error.message}`);
 		}
 
-		const message = parsed.data.data;
-		if (message.type !== 'roomCreated') {
-			throw new Error(`Unexpected message type: ${message.type}`);
-		}
+		const message = parsed.data;
 		return {
 			token: message.token,
 			roomCode: message.roomCode,
@@ -44,7 +46,7 @@ export class BackendApi {
 	}
 
 	async deleteRoom(roomCode: string): Promise<void> {
-		const response = await fetch(`${this.httpHost}/delete/${roomCode}`, {
+		const response = await fetch(`${this.host}/room/${roomCode}`, {
 			method: 'DELETE',
 			headers: {
 				'Content-Type': 'application/json',
@@ -56,11 +58,12 @@ export class BackendApi {
 		}
 	}
 
-	async checkToken(token: string): Promise<{ roomCode: string }> {
-		const response = await fetch(`${this.httpHost}/check/${token}`, {
+	async getRoom(token: string): Promise<{ roomCode: string; isGm: boolean }> {
+		const response = await fetch(`${this.host}/room`, {
 			method: 'GET',
 			headers: {
 				'Content-Type': 'application/json',
+				Authorization: `Bearer ${token}`,
 			},
 		});
 
@@ -69,24 +72,22 @@ export class BackendApi {
 		}
 
 		const data = await response.json();
-		const parsed = systemResponseSpec.safeParse(data);
+		const parsed = roomFound.safeParse(data);
 		if (!parsed.success) {
 			throw new Error(`Invalid response format: ${parsed.error.message}`);
 		}
 
-		const message = parsed.data.data;
-		if (message.type !== 'roomFound') {
-			throw new Error(`Unexpected message type: ${message.type}`);
-		}
-		return { roomCode: message.roomCode };
+		const message = parsed.data;
+		return { roomCode: message.roomCode, isGm: message.isGm };
 	}
 
 	async joinRoom(roomCode: string): Promise<{ token: string }> {
-		const response = await fetch(`${this.httpHost}/join/${roomCode}`, {
-			method: 'GET',
+		const response = await fetch(`${this.host}/room/${roomCode}/join`, {
+			method: 'POST',
 			headers: {
 				'Content-Type': 'application/json',
 			},
+			body: JSON.stringify({}),
 		});
 
 		if (!response.ok) {
@@ -94,27 +95,20 @@ export class BackendApi {
 		}
 
 		const data = await response.json();
-		const parsed = systemResponseSpec.safeParse(data);
+		const parsed = roomJoined.safeParse(data);
 		if (!parsed.success) {
 			throw new Error(`Invalid response format: ${parsed.error.message}`);
 		}
 
-		const message = parsed.data.data;
-		if (message.type !== 'roomJoined') {
-			throw new Error(`Unexpected message type: ${message.type}`);
-		}
+		const message = parsed.data;
 		return { token: message.token };
 	}
 
 	connectToRoom(token: string): WebSocket {
-		const ws = new WebSocket(`${this.wsHost}/ws/${token}`);
+		const ws = new WebSocket(
+			`${this.host.replace(/^http/, 'ws')}/ws/${token}`,
+		);
 
 		return ws;
-		// return new Promise((resolve, reject) => {
-		// 	ws.onopen = () => resolve(ws);
-		// 	ws.onerror = (error) =>
-		// 		reject(new Error(`WebSocket error: ${error}`));
-		// 	ws.onclose = () => reject(new Error('WebSocket connection closed'));
-		// });
 	}
 }

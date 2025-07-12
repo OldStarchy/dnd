@@ -8,11 +8,11 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { useBackendApi } from '@/hooks/useBackendApi';
-import useLocalStorage from '@/hooks/useLocalStorage';
+import { useSessionToken } from '@/hooks/useSessionToken';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Link } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
+import { Link, useNavigate } from 'react-router';
 import { z } from 'zod';
 
 const createJoinFormSpec = z.object({
@@ -25,28 +25,26 @@ const createJoinFormSpec = z.object({
 type CreateJoinFormSpec = z.infer<typeof createJoinFormSpec>;
 
 function RoomView() {
-	const [connectionToken, setConnectionToken] =
-		useLocalStorage('connectionToken');
-
-	const [_reconnectRoomCode, setReconnectRoomCode] = useState<string | null>(
-		null,
-	);
+	const [connectionToken, setConnectionToken] = useSessionToken();
+	const [isGm, setIsGm] = useState<boolean | null>(null);
 
 	const backendApi = useBackendApi();
+	const navigate = useNavigate();
 
 	useEffect(() => {
 		if (connectionToken) {
-			backendApi.checkToken(connectionToken).then(
+			backendApi.getRoom(connectionToken).then(
 				(result) => {
 					if (result.roomCode) {
-						setReconnectRoomCode(result.roomCode);
+						setIsGm(result.isGm);
 					} else {
 						setConnectionToken(null);
+						setIsGm(null);
 					}
 				},
 				() => {
 					setConnectionToken(null);
-					setReconnectRoomCode(null);
+					setIsGm(null);
 				},
 			);
 		}
@@ -78,9 +76,9 @@ function RoomView() {
 				setConnectionToken(token);
 			}
 			// Redirect to the room with the token
-			window.location.href = `/`;
+			navigate('/popout');
 		},
-		[backendApi, setConnectionToken, form],
+		[backendApi, setConnectionToken, form, navigate],
 	);
 
 	return (
@@ -88,7 +86,7 @@ function RoomView() {
 			{connectionToken ? (
 				<div>
 					<h1>Welcome back!</h1>
-					<Link to={`/`}>Reconnect to Room</Link>
+					<Link to={isGm ? '/' : '/popout'}>Reconnect to Room</Link>
 				</div>
 			) : (
 				<div>
