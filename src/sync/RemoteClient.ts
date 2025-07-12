@@ -1,3 +1,4 @@
+import type z from 'zod';
 import {
 	hostNotificationSpec,
 	type HostNotification,
@@ -12,12 +13,16 @@ import {
 	type MemberRequest,
 } from './member-message/MemberRequest';
 import { RemoteApi } from './RemoteApi';
+import { serverNotificationSpec } from './server-message/ServerNotification';
 import type { TransportFactory } from './Transport';
+
+const notificationSpec = hostNotificationSpec.or(serverNotificationSpec);
+export type HostOrServerNotification = z.infer<typeof notificationSpec>;
 
 export interface ClientHandler {
 	handleNotification(
 		this: RemoteClient,
-		notification: HostNotification,
+		notification: HostOrServerNotification,
 	): void;
 	handleClose(this: RemoteClient): void;
 }
@@ -26,7 +31,7 @@ export class RemoteClient extends RemoteApi<
 	MemberRequest,
 	HostResponse,
 	MemberNotification,
-	HostNotification
+	HostOrServerNotification
 > {
 	constructor(
 		transportFactory: TransportFactory<string>,
@@ -35,7 +40,7 @@ export class RemoteClient extends RemoteApi<
 		super(
 			memberRequestSchema,
 			hostResponseSpec,
-			hostNotificationSpec,
+			notificationSpec,
 			transportFactory,
 			{
 				handleNotification(notification: HostNotification): void {

@@ -5,6 +5,7 @@ import {
 	type MemberNotification,
 } from './member-message/MemberNotification';
 import { RemoteApi } from './RemoteApi';
+import { serverNotificationSpec } from './server-message/ServerNotification';
 import type { TransportFactory } from './Transport';
 
 // Server Request and Response schemas (currently empty but can be extended)
@@ -14,10 +15,13 @@ const memberResponseSchema = z.any(); // TODO: Replace with more specific schema
 export type HostRequest = z.infer<typeof hostRequestSchema>;
 export type MemberResponse = z.infer<typeof memberResponseSchema>;
 
+const notificationSpec = memberNotificationSpec.or(serverNotificationSpec);
+export type MemberOrServerNotification = z.infer<typeof notificationSpec>;
+
 export interface ServerHandler {
 	handleNotification(
 		this: RemoteServer,
-		notification: MemberNotification,
+		notification: MemberOrServerNotification,
 	): void;
 	handleRequest(
 		this: RemoteServer,
@@ -26,18 +30,6 @@ export interface ServerHandler {
 	handleClose(this: RemoteServer): void;
 }
 
-const serverNotificationSpec = z.union([
-	z.object({
-		type: z.literal('userJoined'),
-		token: z.string(),
-	}),
-	z.object({
-		type: z.literal('connectionReplaced'),
-	}),
-]);
-const notificationSpec = memberNotificationSpec.or(serverNotificationSpec);
-
-export type MemberOrServerNotification = z.infer<typeof notificationSpec>;
 export class RemoteServer extends RemoteApi<
 	HostRequest,
 	MemberResponse,
