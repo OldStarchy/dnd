@@ -21,11 +21,13 @@ export class WebSocketTransport implements Transport<WebSocketData> {
 
 		// If the WebSocket is already open, handle it immediately
 		if (this.ws.readyState === WebSocket.OPEN) {
-			try {
-				handler.handleOpen.call(this);
-			} catch (error) {
-				console.error('Error in handleOpen:', error);
-			}
+			queueMicrotask(() => {
+				try {
+					handler.handleOpen.call(this);
+				} catch (error) {
+					console.error('Error in handleOpen:', error);
+				}
+			});
 		}
 	}
 

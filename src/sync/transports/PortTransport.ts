@@ -14,11 +14,13 @@ export class PortTransport implements Transport<string> {
 		this.closeHandler = handler.handleClose.bind(this);
 
 		this.port.start();
-		try {
-			handler.handleOpen.call(this);
-		} catch (error) {
-			console.error('Error in handleOpen:', error);
-		}
+		queueMicrotask(() => {
+			try {
+				handler.handleOpen.call(this);
+			} catch (error) {
+				console.error('Error in handleOpen:', error);
+			}
+		});
 	}
 
 	#handleMessage = (event: MessageEvent): void => {
