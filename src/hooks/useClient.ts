@@ -1,15 +1,14 @@
 import { ClientContext } from '@/context/ClientContext';
-import type { ClientHandler } from '@/sync/RemoteClient';
-import { useContext, useEffect } from 'react';
+import { useContext } from 'react';
 
-export function useClient(handler: Partial<ClientHandler> = {}) {
+export function useClient() {
 	const clientContext = useContext(ClientContext);
 
-	useEffect(() => {
-		if (clientContext) {
-			Object.assign(clientContext, handler);
-		}
-	}, [clientContext, handler]);
+	if (!clientContext) {
+		throw new Error(
+			'useClient must be used within a ClientContext provider',
+		);
+	}
 
 	return clientContext;
 }

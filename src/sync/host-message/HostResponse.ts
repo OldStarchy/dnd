@@ -1,5 +1,10 @@
+import { creatureSchema } from '@/type/Creature';
 import { z } from 'zod';
 
-export const hostResponseSpec = z.any(); // TODO: Replace with a more specific schema if possible
+export const hostResponseSchema = z.union([
+	creatureSchema.or(z.null()),
+	creatureSchema.array(),
+	z.boolean(),
+]);
 
-export type HostResponse = z.infer<typeof hostResponseSpec>;
+export type HostResponse = z.infer<typeof hostResponseSchema>;

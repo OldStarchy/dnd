@@ -71,7 +71,7 @@ export function ShareProvider({ children }: { children: React.ReactNode }) {
 
 	const backendApi = useBackendApi();
 
-	const [creatures] = useCustomCreatureList();
+	const [creatures, setCreatures] = useCustomCreatureList();
 	const creaturesRef = useRef(creatures);
 	creaturesRef.current = creatures;
 
@@ -114,10 +114,54 @@ export function ShareProvider({ children }: { children: React.ReactNode }) {
 				),
 			{
 				async handleRequest(request) {
-					// Handle requests from the popout window here
-					console.log('Received request:', request);
-					// NYI
-					return {};
+					switch (request.type) {
+						case 'creature-get': {
+							const creature =
+								creaturesRef.current.find(
+									(c) => c.id === request.id,
+								) ?? null;
+							return creature;
+						}
+						case 'creature-list': {
+							return creaturesRef.current;
+						}
+						case 'creature-save': {
+							const { id, data } = request;
+							if (id !== null) {
+								const existingIndex =
+									creaturesRef.current.findIndex(
+										(c) => c.id === id,
+									);
+								if (existingIndex !== -1) {
+									const updatedCreatures = [
+										...creaturesRef.current,
+									];
+									updatedCreatures[existingIndex] = {
+										...data,
+
+										images: (data.images?.filter(Boolean) ||
+											[]) as string[],
+										id,
+									};
+									setCreatures(updatedCreatures);
+									return true;
+								}
+								return false;
+							} else {
+								const newCreature = {
+									...data,
+									id: crypto.randomUUID(),
+									images: (data.images?.filter(Boolean) ||
+										[]) as string[],
+								};
+								setCreatures([
+									...creaturesRef.current,
+									newCreature,
+								]);
+								return true;
+							}
+						}
+					}
 				},
 				handleNotification(notification) {
 					switch (notification.type) {
