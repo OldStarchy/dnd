@@ -5,7 +5,7 @@ import { PortTransport } from '@/sync/transports/PortTransport';
 import { DND_CONNECT, DND_PLEASE_RECONNECT } from '@/sync/windowMessage';
 import { useCallback, useEffect, useRef } from 'react';
 import { useHref } from 'react-router';
-import { PopoutContext } from '../context/PopoutContext';
+import { PopoutContext } from '../../context/PopoutContext';
 import { stripEntityListForPopout } from './ShareProvider';
 
 export function PopoutProvider({ children }: { children: React.ReactNode }) {

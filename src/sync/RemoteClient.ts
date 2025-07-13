@@ -17,18 +17,6 @@ const memberResponseSchema = z.any(); // TODO: Replace with more specific schema
 export type HostRequest = z.infer<typeof hostRequestSchema>;
 export type MemberResponse = z.infer<typeof memberResponseSchema>;
 
-export interface ClientHandler {
-	handleNotification(
-		this: RemoteClient,
-		notification: HostOrServerNotification,
-	): void;
-	handleRequest(
-		this: RemoteClient,
-		request: HostRequest,
-	): Promise<MemberResponse>;
-	handleClose(this: RemoteClient): void;
-}
-
 export class RemoteClient extends RemoteApi<
 	HostRequest,
 	MemberResponse,
@@ -37,16 +25,12 @@ export class RemoteClient extends RemoteApi<
 	MemberNotification,
 	HostOrServerNotification
 > {
-	constructor(
-		transportFactory: TransportFactory<string>,
-		handler: ClientHandler,
-	) {
+	constructor(transportFactory: TransportFactory<string>) {
 		super(
 			hostRequestSchema,
 			memberResponseSchema,
 			notificationSpec,
 			transportFactory,
-			handler,
 		);
 	}
 }

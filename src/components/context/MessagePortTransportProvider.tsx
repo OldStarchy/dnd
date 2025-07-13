@@ -1,21 +1,22 @@
-import type { Transport } from '@/sync/Transport';
+import { TranpsortContext } from '@/context/TransportContext';
+import type { TransportFactory, TransportHandler } from '@/sync/Transport';
 import { PortTransport } from '@/sync/transports/PortTransport';
 import { DND_CONNECT, DND_PLEASE_RECONNECT } from '@/sync/windowMessage';
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useHref } from 'react-router';
-import { PopoutContext } from '../context/PopoutContext';
+import { PopoutContext } from '../../context/PopoutContext';
 
-export function PopoutTransportProvider({
+export function MessagePortTransportProvider({
 	children,
 }: {
 	children: React.ReactNode;
 }) {
-	const transportRef = useRef<Transport<string> | null>(null);
+	const [transport, setTransport] = useState<TransportFactory<string> | null>(
+		null,
+	);
 	const windowRef = useRef<Window | null>(null);
 
 	const preparePopout = useCallback((win: Window) => {
-		transportRef.current?.[Symbol.dispose]();
-
 		const channel = new MessageChannel();
 		const { port1, port2 } = channel;
 
@@ -24,10 +25,10 @@ export function PopoutTransportProvider({
 			{ transfer: [port2] },
 		);
 
-		port1.start();
-		const server = (handler) => new PortTransport(port1, handler);
+		const transport = (handler: TransportHandler) =>
+			new PortTransport(port1, handler);
 
-		transportRef.current = server;
+		setTransport(transport);
 	}, []);
 
 	useEffect(() => {
@@ -76,7 +77,9 @@ export function PopoutTransportProvider({
 
 	return (
 		<PopoutContext.Provider value={{ setOpen }}>
-			{children}
+			<TranpsortContext.Provider value={transport}>
+				{children}
+			</TranpsortContext.Provider>
 		</PopoutContext.Provider>
 	);
 }

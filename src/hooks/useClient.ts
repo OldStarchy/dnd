@@ -1,14 +1,17 @@
-import { ClientContext } from '@/context/ClientContext';
-import { useContext } from 'react';
+import { RemoteClient } from '@/sync/RemoteClient';
+import { useMemo } from 'react';
+import useTransport from './context/useTransport';
 
-export function useClient() {
-	const clientContext = useContext(ClientContext);
+export default function useClient() {
+	const transportFactory = useTransport();
 
-	if (!clientContext) {
-		throw new Error(
-			'useClient must be used within a ClientContext provider',
-		);
-	}
+	const client = useMemo(() => {
+		if (transportFactory === null) {
+			return null;
+		}
 
-	return clientContext;
+		return new RemoteClient(transportFactory);
+	}, [transportFactory]);
+
+	return client;
 }

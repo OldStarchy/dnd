@@ -6,10 +6,10 @@ import {
 } from '@/components/ui/resizable';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Dnd5eApi } from '@/generated/dnd5eapi/Dnd5eApi';
+import { useShareCode } from '@/hooks/context/useShareCode';
 import useCustomCreatureList from '@/hooks/useCustomCreatureList';
 import useLocalStorage from '@/hooks/useLocalStorage';
 import useMonsterList from '@/hooks/useMonsterList';
-import { useShareCode } from '@/hooks/useShareCode';
 import { usePrimaryDispatch, usePrimarySelector } from '@/store/primary-store';
 import {
 	removeEntity,
@@ -26,7 +26,7 @@ import {
 import { DropdownMenuTrigger } from '@radix-ui/react-dropdown-menu';
 import { ChevronDown, Plus, Trash } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { usePopout } from '../hooks/usePopout';
+import { usePopout } from '../hooks/context/usePopout';
 import EntityPropertyPanel, {
 	type EntityPropertySchema,
 } from './entity-property-panel';

@@ -1,8 +1,6 @@
 import { ShareContext } from '@/context/ShareContext';
-import { useBackendApi } from '@/hooks/useBackendApi';
-import useCustomCreatureList from '@/hooks/useCustomCreatureList';
+import { useBackendApi } from '@/hooks/context/useBackendApi';
 import { useSessionToken } from '@/hooks/useSessionToken';
-import { usePrimarySelector } from '@/store/primary-store';
 import {
 	getObfuscatedHealthText,
 	HealthObfuscation,
@@ -11,8 +9,8 @@ import {
 import { RemoteServer } from '@/sync/RemoteServer';
 import { WebSocketTransport } from '@/sync/transports/WebSocketTransport';
 import type { Creature } from '@/type/Creature';
-import { useEffect, useMemo, useRef, useState } from 'react';
-import type { InitiativeTableEntry } from './InitiativeTable/InitiativeTableEntry';
+import { useEffect, useMemo, useState } from 'react';
+import type { InitiativeTableEntry } from '../InitiativeTable/InitiativeTableEntry';
 
 export function stripEntityListForPopout(
 	entities: Entity[],
@@ -61,45 +59,31 @@ export function stripEntityListForPopout(
 }
 
 export function ShareProvider({ children }: { children: React.ReactNode }) {
-	const serverRef = useRef<RemoteServer | null>(null);
 	const [roomCode, setRoomCode] = useState<string | null>(null);
 	const [connectionToken, setConnectionToken] = useSessionToken();
 
-	const initiativeState = usePrimarySelector((state) => state.initiative);
-	const initiativeStateRef = useRef(initiativeState);
-	initiativeStateRef.current = initiativeState;
-
 	const backendApi = useBackendApi();
-
-	const [creatures, setCreatures] = useCustomCreatureList();
-	const creaturesRef = useRef(creatures);
-	creaturesRef.current = creatures;
 
 	useEffect(() => {
 		if (!connectionToken) {
 			return;
 		}
+		const abort = new AbortController();
 		backendApi.getRoom(connectionToken).then((result) => {
+			if (abort.signal.aborted) {
+				return;
+			}
 			if (result.roomCode) {
 				setRoomCode(result.roomCode);
 			} else {
 				setRoomCode(null);
 			}
 		});
-	}, [connectionToken, backendApi, setConnectionToken]);
 
-	useEffect(() => {
-		if (!serverRef.current) {
-			return;
-		}
-		serverRef.current.notify({
-			type: 'initiativeTableUpdate',
-			data: stripEntityListForPopout(
-				initiativeState.entities,
-				creaturesRef.current,
-			),
-		});
-	}, [initiativeState.entities]);
+		return () => {
+			abort.abort();
+		};
+	}, [connectionToken, backendApi, setConnectionToken]);
 
 	useEffect(() => {
 		if (serverRef.current || !connectionToken) {
@@ -107,11 +91,7 @@ export function ShareProvider({ children }: { children: React.ReactNode }) {
 		}
 
 		const server = new RemoteServer(
-			(handler) =>
-				new WebSocketTransport(
-					backendApi.connectToRoom(connectionToken),
-					handler,
-				),
+			,
 			{
 				async handleRequest(request) {
 					switch (request.type) {

@@ -1,5 +1,5 @@
 import InitiativeTable from '@/components/InitiativeTable/InitiativeTable';
-import { useClient } from '@/hooks/useClient';
+import { useClient } from '@/hooks/context/useClient';
 import { useState } from 'react';
 import type { InitiativeTableEntry } from './InitiativeTable/InitiativeTableEntry';
 

@@ -1,5 +1,5 @@
 import { CreatureListContext } from '@/context/CreatureListContext';
-import { useClient } from '@/hooks/useClient';
+import { useClient } from '@/hooks/context/useClient';
 import type { Creature } from '@/type/Creature';
 import { useMemo } from 'react';
 

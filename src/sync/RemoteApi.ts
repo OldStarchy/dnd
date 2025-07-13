@@ -3,25 +3,30 @@ import deferred from '@/deferred';
 import z from 'zod';
 import type { Transport, TransportFactory } from './Transport';
 
-export interface RemoteApiHandler<
-	TRemoteApi,
-	TRemoteRequest,
-	TLocalResult,
-	TRemoteNotification,
-> {
-	handleNotification(
-		this: TRemoteApi,
-		notification: TRemoteNotification,
-	): void;
-	handleRequest(
-		this: TRemoteApi,
-		request: TRemoteRequest,
-	): Promise<TLocalResult>;
-	handleClose(this: TRemoteApi): void;
-}
-
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type ZodSchema<T> = z.ZodType<any, any, T> | z.ZodEffects<any, T, any>;
+
+export class CallbackSet<TArgs extends unknown[], TReturn> {
+	private handlers = new Set<(...args: TArgs) => TReturn>();
+	on(handler: (...args: TArgs) => TReturn): () => void {
+		this.handlers.add(handler);
+		return () => {
+			this.handlers.delete(handler);
+		};
+	}
+
+	handle(...args: TArgs): TReturn[] {
+		const results: TReturn[] = [];
+		for (const handler of this.handlers) {
+			try {
+				results.push(handler(...args));
+			} catch (error) {
+				console.error('Error in callback handler:', error);
+			}
+		}
+		return results;
+	}
+}
 
 export class RemoteApi<
 	TLocalRequest,
@@ -35,45 +40,18 @@ export class RemoteApi<
 	private requestCallbacks: Map<string, Deferred<TRemoteResponse>> =
 		new Map();
 
-	private notificationSubscribers: Set<
-		(notification: TNotificationReceive) => void
-	> = new Set();
-	private closeSubscribers: Set<() => void> = new Set();
-
-	onNotification(
-		callback: (notification: TNotificationReceive) => void,
-	): () => void {
-		this.notificationSubscribers.add(callback);
-		return () => {
-			this.notificationSubscribers.delete(callback);
-		};
-	}
-
-	onClose(callback: () => void): () => void {
-		this.closeSubscribers.add(callback);
-		return () => {
-			this.closeSubscribers.delete(callback);
-		};
-	}
+	readonly $notification = new CallbackSet<[TNotificationReceive], void>();
+	readonly $close = new CallbackSet<[void], void>();
+	readonly $request = new CallbackSet<
+		[TRemoteRequest],
+		null | Promise<TLocalResponse>
+	>();
 
 	constructor(
 		remoteRequestSchema: ZodSchema<TRemoteRequest>,
 		remoteResponseSchema: ZodSchema<TRemoteResponse>,
 		remoteNotificationSchema: ZodSchema<TNotificationReceive>,
 		transportFactory: TransportFactory<string>,
-		handler: RemoteApiHandler<
-			RemoteApi<
-				TLocalRequest,
-				TRemoteResponse,
-				TRemoteRequest,
-				TLocalResponse,
-				TNotificationSend,
-				TNotificationReceive
-			>,
-			TRemoteRequest,
-			TLocalResponse,
-			TNotificationReceive
-		>,
 	) {
 		const incomingMessageSpec = z.union([
 			z.object({
@@ -129,26 +107,8 @@ export class RemoteApi<
 						const { data: notification } = message as {
 							data: TNotificationReceive;
 						};
-						try {
-							handler.handleNotification.call(self, notification);
-						} catch (error) {
-							console.error(
-								'Error handling notification:',
-								notification,
-								error,
-							);
-						}
 
-						self.notificationSubscribers.forEach((subscriber) => {
-							try {
-								subscriber(notification);
-							} catch (subscriberError) {
-								console.error(
-									'Error in notification subscriber:',
-									subscriberError,
-								);
-							}
-						});
+						self.$notification.handle(notification);
 						return;
 					}
 					case 'request': {
@@ -159,16 +119,34 @@ export class RemoteApi<
 						};
 						(async () => {
 							try {
-								const response =
-									await handler.handleRequest.call(
-										self,
-										request as TRemoteRequest,
+								const response = await Promise.all(
+									self.$request
+										.handle(request as TRemoteRequest)
+										.filter((x) => x !== null),
+								);
+
+								if (response.length === 0) {
+									console.warn(
+										`No response for request ${id}, sending null.`,
 									);
+									self.send({
+										type: 'response-error',
+										id,
+										error: 'Unrecognized request',
+									});
+									return;
+								}
+
+								if (response.length > 1) {
+									console.warn(
+										`Multiple responses for request ${id}, using the first one.`,
+									);
+								}
 
 								self.send({
 									type: 'response',
 									id,
-									data: response,
+									data: response.pop()!,
 								});
 							} catch (error) {
 								self.send({
@@ -226,21 +204,7 @@ export class RemoteApi<
 					def.reject(new Error('Transport closed')),
 				);
 				self.requestCallbacks.clear();
-				try {
-					handler.handleClose.call(self);
-				} catch (error) {
-					console.error('Error handling close:', error);
-				}
-				self.closeSubscribers.forEach((subscriber) => {
-					try {
-						subscriber();
-					} catch (subscriberError) {
-						console.error(
-							'Error in close subscriber:',
-							subscriberError,
-						);
-					}
-				});
+				self.$close.handle();
 			},
 			handleOpen(): void {
 				self.flushSendQueue();
