@@ -69,7 +69,7 @@ const entityPropertySpec = z.object({
 		.number()
 		.int()
 		.min(0, 'Initiative must be a non-negative integer'),
-	images: z.array(z.string().optional()).optional(),
+	images: z.array(z.string()).optional(),
 	visible: z.boolean(),
 	ac: z.coerce
 		.number()

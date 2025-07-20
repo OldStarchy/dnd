@@ -1,6 +1,7 @@
 import InitiativeTable from '@/components/InitiativeTable/InitiativeTable';
-import { useClient } from '@/hooks/context/useClient';
-import { useState } from 'react';
+import useClient from '@/hooks/useClient';
+import { setCurrentTurnEntityId } from '@/store/reducers/initiativeSlice';
+import { useEffect, useState } from 'react';
 import type { InitiativeTableEntry } from './InitiativeTable/InitiativeTableEntry';
 
 function PlayerViewPanel() {
@@ -11,20 +12,19 @@ function PlayerViewPanel() {
 		string | null
 	>(null);
 
-	useClient({
-		handleNotification: (update) => {
+	const client = useClient();
+
+	useEffect(() => {
+		return client?.$notification.on((update) => {
 			switch (update.type) {
 				case 'initiativeTableUpdate': {
-					setInitiativeTableEntries(update.data);
+					setInitiativeTableEntries(update.data.entries);
+					setCurrentTurnEntityId(update.data.currentTurnId);
 					break;
 				}
-				default: {
-					// @ts-expect-error unused
-					const _exhaustiveCheck: never = update;
-				}
 			}
-		},
-	});
+		});
+	}, [client]);
 
 	return (
 		<div>

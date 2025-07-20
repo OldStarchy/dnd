@@ -6,7 +6,7 @@ export const creatureSchema = z.object({
 	id: z.string(),
 	name: z.string().min(1, 'Name is required'),
 	race: z.string().optional(),
-	images: z.array(z.string().optional()).optional(),
+	images: z.array(z.string()).optional(),
 	hp: z.coerce.number().int(),
 	maxHp: z.coerce.number().int(),
 	hitpointsRoll: z.string().optional(), // e.g., "2d10+5"
@@ -33,7 +33,7 @@ export const creatureSchema = z.object({
 		})
 		.optional(),
 	debuffs: debuffSpec.array().optional(),
-	notes: z.string().optional(),
+	description: z.string().optional(),
 });
 
 /**
@@ -72,5 +72,5 @@ export type Creature = {
 		notes?: string;
 		duration?: number;
 	}[];
-	notes?: string;
+	description?: string;
 };

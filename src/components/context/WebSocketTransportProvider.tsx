@@ -1,12 +1,12 @@
 import { ShareContext } from '@/context/ShareContext';
-import { TranpsortContext } from '@/context/TransportContext';
+import { TransportContext } from '@/context/TransportContext';
 import { useBackendApi } from '@/hooks/context/useBackendApi';
 import { useSessionToken } from '@/hooks/useSessionToken';
 import type { TransportFactory, TransportHandler } from '@/sync/Transport';
 import { WebSocketTransport } from '@/sync/transports/WebSocketTransport';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
-export function MessagePortTransportProvider({
+export function WebSocketTransportProvider({
 	children,
 }: {
 	children: React.ReactNode;
@@ -56,10 +56,15 @@ export function MessagePortTransportProvider({
 	}, [backendApi, connectionToken, setConnectionToken]);
 
 	return (
-		<TranpsortContext.Provider value={transportFactory}>
-			<ShareContext.Provider value={roomCode}>
+		<TransportContext.Provider value={transportFactory}>
+			<ShareContext.Provider
+				value={useMemo(
+					() => (roomCode ? { roomCode } : null),
+					[roomCode],
+				)}
+			>
 				{children}
 			</ShareContext.Provider>
-		</TranpsortContext.Provider>
+		</TransportContext.Provider>
 	);
 }

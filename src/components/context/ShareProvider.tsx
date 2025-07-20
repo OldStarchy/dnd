@@ -1,15 +1,17 @@
 import { ShareContext } from '@/context/ShareContext';
 import { useBackendApi } from '@/hooks/context/useBackendApi';
+import useTransport from '@/hooks/context/useTransport';
+import useLocalStorageCreatureList from '@/hooks/useLocalStorageCreatureList';
 import { useSessionToken } from '@/hooks/useSessionToken';
+import { usePrimarySelector } from '@/store/primary-store';
 import {
 	getObfuscatedHealthText,
 	HealthObfuscation,
 	type Entity,
 } from '@/store/types/Entity';
 import { RemoteServer } from '@/sync/RemoteServer';
-import { WebSocketTransport } from '@/sync/transports/WebSocketTransport';
 import type { Creature } from '@/type/Creature';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { InitiativeTableEntry } from '../InitiativeTable/InitiativeTableEntry';
 
 export function stripEntityListForPopout(
@@ -58,9 +60,23 @@ export function stripEntityListForPopout(
 		});
 }
 
+/**
+ * If there is a room, this provider will keep it up to date with changes
+ * to state, and respond to requests from other clients.
+ */
 export function ShareProvider({ children }: { children: React.ReactNode }) {
 	const [roomCode, setRoomCode] = useState<string | null>(null);
 	const [connectionToken, setConnectionToken] = useSessionToken();
+	const transportFactory = useTransport();
+	const [server, setServer] = useState<RemoteServer | null>(null);
+
+	const [creatures, setCreatures] = useLocalStorageCreatureList();
+	const creaturesRef = useRef<Creature[]>(creatures);
+	creaturesRef.current = creatures;
+
+	const initiativeState = usePrimarySelector((state) => state.initiative);
+	const initiativeStateRef = useRef(initiativeState);
+	initiativeStateRef.current = initiativeState;
 
 	const backendApi = useBackendApi();
 
@@ -86,98 +102,129 @@ export function ShareProvider({ children }: { children: React.ReactNode }) {
 	}, [connectionToken, backendApi, setConnectionToken]);
 
 	useEffect(() => {
-		if (serverRef.current || !connectionToken) {
+		if (!transportFactory || !connectionToken) {
+			setServer(null);
 			return;
 		}
 
-		const server = new RemoteServer(
-			,
-			{
-				async handleRequest(request) {
-					switch (request.type) {
-						case 'creature-get': {
-							const creature =
-								creaturesRef.current.find(
-									(c) => c.id === request.id,
-								) ?? null;
-							return creature;
-						}
-						case 'creature-list': {
-							return creaturesRef.current;
-						}
-						case 'creature-save': {
-							const { id, data } = request;
-							if (id !== null) {
-								const existingIndex =
-									creaturesRef.current.findIndex(
-										(c) => c.id === id,
-									);
-								if (existingIndex !== -1) {
-									const updatedCreatures = [
-										...creaturesRef.current,
-									];
-									updatedCreatures[existingIndex] = {
-										...data,
+		const server = new RemoteServer(transportFactory);
 
-										images: (data.images?.filter(Boolean) ||
-											[]) as string[],
-										id,
-									};
-									setCreatures(updatedCreatures);
-									return true;
-								}
-								return false;
-							} else {
-								const newCreature = {
+		setServer(server);
+	}, [connectionToken, transportFactory]);
+
+	useEffect(() => {
+		if (!server) {
+			return;
+		}
+
+		const abort = new AbortController();
+
+		server.$request
+			.on(async function (request) {
+				switch (request.type) {
+					case 'creature-get': {
+						const creature =
+							creaturesRef.current.find(
+								(c) => c.id === request.id,
+							) ?? null;
+						return creature;
+					}
+					case 'creature-list': {
+						return creaturesRef.current;
+					}
+					case 'creature-save': {
+						const { id, data } = request;
+						if (id !== null) {
+							const existingIndex =
+								creaturesRef.current.findIndex(
+									(c) => c.id === id,
+								);
+							if (existingIndex !== -1) {
+								const updatedCreatures = [
+									...creaturesRef.current,
+								];
+								updatedCreatures[existingIndex] = {
 									...data,
-									id: crypto.randomUUID(),
+
 									images: (data.images?.filter(Boolean) ||
 										[]) as string[],
+									id,
 								};
-								setCreatures([
-									...creaturesRef.current,
-									newCreature,
-								]);
+								setCreatures(updatedCreatures);
 								return true;
 							}
+							return false;
+						} else {
+							const newCreature = {
+								...data,
+								id: crypto.randomUUID(),
+								images: (data.images?.filter(Boolean) ||
+									[]) as string[],
+							};
+							setCreatures([
+								...creaturesRef.current,
+								newCreature,
+							]);
+							return true;
 						}
 					}
-				},
-				handleNotification(notification) {
-					switch (notification.type) {
-						case 'ready':
-							this.notify({
-								type: 'initiativeTableUpdate',
-								data: stripEntityListForPopout(
+				}
+			})
+			.withAbort(abort);
+
+		server.$notification
+			.on(function (notification) {
+				switch (notification.type) {
+					case 'ready':
+						this.notify({
+							type: 'initiativeTableUpdate',
+							data: {
+								entries: stripEntityListForPopout(
 									initiativeStateRef.current.entities,
 									creaturesRef.current,
 								),
-							});
-							break;
-						case 'heartbeat':
-							this.notify({ type: 'heartbeat' });
-							break;
-						default: {
-							// @ts-expect-error unused
-							const _exhaustiveCheck: never = notification;
-						}
+								currentTurnId:
+									initiativeStateRef.current
+										.currentTurnEntityId,
+							},
+						});
+						break;
+					case 'heartbeat':
+						this.notify({ type: 'heartbeat' });
+						break;
+					default: {
+						// @ts-expect-error unused
+						const _exhaustiveCheck: never = notification;
 					}
-				},
-				handleClose() {
-					// Handle connection close
-				},
-			},
-		);
+				}
+			})
+			.withAbort(abort);
 
-		serverRef.current = server;
-	}, [connectionToken, backendApi]);
+		return () => {
+			abort.abort();
+		};
+	}, [server, setConnectionToken, setCreatures]);
+
+	useEffect(() => {
+		if (!server) {
+			return;
+		}
+
+		server.notify({
+			type: 'initiativeTableUpdate',
+			data: {
+				entries: stripEntityListForPopout(
+					initiativeState.entities,
+					creatures,
+				),
+				currentTurnId: initiativeState.currentTurnEntityId,
+			},
+		});
+	}, [server, initiativeState, creatures]);
 
 	return (
 		<ShareContext.Provider
-			value={useMemo(
-				() => ({ roomCode, sessionToken: connectionToken }),
-				[roomCode, connectionToken],
-			)}
+			value={useMemo(() => (roomCode ? { roomCode } : null), [roomCode])}
 		>
 			{children}
 		</ShareContext.Provider>

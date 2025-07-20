@@ -1,5 +1,6 @@
 import { CreatureListContext } from '@/context/CreatureListContext';
-import { useClient } from '@/hooks/context/useClient';
+import useClient from '@/hooks/useClient';
+import type { Merge } from '@/lib/partialUpdate';
 import type { Creature } from '@/type/Creature';
 import { useMemo } from 'react';
 
@@ -10,8 +11,11 @@ function RemoteCreatureListProvider({
 }) {
 	const remote = useClient();
 
-	const api = useMemo(
-		() => ({
+	const api = useMemo(() => {
+		if (!remote) {
+			return null;
+		}
+		return {
 			list: async () => {
 				return (await remote.request({
 					type: 'creature-list',
@@ -23,16 +27,25 @@ function RemoteCreatureListProvider({
 					id,
 				})) as Creature | null;
 			},
-			save: async (id: string | null, creature: Omit<Creature, 'id'>) => {
+			update: async (
+				id: string | null,
+				creature: Merge<Omit<Creature, 'id'>>['merge'],
+			) => {
 				return (await remote.request({
 					type: 'creature-save',
 					id,
 					data: creature,
 				})) as boolean;
 			},
-		}),
-		[remote],
-	);
+
+			create: async (creature: Omit<Creature, 'id'>) => {
+				return (await remote.request({
+					type: 'creature-save',
+					data: creature,
+				})) as boolean;
+			},
+		};
+	}, [remote]);
 
 	return (
 		<CreatureListContext.Provider value={api}>

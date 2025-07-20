@@ -20,6 +20,7 @@ import {
 	type RouteObject,
 } from 'react-router';
 import { ConfigurableBackendApiProvider } from './components/context/ConfigurableBackendApiProvider';
+import LocalStorageCreatureListProvider from './components/context/LocalStorageCreatureListProvider';
 import RoomView from './views/Room';
 
 Logger.default.addWriter(Logger.INFO, consoleWriter);
@@ -27,11 +28,13 @@ Logger.default.addWriter(Logger.INFO, consoleWriter);
 function GmLayout() {
 	return (
 		<Provider store={primaryStore}>
-			<ShareProvider>
-				<PopoutProvider>
-					<Layout />
-				</PopoutProvider>
-			</ShareProvider>
+			<LocalStorageCreatureListProvider>
+				<ShareProvider>
+					<PopoutProvider>
+						<Layout />
+					</PopoutProvider>
+				</ShareProvider>
+			</LocalStorageCreatureListProvider>
 		</Provider>
 	);
 }

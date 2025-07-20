@@ -23,6 +23,7 @@ import {
 	HealthObfuscation,
 	type Entity,
 } from '@/store/types/Entity';
+import type { Creature } from '@/type/Creature';
 import { DropdownMenuTrigger } from '@radix-ui/react-dropdown-menu';
 import { ChevronDown, Plus, Trash } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -53,8 +54,16 @@ function GameMasterControlPanel() {
 	);
 	const dispatch = usePrimaryDispatch();
 
-	const [characters, setCharacters] = useCustomCreatureList();
+	const { list, update } = useCustomCreatureList();
 	const { monsters } = useMonsterList();
+
+	const [characters, setCreaturesState] = useState<Creature[]>([]);
+
+	useEffect(() => {
+		list().then((creatures) => {
+			setCreaturesState(creatures);
+		});
+	}, [list]);
 
 	useEffect(() => {
 		dispatch(
@@ -173,24 +182,14 @@ function GameMasterControlPanel() {
 
 			if (entity.creature.type === 'unique') {
 				const id = entity.creature.id;
-				setCharacters((prev) =>
-					prev.map((c) =>
-						c.id === id
-							? {
-									...c,
-									name: data.name || c.name,
-									ac: data.ac ?? c.ac,
-									hp: data.hp ?? c.hp,
-									maxHp: data.maxHp ?? c.maxHp,
-									debuffs: data.debuffs,
-									images:
-										(data.images ?? c.images ?? []).filter(
-											(i) => i !== undefined,
-										) ?? [],
-								}
-							: c,
-					),
-				);
+				update(id, {
+					name: { value: data.name },
+					ac: { value: data.ac },
+					hp: { value: data.hp },
+					maxHp: { value: data.maxHp },
+					debuffs: { value: data.debuffs },
+					images: { value: data.images },
+				});
 			} else {
 				dispatch(
 					setEntity({
@@ -220,7 +219,7 @@ function GameMasterControlPanel() {
 				);
 			}
 		},
-		[entities, dispatch, setCharacters],
+		[entities, dispatch, update],
 	);
 
 	const advanceTurn = useCallback(() => {
@@ -270,20 +269,13 @@ function GameMasterControlPanel() {
 				);
 			} else {
 				const id = currentEntity.creature.id;
-				setCharacters((prev) =>
-					prev.map((c) =>
-						c.id === id
-							? {
-									...c,
-									debuffs: newDebuffs,
-								}
-							: c,
-					),
-				);
+				update(id, {
+					debuffs: { value: newDebuffs },
+				});
 			}
 		}
 		dispatch(setCurrentTurnEntityId(nextEntity.id));
-	}, [entities, currentTurnEntityId, dispatch, characters, setCharacters]);
+	}, [entities, currentTurnEntityId, dispatch, characters, update]);
 
 	return (
 		<ResizablePanelGroup
@@ -297,7 +289,7 @@ function GameMasterControlPanel() {
 					</Button>
 					<Input
 						type="text"
-						value={shareCodes.roomCode ?? ''}
+						value={shareCodes?.roomCode ?? ''}
 						readOnly
 					/>
 					<InitiativeTable

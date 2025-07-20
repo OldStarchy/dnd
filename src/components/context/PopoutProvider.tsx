@@ -1,4 +1,4 @@
-import useCustomCreatureList from '@/hooks/useCustomCreatureList';
+import useLocalStorageCreatureList from '@/hooks/useLocalStorageCreatureList';
 import { usePrimarySelector } from '@/store/primary-store';
 import { RemoteServer } from '@/sync/RemoteServer';
 import { PortTransport } from '@/sync/transports/PortTransport';
@@ -6,7 +6,6 @@ import { DND_CONNECT, DND_PLEASE_RECONNECT } from '@/sync/windowMessage';
 import { useCallback, useEffect, useRef } from 'react';
 import { useHref } from 'react-router';
 import { PopoutContext } from '../../context/PopoutContext';
-import { stripEntityListForPopout } from './ShareProvider';
 
 export function PopoutProvider({ children }: { children: React.ReactNode }) {
 	const serverRef = useRef<RemoteServer | null>(null);
@@ -16,22 +15,9 @@ export function PopoutProvider({ children }: { children: React.ReactNode }) {
 	const initiativeStateRef = useRef(initiativeState);
 	initiativeStateRef.current = initiativeState;
 
-	const [creatures] = useCustomCreatureList();
+	const [creatures] = useLocalStorageCreatureList();
 	const creaturesRef = useRef(creatures);
 	creaturesRef.current = creatures;
-
-	useEffect(() => {
-		if (!serverRef.current) {
-			return;
-		}
-		serverRef.current.notify({
-			type: 'initiativeTableUpdate',
-			data: stripEntityListForPopout(
-				initiativeState.entities,
-				creaturesRef.current,
-			),
-		});
-	}, [initiativeState.entities]);
 
 	const prepareServer = useCallback((win: Window) => {
 		serverRef.current?.[Symbol.dispose]();
@@ -47,37 +33,6 @@ export function PopoutProvider({ children }: { children: React.ReactNode }) {
 		port1.start();
 		const server = new RemoteServer(
 			(handler) => new PortTransport(port1, handler),
-			{
-				async handleRequest(request) {
-					// Handle requests from the popout window here
-					console.log('Received request:', request);
-					// NYI
-					return {};
-				},
-				handleNotification(notification) {
-					switch (notification.type) {
-						case 'ready':
-							server.notify({
-								type: 'initiativeTableUpdate',
-								data: stripEntityListForPopout(
-									initiativeStateRef.current.entities,
-									creaturesRef.current,
-								),
-							});
-							break;
-						case 'heartbeat':
-							server.notify({ type: 'heartbeat' });
-							break;
-						default: {
-							// @ts-expect-error unused
-							const _exhaustiveCheck: never = notification;
-						}
-					}
-				},
-				handleClose() {
-					// Handle connection close
-				},
-			},
 		);
 
 		serverRef.current = server;

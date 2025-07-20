@@ -1,25 +1,37 @@
-import type { Deferred } from '@/deferred';
+import type {Deferred} from '@/deferred';
 import deferred from '@/deferred';
 import z from 'zod';
-import type { Transport, TransportFactory } from './Transport';
+import type {Transport, TransportFactory} from './Transport';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type ZodSchema<T> = z.ZodType<any, any, T> | z.ZodEffects<any, T, any>;
 
-export class CallbackSet<TArgs extends unknown[], TReturn> {
-	private handlers = new Set<(...args: TArgs) => TReturn>();
-	on(handler: (...args: TArgs) => TReturn): () => void {
+export type Unsubscriber = {(): void, withAbort(abort: AbortController | AbortSignal): void};
+export class CallbackSet<TThis, TArgs extends unknown[], TReturn> {
+	private handlers = new Set<(this: TThis, ...args: TArgs) => TReturn>();
+	on(handler: (this: TThis, ...args: TArgs) => TReturn): Unsubscriber {
 		this.handlers.add(handler);
-		return () => {
+		const unsub = (() => {
 			this.handlers.delete(handler);
+		}) as Unsubscriber;
+
+		unsub.withAbort = (abort: AbortController | AbortSignal) => {
+			if (abort instanceof AbortController) {
+				abort.signal.addEventListener('abort', unsub);
+			} else {
+				abort.addEventListener('abort', unsub);
+			}
+			return unsub;
 		};
+
+		return unsub;
 	}
 
-	handle(...args: TArgs): TReturn[] {
+	handle(sender: TThis, ...args: TArgs): TReturn[] {
 		const results: TReturn[] = [];
 		for (const handler of this.handlers) {
 			try {
-				results.push(handler(...args));
+				results.push(handler.call(sender, ...args));
 			} catch (error) {
 				console.error('Error in callback handler:', error);
 			}
@@ -40,9 +52,9 @@ export class RemoteApi<
 	private requestCallbacks: Map<string, Deferred<TRemoteResponse>> =
 		new Map();
 
-	readonly $notification = new CallbackSet<[TNotificationReceive], void>();
-	readonly $close = new CallbackSet<[void], void>();
-	readonly $request = new CallbackSet<
+	readonly $notification = new CallbackSet<this, [TNotificationReceive], void>();
+	readonly $close = new CallbackSet<this, [void], void>();
+	readonly $request = new CallbackSet<this,
 		[TRemoteRequest],
 		null | Promise<TLocalResponse>
 	>();
@@ -108,7 +120,7 @@ export class RemoteApi<
 							data: TNotificationReceive;
 						};
 
-						self.$notification.handle(notification);
+						self.$notification.handle(self, notification);
 						return;
 					}
 					case 'request': {
@@ -121,7 +133,7 @@ export class RemoteApi<
 							try {
 								const response = await Promise.all(
 									self.$request
-										.handle(request as TRemoteRequest)
+										.handle(self, request as TRemoteRequest)
 										.filter((x) => x !== null),
 								);
 
@@ -204,7 +216,7 @@ export class RemoteApi<
 					def.reject(new Error('Transport closed')),
 				);
 				self.requestCallbacks.clear();
-				self.$close.handle();
+				self.$close.handle(self);
 			},
 			handleOpen(): void {
 				self.flushSendQueue();

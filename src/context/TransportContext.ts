@@ -1,6 +1,6 @@
-import { type TransportFactory } from '@/sync/Transport';
-import { createContext } from 'react';
+import {type TransportFactory} from '@/sync/Transport';
+import {createContext} from 'react';
 
-export const TranpsortContext = createContext<TransportFactory<string> | null>(
+export const TransportContext = createContext<TransportFactory<string> | null>(
 	null,
 );

@@ -1,4 +1,4 @@
-import { TranpsortContext } from '@/context/TransportContext';
+import { TransportContext } from '@/context/TransportContext';
 import type { TransportFactory, TransportHandler } from '@/sync/Transport';
 import { PortTransport } from '@/sync/transports/PortTransport';
 import { DND_CONNECT, DND_PLEASE_RECONNECT } from '@/sync/windowMessage';
@@ -77,9 +77,9 @@ export function MessagePortTransportProvider({
 
 	return (
 		<PopoutContext.Provider value={{ setOpen }}>
-			<TranpsortContext.Provider value={transport}>
+			<TransportContext.Provider value={transport}>
 				{children}
-			</TranpsortContext.Provider>
+			</TransportContext.Provider>
 		</PopoutContext.Provider>
 	);
 }

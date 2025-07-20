@@ -1,5 +1,5 @@
 import { MessagePortTransportProvider } from '@/components/context/MessagePortTransportProvider';
-import { WebsocketTransportProvider } from '@/components/context/WebsocketTransportProvider';
+import { WebSocketTransportProvider } from '@/components/context/WebSocketTransportProvider';
 import PlayerViewPanel from '@/components/player-view-panel';
 import { useSearchParams } from 'react-router';
 
@@ -14,9 +14,9 @@ function PopoutView() {
 		);
 	} else {
 		return (
-			<WebsocketTransportProvider>
+			<WebSocketTransportProvider>
 				<PlayerViewPanel />
-			</WebsocketTransportProvider>
+			</WebSocketTransportProvider>
 		);
 	}
 }
