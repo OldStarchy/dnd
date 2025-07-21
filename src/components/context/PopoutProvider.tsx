@@ -1,46 +1,39 @@
-import useLocalStorageCreatureList from '@/hooks/useLocalStorageCreatureList';
-import { usePrimarySelector } from '@/store/primary-store';
 import { RemoteServer } from '@/sync/RemoteServer';
 import { PortTransport } from '@/sync/transports/PortTransport';
 import { DND_CONNECT, DND_PLEASE_RECONNECT } from '@/sync/windowMessage';
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useHref } from 'react-router';
 import { PopoutContext } from '../../context/PopoutContext';
+import { useServerStateConnection } from './ShareProvider';
 
 export function PopoutProvider({ children }: { children: React.ReactNode }) {
-	const serverRef = useRef<RemoteServer | null>(null);
 	const windowRef = useRef<Window | null>(null);
-
-	const initiativeState = usePrimarySelector((state) => state.initiative);
-	const initiativeStateRef = useRef(initiativeState);
-	initiativeStateRef.current = initiativeState;
-
-	const [creatures] = useLocalStorageCreatureList();
-	const creaturesRef = useRef(creatures);
-	creaturesRef.current = creatures;
+	const [server, setServer] = useState<RemoteServer | null>(null);
 
 	const prepareServer = useCallback((win: Window) => {
-		serverRef.current?.[Symbol.dispose]();
+		setServer((current) => {
+			current?.[Symbol.dispose]();
 
-		const channel = new MessageChannel();
-		const { port1, port2 } = channel;
+			const channel = new MessageChannel();
+			const { port1, port2 } = channel;
 
-		win.postMessage(
-			{ type: DND_CONNECT, port: port2 },
-			{ transfer: [port2] },
-		);
+			win.postMessage(
+				{ type: DND_CONNECT, port: port2 },
+				{ transfer: [port2] },
+			);
 
-		port1.start();
-		const server = new RemoteServer(
-			(handler) => new PortTransport(port1, handler),
-		);
+			port1.start();
+			const server = new RemoteServer(
+				(handler) => new PortTransport(port1, handler),
+			);
 
-		serverRef.current = server;
+			return server;
+		});
 	}, []);
 
 	useEffect(() => {
 		window.addEventListener('message', (event) => {
-			if (event.data === DND_PLEASE_RECONNECT) {
+			if (event.data?.type === DND_PLEASE_RECONNECT) {
 				windowRef.current = event.source as Window;
 				prepareServer(windowRef.current);
 			}
@@ -81,6 +74,8 @@ export function PopoutProvider({ children }: { children: React.ReactNode }) {
 		},
 		[prepareServer, popoutUrl],
 	);
+
+	useServerStateConnection(server);
 
 	return (
 		<PopoutContext.Provider value={{ setOpen }}>

@@ -2,84 +2,43 @@ import { TransportContext } from '@/context/TransportContext';
 import type { TransportFactory, TransportHandler } from '@/sync/Transport';
 import { PortTransport } from '@/sync/transports/PortTransport';
 import { DND_CONNECT, DND_PLEASE_RECONNECT } from '@/sync/windowMessage';
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { useHref } from 'react-router';
-import { PopoutContext } from '../../context/PopoutContext';
+import { useEffect, useMemo, useState } from 'react';
 
 export function MessagePortTransportProvider({
 	children,
 }: {
 	children: React.ReactNode;
 }) {
-	const [transport, setTransport] = useState<TransportFactory<string> | null>(
-		null,
-	);
-	const windowRef = useRef<Window | null>(null);
+	const [port, setPort] = useState<MessagePort | null>(null);
+	useEffect(() => {
+		const messageHandler = (event: MessageEvent) => {
+			if (event.data?.type === DND_CONNECT && event.ports?.length) {
+				const port = event.ports[0];
+				port.start();
+				setPort(port);
+			}
+		};
+		window.addEventListener('message', messageHandler);
+		window.opener?.postMessage({ type: DND_PLEASE_RECONNECT });
 
-	const preparePopout = useCallback((win: Window) => {
-		const channel = new MessageChannel();
-		const { port1, port2 } = channel;
-
-		win.postMessage(
-			{ type: DND_CONNECT, port: port2 },
-			{ transfer: [port2] },
-		);
-
-		const transport = (handler: TransportHandler) =>
-			new PortTransport(port1, handler);
-
-		setTransport(transport);
+		return () => {
+			window.removeEventListener('message', messageHandler);
+		};
 	}, []);
 
-	useEffect(() => {
-		window.addEventListener('message', (event) => {
-			if (event.data === DND_PLEASE_RECONNECT) {
-				windowRef.current = event.source as Window;
-				preparePopout(windowRef.current);
-			}
-		});
-	}, [preparePopout]);
+	const transport = useMemo<TransportFactory<string> | null>(() => {
+		if (!port) return null;
 
-	const popoutUrl = useHref('/popout?local');
+		port.start();
+		const transport = (handler: TransportHandler) =>
+			new PortTransport(port, handler);
 
-	const setOpen = useCallback(
-		(open: boolean) => {
-			if (open) {
-				if (windowRef.current && !windowRef.current.closed) {
-					windowRef.current.focus();
-
-					if (windowRef.current.location.toString() !== popoutUrl) {
-						windowRef.current.location.href = popoutUrl;
-					}
-				} else {
-					const win = window.open(
-						popoutUrl,
-						'Popout',
-						'width=800,height=600,scrollbars=yes,resizable=yes',
-					);
-
-					if (!win) {
-						console.error('Failed to open popout window');
-						return;
-					}
-					win.addEventListener('load', () => preparePopout(win));
-
-					windowRef.current = win;
-				}
-			} else {
-				if (windowRef.current && !windowRef.current.closed) {
-					windowRef.current.close();
-				}
-			}
-		},
-		[preparePopout, popoutUrl],
-	);
+		return transport;
+	}, [port]);
 
 	return (
-		<PopoutContext.Provider value={{ setOpen }}>
-			<TransportContext.Provider value={transport}>
-				{children}
-			</TransportContext.Provider>
-		</PopoutContext.Provider>
+		<TransportContext.Provider value={transport}>
+			{children}
+		</TransportContext.Provider>
 	);
 }

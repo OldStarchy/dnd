@@ -73,11 +73,13 @@ export default function InitiativeTableRow({
 
 	if (!creatureInfo) {
 		return (
-			<TableRow className="text-muted-foreground">
-				<TableCell colSpan={8}>
-					Loading creature information...
-				</TableCell>
-			</TableRow>
+			<TableBody>
+				<TableRow className="text-muted-foreground">
+					<TableCell colSpan={8}>
+						Loading creature information...
+					</TableCell>
+				</TableRow>
+			</TableBody>
 		);
 	}
 

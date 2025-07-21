@@ -190,6 +190,7 @@ function GameMasterControlPanel() {
 					debuffs: { value: data.debuffs },
 					images: { value: data.images },
 				});
+				dispatch(setEntity({ ...entity, visible: data.visible }));
 			} else {
 				dispatch(
 					setEntity({

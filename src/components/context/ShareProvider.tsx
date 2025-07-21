@@ -70,14 +70,6 @@ export function ShareProvider({ children }: { children: React.ReactNode }) {
 	const transportFactory = useTransport();
 	const [server, setServer] = useState<RemoteServer | null>(null);
 
-	const [creatures, setCreatures] = useLocalStorageCreatureList();
-	const creaturesRef = useRef<Creature[]>(creatures);
-	creaturesRef.current = creatures;
-
-	const initiativeState = usePrimarySelector((state) => state.initiative);
-	const initiativeStateRef = useRef(initiativeState);
-	initiativeStateRef.current = initiativeState;
-
 	const backendApi = useBackendApi();
 
 	useEffect(() => {
@@ -112,6 +104,25 @@ export function ShareProvider({ children }: { children: React.ReactNode }) {
 		setServer(server);
 	}, [connectionToken, transportFactory]);
 
+	useServerStateConnection(server);
+
+	return (
+		<ShareContext.Provider
+			value={useMemo(() => (roomCode ? { roomCode } : null), [roomCode])}
+		>
+			{children}
+		</ShareContext.Provider>
+	);
+}
+
+export function useServerStateConnection(server: RemoteServer | null): void {
+	const [creatures, setCreatures] = useLocalStorageCreatureList();
+	const creaturesRef = useRef<Creature[]>(creatures);
+	creaturesRef.current = creatures;
+
+	const initiativeState = usePrimarySelector((state) => state.initiative);
+	const initiativeStateRef = useRef(initiativeState);
+	initiativeStateRef.current = initiativeState;
 	useEffect(() => {
 		if (!server) {
 			return;
@@ -203,7 +214,7 @@ export function ShareProvider({ children }: { children: React.ReactNode }) {
 		return () => {
 			abort.abort();
 		};
-	}, [server, setConnectionToken, setCreatures]);
+	}, [server, setCreatures]);
 
 	useEffect(() => {
 		if (!server) {
@@ -221,12 +232,4 @@ export function ShareProvider({ children }: { children: React.ReactNode }) {
 			},
 		});
 	}, [server, initiativeState, creatures]);
-
-	return (
-		<ShareContext.Provider
-			value={useMemo(() => (roomCode ? { roomCode } : null), [roomCode])}
-		>
-			{children}
-		</ShareContext.Provider>
-	);
 }

@@ -3,6 +3,7 @@ import useClient from '@/hooks/useClient';
 import { setCurrentTurnEntityId } from '@/store/reducers/initiativeSlice';
 import { useEffect, useState } from 'react';
 import type { InitiativeTableEntry } from './InitiativeTable/InitiativeTableEntry';
+import RemoteCreatureListProvider from './context/RemoteCreatureListProvider';
 
 function PlayerViewPanel() {
 	const [initiativeTableEntries, setInitiativeTableEntries] = useState<
@@ -28,19 +29,21 @@ function PlayerViewPanel() {
 
 	return (
 		<div>
-			<InitiativeTable
-				fieldVisibility={{
-					initiative: true,
-					name: true,
-					race: false,
-					ac: false,
-					health: true,
-					debuffs: true,
-					description: true,
-				}}
-				entries={initiativeTableEntries}
-				currentTurnEntityId={currentTurnEntityId}
-			/>
+			<RemoteCreatureListProvider>
+				<InitiativeTable
+					fieldVisibility={{
+						initiative: true,
+						name: true,
+						race: false,
+						ac: false,
+						health: true,
+						debuffs: true,
+						description: true,
+					}}
+					entries={initiativeTableEntries}
+					currentTurnEntityId={currentTurnEntityId}
+				/>
+			</RemoteCreatureListProvider>
 		</div>
 	);
 }
