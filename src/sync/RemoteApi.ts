@@ -1,62 +1,93 @@
 import type { Deferred } from '@/deferred';
 import deferred from '@/deferred';
+import { Subject } from 'rxjs';
 import z from 'zod';
 import type { Transport, TransportFactory } from './Transport';
-
-export interface RemoteApiHandler<
-	TRemoteApi,
-	TRequest,
-	TResult,
-	TNotification,
-> {
-	handleNotification(this: TRemoteApi, notification: TNotification): void;
-	handleRequest(this: TRemoteApi, request: TRequest): Promise<TResult>;
-	handleClose(this: TRemoteApi): void;
-}
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type ZodSchema<T> = z.ZodType<any, any, T> | z.ZodEffects<any, T, any>;
 
+export type Unsubscriber = {
+	(): void;
+	withAbort(abort: AbortController | AbortSignal): void;
+};
+export class CallbackSet<TThis, TArgs extends unknown[], TReturn> {
+	private handlers = new Set<(this: TThis, ...args: TArgs) => TReturn>();
+	on(handler: (this: TThis, ...args: TArgs) => TReturn): Unsubscriber {
+		this.handlers.add(handler);
+		const unsub = (() => {
+			this.handlers.delete(handler);
+		}) as Unsubscriber;
+
+		unsub.withAbort = (abort: AbortController | AbortSignal) => {
+			if (abort instanceof AbortController) {
+				abort.signal.addEventListener('abort', unsub);
+			} else {
+				abort.addEventListener('abort', unsub);
+			}
+			return unsub;
+		};
+
+		return unsub;
+	}
+
+	handle(sender: TThis, ...args: TArgs): TReturn[] {
+		const results: TReturn[] = [];
+		for (const handler of this.handlers) {
+			try {
+				results.push(handler.call(sender, ...args));
+			} catch (error) {
+				console.error('Error in callback handler:', error);
+			}
+		}
+		return results;
+	}
+}
+
 export class RemoteApi<
-	TRequest,
-	TResult,
+	TLocalRequest,
+	TRemoteResponse,
+	TRemoteRequest,
+	TLocalResponse,
 	TNotificationSend,
 	TNotificationReceive,
 > {
 	private transport: Transport<string>;
-	private requestCallbacks: Map<string, Deferred<TResult>> = new Map();
+	private requestCallbacks: Map<string, Deferred<TRemoteResponse>> =
+		new Map();
+
+	readonly _$notification = new Subject<TNotificationReceive>();
+	readonly $notification = this._$notification.asObservable();
+
+	readonly _$close = new Subject<void>();
+	readonly $close = this._$close.asObservable();
+
+	readonly $request = new CallbackSet<
+		this,
+		[TRemoteRequest],
+		null | Promise<TLocalResponse>
+	>();
 
 	constructor(
-		requestSchema: ZodSchema<TRequest>,
-		responseSchema: ZodSchema<TResult>,
-		notificationReceiveSchema: ZodSchema<TNotificationReceive>,
+		remoteRequestSchema: ZodSchema<TRemoteRequest>,
+		remoteResponseSchema: ZodSchema<TRemoteResponse>,
+		remoteNotificationSchema: ZodSchema<TNotificationReceive>,
 		transportFactory: TransportFactory<string>,
-		handler: RemoteApiHandler<
-			RemoteApi<
-				TRequest,
-				TResult,
-				TNotificationSend,
-				TNotificationReceive
-			>,
-			TRequest,
-			TResult,
-			TNotificationReceive
-		>,
 	) {
 		const incomingMessageSpec = z.union([
 			z.object({
 				type: z.literal('notification'),
-				data: notificationReceiveSchema,
+				data: remoteNotificationSchema,
 			}),
 			z.object({
 				type: z.literal('request'),
 				id: z.string(),
-				data: requestSchema,
+				data: remoteRequestSchema,
 			}),
 			z.object({
 				type: z.literal('response'),
 				id: z.string(),
-				data: responseSchema,
+				data: remoteResponseSchema,
 			}),
 			z.object({
 				type: z.literal('response-error'),
@@ -97,27 +128,46 @@ export class RemoteApi<
 						const { data: notification } = message as {
 							data: TNotificationReceive;
 						};
-						handler.handleNotification.call(self, notification);
+
+						self._$notification.next(notification);
 						return;
 					}
 					case 'request': {
 						const { id, data: request } = message as {
 							type: 'request';
 							id: string;
-							data: TRequest;
+							data: TRemoteRequest;
 						};
 						(async () => {
 							try {
-								const response =
-									await handler.handleRequest.call(
-										self,
-										request as TRequest,
+								const response = await Promise.all(
+									self.$request
+										.handle(self, request as TRemoteRequest)
+										.filter((x) => x !== null),
+								);
+
+								if (response.length === 0) {
+									console.warn(
+										`No response for request ${id}, sending null.`,
 									);
+									self.send({
+										type: 'response-error',
+										id,
+										error: 'Unrecognized request',
+									});
+									return;
+								}
+
+								if (response.length > 1) {
+									console.warn(
+										`Multiple responses for request ${id}, using the first one.`,
+									);
+								}
 
 								self.send({
 									type: 'response',
 									id,
-									data: response as TResult,
+									data: response.pop()!,
 								});
 							} catch (error) {
 								self.send({
@@ -136,7 +186,7 @@ export class RemoteApi<
 						const { id, data: response } = message as {
 							type: 'response';
 							id: string;
-							data: TResult;
+							data: TRemoteResponse;
 						};
 						const def = self.requestCallbacks.get(id);
 						if (def) {
@@ -175,7 +225,7 @@ export class RemoteApi<
 					def.reject(new Error('Transport closed')),
 				);
 				self.requestCallbacks.clear();
-				handler.handleClose.call(self);
+				self._$close.next();
 			},
 			handleOpen(): void {
 				self.flushSendQueue();
@@ -191,8 +241,8 @@ export class RemoteApi<
 	private send(
 		message:
 			| { type: 'notification'; data: TNotificationSend }
-			| { type: 'request'; id: string; data: TRequest }
-			| { type: 'response'; id: string; data: TResult }
+			| { type: 'request'; id: string; data: TLocalRequest }
+			| { type: 'response'; id: string; data: TLocalResponse }
 			| { type: 'response-error'; id: string; error: string },
 	): Promise<void> {
 		const def = deferred<void>();
@@ -221,10 +271,10 @@ export class RemoteApi<
 		return this.send({ type: 'notification', data: notification });
 	}
 
-	request(request: TRequest): Promise<TResult> {
+	request(request: TLocalRequest): Promise<TRemoteResponse> {
 		const id = crypto.randomUUID();
 
-		const def = deferred<TResult>();
+		const def = deferred<TRemoteResponse>();
 		this.requestCallbacks.set(id, def);
 
 		this.send({ type: 'request', id, data: request }).catch((error) => {

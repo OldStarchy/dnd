@@ -1,56 +1,60 @@
+import type { Collections } from '@/sync/db/RoomHostConnection';
 import { BehaviorSubject } from 'rxjs';
 import type { ZodSchema } from 'zod';
 import { applyChangeset, type ChangeSet } from '../lib/changeSet';
 
-export interface Collection<
-	T extends { id: string; revision: number },
-	TFilter,
-> {
-	get(filter?: TFilter): Promise<DocumentApi<T>[]>;
-	getOne(filter: TFilter): Promise<DocumentApi<T> | null>;
-	create(newItem: T): Promise<DocumentApi<T>>;
+export interface Collection<TName extends keyof Collections, TFilter = void> {
+	readonly name: TName;
+	get(filter?: TFilter): Promise<DocumentApi<TName>[]>;
+	getOne(filter: TFilter): Promise<DocumentApi<TName> | null>;
+	create(newItem: Collections[TName]): Promise<DocumentApi<TName>>;
 }
 
-interface CollectionPrivate<T extends { id: string; revision: number }> {
-	__set(item: T): void;
+interface CollectionPrivate<TName extends keyof Collections> {
+	__set(item: Collections[TName]): void;
 	__delete(id: string): void;
 }
 
-export interface DocumentApi<T extends { id: string; revision: number }> {
-	readonly data: Omit<BehaviorSubject<T>, 'next'>;
+export interface DocumentApi<TName extends keyof Collections> {
+	readonly data: Omit<BehaviorSubject<Collections[TName]>, 'next'>;
 
-	update(changeSet: ChangeSet<Omit<T, 'id' | 'revision'>>): Promise<void>;
+	update(
+		changeSet: ChangeSet<Omit<Collections[TName], 'id' | 'revision'>>,
+	): Promise<void>;
 	delete(): Promise<void>;
 }
 
-export class LocalStorageCollection<
-	T extends { id: string; revision: number },
-	TFilter,
-> implements Collection<T, TFilter>
+export class LocalStorageCollection<TName extends keyof Collections, TFilter>
+	implements Collection<TName, TFilter>
 {
+	readonly name: TName;
 	private readonly storageKey: string;
-	private readonly filterFn: (item: T, filter?: TFilter) => boolean;
-	private readonly schema: ZodSchema<T>;
+	private readonly filterFn: (
+		item: Collections[TName],
+		filter?: TFilter,
+	) => boolean;
+	private readonly schema: ZodSchema<Collections[TName]>;
 
-	private readonly records: Map<string, WeakRef<DocumentApiImpl<T>>>;
+	private readonly records: Map<string, WeakRef<DocumentApiImpl<TName>>>;
 
 	constructor(
-		storageKey: string,
-		filterFn: (item: T, filter?: TFilter) => boolean,
-		schema: ZodSchema<T>,
+		name: TName,
+		filterFn: (item: Collections[TName], filter?: TFilter) => boolean,
+		schema: ZodSchema<Collections[TName]>,
 	) {
-		this.storageKey = storageKey;
+		this.name = name;
+		this.storageKey = `dnd.db.${this.name}`;
 		this.filterFn = filterFn;
 		this.schema = schema;
 
-		this.records = new Map<string, WeakRef<DocumentApiImpl<T>>>();
+		this.records = new Map<string, WeakRef<DocumentApiImpl<TName>>>();
 	}
 
 	private generateId(): string {
 		return crypto.randomUUID();
 	}
 
-	private getRaw(): T[] {
+	private getRaw(): Collections[TName][] {
 		const items = localStorage.getItem(this.storageKey);
 		try {
 			const parsed = items ? JSON.parse(items) : [];
@@ -64,7 +68,7 @@ export class LocalStorageCollection<
 				return [];
 			}
 
-			const validItems: T[] = [];
+			const validItems: Collections[TName][] = [];
 			for (const item of parsed) {
 				const parsedItem = this.schema.safeParse(item);
 				if (parsedItem.success) {
@@ -78,7 +82,8 @@ export class LocalStorageCollection<
 			}
 
 			return validItems.filter(
-				(item: T | null): item is T => item !== null,
+				(item: Collections[TName] | null): item is Collections[TName] =>
+					item !== null,
 			);
 		} catch (error) {
 			console.error(
@@ -89,7 +94,7 @@ export class LocalStorageCollection<
 		}
 	}
 
-	private setRaw(items: T[]): void {
+	private setRaw(items: Collections[TName][]): void {
 		try {
 			localStorage.setItem(this.storageKey, JSON.stringify(items));
 		} catch (error) {
@@ -100,11 +105,13 @@ export class LocalStorageCollection<
 		}
 	}
 
-	getNotifyOne(id: string, data: T): DocumentApi<T> {
+	getNotifyOne(data: Collections[TName]): DocumentApi<TName> {
+		const id = data.id;
+
 		const existing = this.records.get(id)?.deref();
 
 		if (!existing) {
-			const newDoc = new DocumentApiImpl<T>(
+			const newDoc = new DocumentApiImpl<TName>(
 				new BehaviorSubject(data),
 				this,
 				this.schema,
@@ -119,28 +126,34 @@ export class LocalStorageCollection<
 		return existing;
 	}
 
-	async get(filter?: TFilter): Promise<DocumentApi<T>[]> {
+	async get(filter?: TFilter): Promise<DocumentApi<TName>[]> {
 		const items = this.getRaw();
 		return items
-			.filter((item: T) => this.filterFn(item, filter))
-			.map((item: T) => this.getNotifyOne(item.id, item));
+			.filter((item: Collections[TName]) => this.filterFn(item, filter))
+			.map((item: Collections[TName]) => this.getNotifyOne(item));
 	}
 
-	async getOne(filter: TFilter): Promise<DocumentApi<T> | null> {
+	async getOne(filter: TFilter): Promise<DocumentApi<TName> | null> {
 		const items = await this.get(filter);
 		return items.length > 0 ? items[0] : null;
 	}
 
-	async create(newItem: Omit<T, 'id' | 'revision'>): Promise<DocumentApi<T>> {
+	async create(
+		newItem: Omit<Collections[TName], 'id' | 'revision'>,
+	): Promise<DocumentApi<TName>> {
 		const items = this.getRaw();
-		const data = { ...newItem, id: this.generateId(), revision: 0 } as T;
+		const data = {
+			...newItem,
+			id: this.generateId(),
+			revision: 0,
+		} as Collections[TName];
 		items.push(data);
 		this.setRaw(items);
 
-		return this.getNotifyOne(data.id, data);
+		return this.getNotifyOne(data);
 	}
 
-	__set(item: T): void {
+	__set(item: Collections[TName]): void {
 		const records = this.getRaw();
 
 		const existingIndex = records.findIndex((i) => i.id === item.id);
@@ -187,17 +200,17 @@ export class LocalStorageCollection<
 	}
 }
 
-class DocumentApiImpl<T extends { id: string; revision: number }>
-	implements DocumentApi<T>
+class DocumentApiImpl<TName extends keyof Collections>
+	implements DocumentApi<TName>
 {
-	public readonly data: BehaviorSubject<T>;
-	private readonly collection: CollectionPrivate<T>;
-	private readonly schema: ZodSchema<T>;
+	public readonly data: BehaviorSubject<Collections[TName]>;
+	private readonly collection: CollectionPrivate<TName>;
+	private readonly schema: ZodSchema<Collections[TName]>;
 
 	constructor(
-		data: BehaviorSubject<T>,
-		collection: CollectionPrivate<T>,
-		schema: ZodSchema<T>,
+		data: BehaviorSubject<Collections[TName]>,
+		collection: CollectionPrivate<TName>,
+		schema: ZodSchema<Collections[TName]>,
 	) {
 		this.data = data;
 		this.collection = collection;
@@ -205,7 +218,7 @@ class DocumentApiImpl<T extends { id: string; revision: number }>
 	}
 
 	async update(
-		changeSet: ChangeSet<Omit<T, 'id' | 'revision'>>,
+		changeSet: ChangeSet<Omit<Collections[TName], 'id' | 'revision'>>,
 	): Promise<void> {
 		const updated = applyChangeset(this.data.getValue(), changeSet);
 
