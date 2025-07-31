@@ -1,3 +1,5 @@
+export type Level = (typeof Logger)[(typeof Logger.Level)[number]];
+
 export default class Logger {
 	static readonly TRACE = 0;
 	static readonly DEBUG = 1;
@@ -5,14 +7,14 @@ export default class Logger {
 	static readonly WARN = 3;
 	static readonly ERROR = 4;
 
-	static Level = ['TRACE', 'DEBUG', 'INFO', 'WARN', 'ERROR'];
+	static Level = ['TRACE', 'DEBUG', 'INFO', 'WARN', 'ERROR'] as const;
 
 	static default: Logger = new Logger();
 
 	writers: [
-		level: number,
+		level: Level,
 		writer: (
-			level: number,
+			level: Level,
 			message: string,
 			context: unknown,
 			date: Date,
@@ -24,9 +26,9 @@ export default class Logger {
 	}
 
 	addWriter(
-		level: number,
+		level: Level,
 		writer: (
-			level: number,
+			level: Level,
 			message: string,
 			context: unknown,
 			date: Date,
@@ -35,7 +37,7 @@ export default class Logger {
 		this.writers.push([level, writer]);
 	}
 
-	private write(level: number, message: string, context?: unknown): void {
+	write(level: Level, message: string, context?: unknown): void {
 		const date = new Date();
 		queueMicrotask(() => {
 			for (const [writerLevel, writer] of this.writers) {
@@ -66,6 +68,9 @@ export default class Logger {
 		this.write(Logger.ERROR, message, context);
 	}
 
+	static write(level: Level, message: string, context?: unknown): void {
+		this.default.write(level, message, context);
+	}
 	static trace(message: string, context?: unknown): void {
 		this.default.trace(message, context);
 	}
@@ -84,7 +89,7 @@ export default class Logger {
 }
 
 export function consoleWriter(
-	level: number,
+	level: Level,
 	message: string,
 	context: unknown,
 	date: Date,
