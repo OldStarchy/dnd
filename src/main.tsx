@@ -3,6 +3,7 @@ import { ShareProvider } from '@/components/ShareProvider';
 import { ThemeProvider } from '@/components/theme-provider';
 import '@/index.css';
 import Layout from '@/layout/layout';
+import Logger, { consoleWriter } from '@/lib/log';
 import { primaryStore } from '@/store/primary-store';
 import CustomCreatureEditor from '@/views/CustomCreatureEditor';
 import Home from '@/views/Encounter';
@@ -20,6 +21,9 @@ import {
 } from 'react-router';
 import { ConfigurableBackendApiProvider } from './components/ConfigurableBackendApiProvider';
 import RoomView from './views/Room';
+
+Logger.default.addWriter(Logger.INFO, consoleWriter);
+
 function GmLayout() {
 	return (
 		<Provider store={primaryStore}>
