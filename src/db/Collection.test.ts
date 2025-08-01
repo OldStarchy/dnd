@@ -1,6 +1,6 @@
 import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import z from 'zod';
-import { LocalStorageCollection } from './Collection';
+import { LocalStorageCollection } from './LocalStorageCollection';
 
 describe('Collection', () => {
 	let store: { [key: string]: string } = {};

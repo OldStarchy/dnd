@@ -2,7 +2,7 @@ import type { Deferred } from '@/deferred';
 import deferred from '@/deferred';
 import { Subject } from 'rxjs';
 import z from 'zod';
-import type { Transport, TransportFactory } from './Transport';
+import type { Transport } from './Transport';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type ZodSchema<T> = z.ZodType<any, any, T> | z.ZodEffects<any, T, any>;
@@ -56,11 +56,11 @@ export class RemoteApi<
 	private requestCallbacks: Map<string, Deferred<TRemoteResponse>> =
 		new Map();
 
-	readonly _$notification = new Subject<TNotificationReceive>();
-	readonly $notification = this._$notification.asObservable();
+	readonly _notification$ = new Subject<TNotificationReceive>();
+	readonly notification$ = this._notification$.asObservable();
 
-	readonly _$close = new Subject<void>();
-	readonly $close = this._$close.asObservable();
+	readonly _close$ = new Subject<void>();
+	readonly close$ = this._close$.asObservable();
 
 	readonly $request = new CallbackSet<
 		this,
@@ -72,13 +72,9 @@ export class RemoteApi<
 		remoteRequestSchema: ZodSchema<TRemoteRequest>,
 		remoteResponseSchema: ZodSchema<TRemoteResponse>,
 		remoteNotificationSchema: ZodSchema<TNotificationReceive>,
-		transportFactory: TransportFactory<string>,
+		transport: Transport<string>,
 	) {
 		const incomingMessageSpec = z.union([
-			z.object({
-				type: z.literal('notification'),
-				data: remoteNotificationSchema,
-			}),
 			z.object({
 				type: z.literal('request'),
 				id: z.string(),
@@ -94,11 +90,15 @@ export class RemoteApi<
 				id: z.string(),
 				error: z.string(),
 			}),
+			z.object({
+				type: z.literal('notification'),
+				data: remoteNotificationSchema,
+			}),
 		]);
-		// eslint-disable-next-line @typescript-eslint/no-this-alias
-		const self = this;
-		this.transport = transportFactory({
-			handleMessage(data: string): void {
+		this.transport = transport;
+
+		transport.message$.subscribe({
+			next: (data: string) => {
 				let parsedJson: unknown;
 				try {
 					parsedJson = JSON.parse(data);
@@ -129,7 +129,7 @@ export class RemoteApi<
 							data: TNotificationReceive;
 						};
 
-						self._$notification.next(notification);
+						this._notification$.next(notification);
 						return;
 					}
 					case 'request': {
@@ -141,8 +141,8 @@ export class RemoteApi<
 						(async () => {
 							try {
 								const response = await Promise.all(
-									self.$request
-										.handle(self, request as TRemoteRequest)
+									this.$request
+										.handle(this, request as TRemoteRequest)
 										.filter((x) => x !== null),
 								);
 
@@ -150,7 +150,7 @@ export class RemoteApi<
 									console.warn(
 										`No response for request ${id}, sending null.`,
 									);
-									self.send({
+									this.send({
 										type: 'response-error',
 										id,
 										error: 'Unrecognized request',
@@ -164,13 +164,13 @@ export class RemoteApi<
 									);
 								}
 
-								self.send({
+								this.send({
 									type: 'response',
 									id,
 									data: response.pop()!,
 								});
 							} catch (error) {
-								self.send({
+								this.send({
 									type: 'response-error',
 									id,
 									error:
@@ -188,7 +188,7 @@ export class RemoteApi<
 							id: string;
 							data: TRemoteResponse;
 						};
-						const def = self.requestCallbacks.get(id);
+						const def = this.requestCallbacks.get(id);
 						if (def) {
 							def.resolve(response);
 						} else {
@@ -204,7 +204,7 @@ export class RemoteApi<
 							id: string;
 							error: string;
 						};
-						const def = self.requestCallbacks.get(id);
+						const def = this.requestCallbacks.get(id);
 						if (def) {
 							def.reject(new Error(error));
 						} else {
@@ -220,15 +220,20 @@ export class RemoteApi<
 					}
 				}
 			},
-			handleClose(): void {
-				self.requestCallbacks.forEach((def) =>
+			complete: (): void => {
+				this.requestCallbacks.forEach((def) =>
 					def.reject(new Error('Transport closed')),
 				);
-				self.requestCallbacks.clear();
-				self._$close.next();
+				this.requestCallbacks.clear();
+				this._close$.next();
 			},
-			handleOpen(): void {
-				self.flushSendQueue();
+			error: (error: unknown): void => {
+				console.error('Transport error:', error);
+				this.requestCallbacks.forEach((def) =>
+					def.reject(new Error('Transport error')),
+				);
+				this.requestCallbacks.clear();
+				this._close$.next();
 			},
 		});
 	}

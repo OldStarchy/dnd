@@ -1,26 +1,17 @@
-import type { Transport, TransportHandler } from '../Transport';
+import { Subject } from 'rxjs';
+import type { Transport } from '../Transport';
 
 export class PortTransport implements Transport<string> {
 	private port: MessagePort;
 	private open = true;
-	private closeHandler?: () => void;
-	private messageHandler: (message: string) => void;
 
-	constructor(port: MessagePort, handler: TransportHandler<string>) {
+	private _message$ = new Subject<string>();
+	readonly message$ = this._message$.asObservable();
+	constructor(port: MessagePort) {
 		this.port = port;
 		this.port.addEventListener('message', this.#handleMessage);
 
-		this.messageHandler = handler.handleMessage.bind(this);
-		this.closeHandler = handler.handleClose.bind(this);
-
 		this.port.start();
-		queueMicrotask(() => {
-			try {
-				handler.handleOpen.call(this);
-			} catch (error) {
-				console.error('Error in handleOpen:', error);
-			}
-		});
 	}
 
 	#handleMessage = (event: MessageEvent): void => {
@@ -29,7 +20,7 @@ export class PortTransport implements Transport<string> {
 			return;
 		}
 		try {
-			this.messageHandler(event.data);
+			this._message$.next(event.data);
 		} catch (error) {
 			console.error('Error in handleMessage:', error);
 		}
@@ -62,15 +53,6 @@ export class PortTransport implements Transport<string> {
 			this.port.removeEventListener('message', this.#handleMessage);
 			this.port.close();
 			this.port = null as unknown as MessagePort;
-		}
-
-		if (this.closeHandler) {
-			try {
-				this.closeHandler.call(this);
-			} catch (error) {
-				console.error('Error in handleClose:', error);
-			}
-			this.closeHandler = undefined;
 		}
 	}
 

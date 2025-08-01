@@ -1,53 +1,81 @@
 import type { Collection, DocumentApi } from '@/db/Collection';
 import type { ChangeSet } from '@/lib/changeSet';
-import { BehaviorSubject, filter } from 'rxjs';
-import type RoomHostConnection from './RoomHostConnection';
-import type { Collections } from './RoomHostConnection';
+import { BehaviorSubject, filter, Subject } from 'rxjs';
+import type { RemoteApi } from '../RemoteApi';
+import type {
+	DbNotificationMessages,
+	DbRequestMessages,
+	DbResponseMessages,
+} from './Messages';
 
 export default class RemoteCollection<
-	TName extends keyof Collections,
+	T extends { id: string; revision: number },
 	TFilter = void,
-> implements Collection<TName, TFilter>
+> implements Collection<T, TFilter>
 {
-	private readonly connection: RoomHostConnection<TName>;
-	readonly name: TName;
+	private readonly connection: RemoteApi<
+		DbRequestMessages<T>,
+		DbResponseMessages<T>,
+		void,
+		void,
+		void,
+		DbNotificationMessages<T>
+	>;
+	readonly name: string;
 
-	private readonly records: Map<string, WeakRef<RemoteDocumentApi<TName>>>;
+	private readonly _change$ = new Subject<DocumentApi<T>>();
+	readonly change$ = this._change$.asObservable();
 
-	constructor(connection: RoomHostConnection<TName>, name: TName) {
+	private readonly records: Map<string, WeakRef<RemoteDocumentApi<T>>>;
+
+	constructor(
+		connection: RemoteApi<
+			DbRequestMessages<T>,
+			DbResponseMessages<T>,
+			void,
+			void,
+			void,
+			DbNotificationMessages<T>
+		>,
+		name: string,
+	) {
 		this.connection = connection;
 		this.name = name;
 
-		this.records = new Map<string, WeakRef<RemoteDocumentApi<TName>>>();
+		this.records = new Map<string, WeakRef<RemoteDocumentApi<T>>>();
 
-		this.connection.$notification
+		this.connection.notification$
 			.pipe(
 				filter(
 					(
 						notification,
 					): notification is typeof notification & {
 						type: 'db';
-						collection: TName;
+						collection: string;
 					} =>
 						notification.type === 'db' &&
 						notification.collection === this.name,
 				),
 			)
 			.subscribe((notification) => {
-				notification.items.forEach((item) => {
-					this.getNotifyOne(item);
-				});
+				notification.items
+					.map((item) => {
+						return this.getNotifyOne(item);
+					})
+					.forEach((doc) => {
+						this._change$.next(doc);
+					});
 			});
 	}
 
-	private getNotifyOne(data: Collections[TName]): DocumentApi<TName> {
+	private getNotifyOne(data: T): DocumentApi<T> {
 		const id = data.id;
 		const existing = this.records.get(id)?.deref();
 
 		if (!existing) {
-			const newDoc = new RemoteDocumentApi<TName>(
+			const newDoc = new RemoteDocumentApi<T>(
 				new BehaviorSubject(data),
-				this as unknown as RemoteCollectionPrivate<TName>,
+				this as unknown as RemoteCollectionPrivate<T>,
 			);
 			this.records.set(id, new WeakRef(newDoc));
 			return newDoc;
@@ -59,7 +87,7 @@ export default class RemoteCollection<
 		return existing;
 	}
 
-	private maybeGetOne(id: string): DocumentApi<TName> | null {
+	private maybeGetOne(id: string): DocumentApi<T> | null {
 		const existing = this.records.get(id)?.deref();
 		if (existing) {
 			return existing;
@@ -67,7 +95,7 @@ export default class RemoteCollection<
 		return null;
 	}
 
-	async get(filter?: TFilter): Promise<DocumentApi<TName>[]> {
+	async get(filter?: TFilter): Promise<DocumentApi<T>[]> {
 		const response = await this.connection.request({
 			type: 'db',
 			action: 'get',
@@ -85,12 +113,12 @@ export default class RemoteCollection<
 			);
 		}
 
-		const data = response.data;
+		const data = response.data as T[];
 
 		return data.map((item) => this.getNotifyOne(item));
 	}
 
-	async getOne(filter: TFilter): Promise<DocumentApi<TName> | null> {
+	async getOne(filter: TFilter): Promise<DocumentApi<T> | null> {
 		const cached = this.maybeGetOne(filter as unknown as string);
 
 		const fetchPromise = (async () => {
@@ -115,7 +143,7 @@ export default class RemoteCollection<
 				return null;
 			}
 
-			return this.getNotifyOne(response.data);
+			return this.getNotifyOne(response.data as T);
 		})();
 
 		if (cached) {
@@ -125,15 +153,13 @@ export default class RemoteCollection<
 		return await fetchPromise;
 	}
 
-	async create(
-		data: Omit<Collections[TName], 'id' | 'revision'>,
-	): Promise<DocumentApi<TName>> {
+	async create(data: Omit<T, 'id' | 'revision'>): Promise<DocumentApi<T>> {
 		const response = await this.connection.request({
 			type: 'db',
 			action: 'create',
 			collection: this.name,
 			data,
-		});
+		} as DbRequestMessages<T>);
 
 		if (response.type !== 'db' || response.action !== 'create') {
 			throw new Error('Invalid response from RoomHost');
@@ -145,31 +171,39 @@ export default class RemoteCollection<
 			);
 		}
 
-		return this.getNotifyOne(response.data);
+		return this.getNotifyOne(response.data as T);
 	}
 }
 
-interface RemoteCollectionPrivate<TName extends keyof Collections> {
-	readonly connection: RoomHostConnection<TName>;
-	readonly name: TName;
+interface RemoteCollectionPrivate<T extends { id: string; revision: number }>
+	extends Omit<RemoteCollection<T>, 'connection'> {
+	readonly connection: RemoteApi<
+		DbRequestMessages<T>,
+		DbResponseMessages<T>,
+		void,
+		void,
+		void,
+		DbNotificationMessages<T>
+	>;
+	readonly name: string;
 }
 
-class RemoteDocumentApi<TName extends keyof Collections>
-	implements DocumentApi<TName>
+class RemoteDocumentApi<T extends { id: string; revision: number }>
+	implements DocumentApi<T>
 {
-	readonly data: BehaviorSubject<Collections[TName]>;
-	private readonly collection: RemoteCollectionPrivate<TName>;
+	readonly data: BehaviorSubject<T>;
+	private readonly collection: RemoteCollectionPrivate<T>;
 
 	constructor(
-		data: BehaviorSubject<Collections[TName]>,
-		collection: RemoteCollectionPrivate<TName>,
+		data: BehaviorSubject<T>,
+		collection: RemoteCollectionPrivate<T>,
 	) {
 		this.data = data;
 		this.collection = collection;
 	}
 
 	async update(
-		changeSet: ChangeSet<Omit<Collections[TName], 'id' | 'revision'>>,
+		changeSet: ChangeSet<Omit<T, 'id' | 'revision'>>,
 	): Promise<void> {
 		await this.collection.connection.request({
 			type: 'db',
