@@ -1,6 +1,6 @@
 import type { Deferred } from '@/deferred';
 import deferred from '@/deferred';
-import { Subject } from 'rxjs';
+import { Observable, Subject } from 'rxjs';
 import z from 'zod';
 import type { Transport } from './Transport';
 
@@ -11,9 +11,9 @@ export type Unsubscriber = {
 	(): void;
 	withAbort(abort: AbortController | AbortSignal): void;
 };
-export class CallbackSet<TThis, TArgs extends unknown[], TReturn> {
-	private handlers = new Set<(this: TThis, ...args: TArgs) => TReturn>();
-	on(handler: (this: TThis, ...args: TArgs) => TReturn): Unsubscriber {
+export class CallbackSet<TArgs extends unknown[], TReturn> {
+	private handlers = new Set<(...args: TArgs) => TReturn>();
+	on(handler: (...args: TArgs) => TReturn): Unsubscriber {
 		this.handlers.add(handler);
 		const unsub = (() => {
 			this.handlers.delete(handler);
@@ -31,11 +31,11 @@ export class CallbackSet<TThis, TArgs extends unknown[], TReturn> {
 		return unsub;
 	}
 
-	handle(sender: TThis, ...args: TArgs): TReturn[] {
+	handle(...args: TArgs): TReturn[] {
 		const results: TReturn[] = [];
 		for (const handler of this.handlers) {
 			try {
-				results.push(handler.call(sender, ...args));
+				results.push(handler(...args));
 			} catch (error) {
 				console.error('Error in callback handler:', error);
 			}
@@ -44,14 +44,30 @@ export class CallbackSet<TThis, TArgs extends unknown[], TReturn> {
 	}
 }
 
+export interface RemoteApiProvider<TRequest, TResponse, TNotification> {
+	notify(notification: TNotification): Promise<void>;
+
+	readonly $request: CallbackSet<[TRequest], null | Promise<TResponse>>;
+}
+
+export interface RemoteApiConsumer<TRequest, TResponse, TNotification> {
+	readonly notification$: Observable<TNotification>;
+
+	request(request: TRequest): Promise<TResponse>;
+}
+
 export class RemoteApi<
-	TLocalRequest,
-	TRemoteResponse,
-	TRemoteRequest,
-	TLocalResponse,
-	TNotificationSend,
-	TNotificationReceive,
-> {
+		TLocalRequest,
+		TRemoteResponse,
+		TRemoteRequest,
+		TLocalResponse,
+		TNotificationSend,
+		TNotificationReceive,
+	>
+	implements
+		RemoteApiProvider<TRemoteRequest, TLocalResponse, TNotificationSend>,
+		RemoteApiConsumer<TLocalRequest, TRemoteResponse, TNotificationReceive>
+{
 	private transport: Transport<string>;
 	private requestCallbacks: Map<string, Deferred<TRemoteResponse>> =
 		new Map();
@@ -63,7 +79,6 @@ export class RemoteApi<
 	readonly close$ = this._close$.asObservable();
 
 	readonly $request = new CallbackSet<
-		this,
 		[TRemoteRequest],
 		null | Promise<TLocalResponse>
 	>();
@@ -142,7 +157,7 @@ export class RemoteApi<
 							try {
 								const response = await Promise.all(
 									this.$request
-										.handle(this, request as TRemoteRequest)
+										.handle(request as TRemoteRequest)
 										.filter((x) => x !== null),
 								);
 

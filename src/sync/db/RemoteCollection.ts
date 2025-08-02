@@ -1,7 +1,7 @@
 import type { Collection, DocumentApi } from '@/db/Collection';
 import type { ChangeSet } from '@/lib/changeSet';
 import { BehaviorSubject, filter, Subject } from 'rxjs';
-import type { RemoteApi } from '../RemoteApi';
+import type { RemoteApi, RemoteApiConsumer } from '../RemoteApi';
 import type {
 	DbNotificationMessages,
 	DbRequestMessages,
@@ -14,23 +14,20 @@ export default class RemoteCollection<
 	TFilter = void,
 > implements Collection<TName, T, TFilter>
 {
-	private readonly connection: RemoteApi<
+	readonly __connection: RemoteApiConsumer<
 		DbRequestMessages<TName, T>,
 		DbResponseMessages<T>,
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		any,
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		any,
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		any,
 		DbNotificationMessages<T>
 	>;
 	readonly name: TName;
 
-	private readonly _change$ = new Subject<DocumentApi<T>>();
+	private readonly _change$ = new Subject<DocumentApi<TName, T, TFilter>>();
 	readonly change$ = this._change$.asObservable();
 
-	private readonly records: Map<string, WeakRef<RemoteDocumentApi<T>>>;
+	private readonly records: Map<
+		string,
+		WeakRef<RemoteDocumentApi<TName, T, TFilter>>
+	>;
 
 	constructor(
 		connection: RemoteApi<
@@ -46,12 +43,16 @@ export default class RemoteCollection<
 		>,
 		name: TName,
 	) {
-		this.connection = connection;
+		this.__connection = connection;
 		this.name = name;
 
-		this.records = new Map<string, WeakRef<RemoteDocumentApi<T>>>();
+		this.records = new Map<
+			string,
+			WeakRef<RemoteDocumentApi<TName, T, TFilter>>
+		>();
 
-		this.connection.notification$
+		// TODO: there isn't a notification for deleted records yet.
+		this.__connection.notification$
 			.pipe(
 				filter(
 					(
@@ -75,14 +76,14 @@ export default class RemoteCollection<
 			});
 	}
 
-	private getNotifyOne(data: T): DocumentApi<T> {
+	private getNotifyOne(data: T): DocumentApi<TName, T, TFilter> {
 		const id = data.id;
 		const existing = this.records.get(id)?.deref();
 
 		if (!existing) {
-			const newDoc = new RemoteDocumentApi<T>(
+			const newDoc = new RemoteDocumentApi<TName, T, TFilter>(
 				new BehaviorSubject(data),
-				this as unknown as RemoteCollectionPrivate<T>,
+				this,
 			);
 			this.records.set(id, new WeakRef(newDoc));
 			return newDoc;
@@ -94,7 +95,7 @@ export default class RemoteCollection<
 		return existing;
 	}
 
-	private maybeGetOne(id: string): DocumentApi<T> | null {
+	private maybeGetOne(id: string): DocumentApi<TName, T, TFilter> | null {
 		const existing = this.records.get(id)?.deref();
 		if (existing) {
 			return existing;
@@ -102,8 +103,8 @@ export default class RemoteCollection<
 		return null;
 	}
 
-	async get(filter?: TFilter): Promise<DocumentApi<T>[]> {
-		const response = await this.connection.request({
+	async get(filter?: TFilter): Promise<DocumentApi<TName, T, TFilter>[]> {
+		const response = await this.__connection.request({
 			type: 'db',
 			action: 'get',
 			collection: this.name,
@@ -125,11 +126,15 @@ export default class RemoteCollection<
 		return data.map((item) => this.getNotifyOne(item));
 	}
 
-	async getOne(filter: TFilter): Promise<DocumentApi<T> | null> {
+	async getOne(
+		filter: TFilter,
+	): Promise<DocumentApi<TName, T, TFilter> | null> {
 		const cached = this.maybeGetOne(filter as unknown as string);
 
+		// TODO: Given that changes are pushed from the host, we probably don't
+		// need to proactively fetch for updates here if we have a cached item.
 		const fetchPromise = (async () => {
-			const response = await this.connection.request({
+			const response = await this.__connection.request({
 				type: 'db',
 				action: 'getOne',
 				collection: this.name,
@@ -150,6 +155,8 @@ export default class RemoteCollection<
 				return null;
 			}
 
+			// TODO: Calling getOne again before previous calls complete could
+			// lead to multiple notifications for the same item.
 			return this.getNotifyOne(response.data as T);
 		})();
 
@@ -160,8 +167,10 @@ export default class RemoteCollection<
 		return await fetchPromise;
 	}
 
-	async create(data: Omit<T, 'id' | 'revision'>): Promise<DocumentApi<T>> {
-		const response = await this.connection.request({
+	async create(
+		data: Omit<T, 'id' | 'revision'>,
+	): Promise<DocumentApi<TName, T, TFilter>> {
+		const response = await this.__connection.request({
 			type: 'db',
 			action: 'create',
 			collection: this.name,
@@ -182,28 +191,18 @@ export default class RemoteCollection<
 	}
 }
 
-interface RemoteCollectionPrivate<T extends { id: string; revision: number }>
-	extends Omit<RemoteCollection<string, T>, 'connection'> {
-	readonly connection: RemoteApi<
-		DbRequestMessages<string, T>,
-		DbResponseMessages<T>,
-		void,
-		void,
-		void,
-		DbNotificationMessages<T>
-	>;
-	readonly name: string;
-}
-
-class RemoteDocumentApi<T extends { id: string; revision: number }>
-	implements DocumentApi<T>
+class RemoteDocumentApi<
+	TName extends string,
+	T extends { id: string; revision: number },
+	TFilter,
+> implements DocumentApi<TName, T, TFilter>
 {
 	readonly data: BehaviorSubject<T>;
-	private readonly collection: RemoteCollectionPrivate<T>;
+	readonly collection: RemoteCollection<TName, T, TFilter>;
 
 	constructor(
 		data: BehaviorSubject<T>,
-		collection: RemoteCollectionPrivate<T>,
+		collection: RemoteCollection<TName, T, TFilter>,
 	) {
 		this.data = data;
 		this.collection = collection;
@@ -212,7 +211,7 @@ class RemoteDocumentApi<T extends { id: string; revision: number }>
 	async update(
 		changeSet: ChangeSet<Omit<T, 'id' | 'revision'>>,
 	): Promise<void> {
-		await this.collection.connection.request({
+		await this.collection.__connection.request({
 			type: 'db',
 			action: 'update',
 			collection: this.collection.name,
@@ -223,7 +222,7 @@ class RemoteDocumentApi<T extends { id: string; revision: number }>
 	}
 
 	async delete(): Promise<void> {
-		await this.collection.connection.request({
+		await this.collection.__connection.request({
 			type: 'db',
 			action: 'delete',
 			collection: this.collection.name,

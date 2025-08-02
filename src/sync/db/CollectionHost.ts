@@ -1,6 +1,6 @@
 import type { Collection } from '@/db/Collection';
 import { Subscription } from 'rxjs';
-import type { RemoteApi } from '../RemoteApi';
+import type { RemoteApiProvider } from '../RemoteApi';
 import type {
 	DbNotificationMessages,
 	DbRequestMessages,
@@ -24,16 +24,10 @@ export class CollectionHost<
 	}
 
 	provide(
-		connection: RemoteApi<
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-			any,
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-			any,
+		connection: RemoteApiProvider<
 			DbRequestMessages<TName, T>,
 			DbResponseMessages<T>,
-			DbNotificationMessages<T>,
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-			any
+			DbNotificationMessages<T>
 		>,
 	) {
 		const subscription = new Subscription();
