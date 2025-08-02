@@ -1,17 +1,23 @@
-import { debuffSpec } from '@/type/Debuff';
+import { creatureSchema } from '@/type/Creature';
 import { z } from 'zod';
 
-export const initiativeTableEntrySpec = z.object({
+export const initiativeTableEntrySchema = z.object({
 	id: z.string(),
-	name: z.string(),
-	race: z.string().optional(),
-	initiative: z.number(),
-	ac: z.number().optional(),
-	healthDisplay: z.string(),
 	effect: z.literal('invisible').optional(),
-	debuffs: z.array(debuffSpec),
-	description: z.string().optional(),
-	images: z.array(z.string()).optional(),
+	healthDisplay: z.string(),
+	initiative: z.number(),
+
+	creature: z
+		.object({
+			type: z.literal('unique'),
+			id: z.string(),
+		})
+		.or(
+			z.object({
+				type: z.literal('generic'),
+				data: creatureSchema.omit({ id: true }),
+			}),
+		),
 });
 
-export type InitiativeTableEntry = z.infer<typeof initiativeTableEntrySpec>;
+export type InitiativeTableEntry = z.infer<typeof initiativeTableEntrySchema>;

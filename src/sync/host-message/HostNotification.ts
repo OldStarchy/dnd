@@ -1,10 +1,13 @@
-import { initiativeTableEntrySpec } from '@/components/InitiativeTable/InitiativeTableEntry';
-import { z } from 'zod';
+import {initiativeTableEntrySchema} from '@/components/InitiativeTable/InitiativeTableEntry';
+import {z} from 'zod';
 
 export const hostNotificationSpec = z.union([
 	z.object({
 		type: z.literal('initiativeTableUpdate'),
-		data: z.array(initiativeTableEntrySpec),
+		data: z.object({
+			entries: z.array(initiativeTableEntrySchema),
+			currentTurnId: z.string().nullable(),
+		}),
 	}),
 	z.object({
 		type: z.literal('heartbeat'),
