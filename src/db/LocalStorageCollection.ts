@@ -4,11 +4,12 @@ import type { ZodType as ZodSchema } from 'zod';
 import type { Collection, CollectionPrivate, DocumentApi } from './Collection';
 
 export class LocalStorageCollection<
+	const TName extends string,
 	T extends { id: string; revision: number },
 	TFilter,
-> implements Collection<T, TFilter>
+> implements Collection<TName, T, TFilter>
 {
-	readonly name: string;
+	readonly name: TName;
 	private readonly storageKey: string;
 	private readonly filterFn: (item: T, filter?: TFilter) => boolean;
 	private readonly schema: ZodSchema<T>;
@@ -19,7 +20,7 @@ export class LocalStorageCollection<
 	private readonly records: Map<string, WeakRef<DocumentApiImpl<T>>>;
 
 	constructor(
-		name: string,
+		name: TName,
 		filterFn: (item: T, filter?: TFilter) => boolean,
 		schema: ZodSchema<T>,
 	) {

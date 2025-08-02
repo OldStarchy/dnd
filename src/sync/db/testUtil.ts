@@ -53,7 +53,7 @@ export function createProviderApi(port: MessagePort) {
 	return new RemoteApi<
 		void,
 		void,
-		DbRequestMessages<Record>,
+		DbRequestMessages<'test', Record>,
 		DbResponseMessages<Record>,
 		DbNotificationMessages<Record>,
 		void
@@ -80,7 +80,7 @@ export function createConsumerConnection() {
 
 export function createConsumerApi(port: MessagePort) {
 	return new RemoteApi<
-		DbRequestMessages<Record>,
+		DbRequestMessages<'test', Record>,
 		DbResponseMessages<Record>,
 		void,
 		void,
@@ -95,6 +95,23 @@ export function createConsumerApi(port: MessagePort) {
 	);
 }
 
+export function createDuplexApi(port: MessagePort) {
+	return new RemoteApi<
+		DbRequestMessages<'test', Record>,
+		DbResponseMessages<Record>,
+		DbRequestMessages<'test', Record>,
+		DbResponseMessages<Record>,
+		DbNotificationMessages<Record>,
+		DbNotificationMessages<Record>
+	>(
+		requestSchema,
+		responseSchema,
+		notificationSchema,
+
+		new PortTransport(port),
+	);
+}
+
 export function createConnectionPair() {
 	const channel = new MessageChannel();
 
@@ -102,25 +119,21 @@ export function createConnectionPair() {
 	channel.port2.start();
 
 	return {
-		provider: createProviderApi(channel.port1),
-		consumer: createConsumerApi(channel.port2),
+		provider: createDuplexApi(channel.port1),
+		consumer: createDuplexApi(channel.port2),
 	} as const;
 }
 
-export function createRamBackedRemoteCollection(name: string) {
+export function createRamBackedRemoteCollection() {
 	const { provider, consumer } = createConnectionPair();
 
-	const source = new RamCollection<Record, void>(
-		name,
-		() => true,
-		typeSchema,
-	);
+	const source = new RamCollection('test', () => true, typeSchema);
 
-	const host = new CollectionHost<Record>(source);
+	const host = new CollectionHost<'test', Record>(source);
 
 	host.provide(provider);
 
-	const collection = new RemoteCollection(consumer, name);
+	const collection = new RemoteCollection(consumer, 'test');
 
 	return collection;
 }
