@@ -9,13 +9,9 @@ describe('Integration Tests', () => {
 	it('works', async () => {
 		const { provider, consumer } = createConnectionPair();
 
-		const source = new RamCollection<Record, void>(
-			'test',
-			() => true,
-			typeSchema,
-		);
+		const source = new RamCollection('test', () => true, typeSchema);
 
-		const host = new CollectionHost<Record>(source);
+		const host = new CollectionHost<'test', Record>(source);
 
 		host.provide(provider);
 

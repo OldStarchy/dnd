@@ -1,9 +1,9 @@
 import z from 'zod';
 
-export function createCollectionRequestSchema<TRecord>(
-	name: string,
-	schemaWithoutIdAndRevision: z.ZodType<TRecord>,
-) {
+export function createCollectionRequestSchema<
+	const TName extends string,
+	TRecord,
+>(name: TName, schemaWithoutIdAndRevision: z.ZodType<TRecord>) {
 	return z
 		.union([
 			z.object({
@@ -74,8 +74,10 @@ export function createCollectionNotificationSchema<TRecord>(
 		items: z.array(schema),
 	});
 }
-export type DbRequestMessages<T> = z.infer<
-	ReturnType<typeof createCollectionRequestSchema<Omit<T, 'id' | 'revision'>>>
+export type DbRequestMessages<TName extends string, T> = z.infer<
+	ReturnType<
+		typeof createCollectionRequestSchema<TName, Omit<T, 'id' | 'revision'>>
+	>
 >;
 
 export type DbResponseMessages<T> = z.infer<

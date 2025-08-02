@@ -9,19 +9,23 @@ import type {
 } from './Messages';
 
 export default class RemoteCollection<
+	TName extends string,
 	T extends { id: string; revision: number },
 	TFilter = void,
-> implements Collection<T, TFilter>
+> implements Collection<TName, T, TFilter>
 {
 	private readonly connection: RemoteApi<
-		DbRequestMessages<T>,
+		DbRequestMessages<TName, T>,
 		DbResponseMessages<T>,
-		void,
-		void,
-		void,
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		any,
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		any,
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		any,
 		DbNotificationMessages<T>
 	>;
-	readonly name: string;
+	readonly name: TName;
 
 	private readonly _change$ = new Subject<DocumentApi<T>>();
 	readonly change$ = this._change$.asObservable();
@@ -30,14 +34,17 @@ export default class RemoteCollection<
 
 	constructor(
 		connection: RemoteApi<
-			DbRequestMessages<T>,
+			DbRequestMessages<TName, T>,
 			DbResponseMessages<T>,
-			void,
-			void,
-			void,
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			any,
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			any,
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			any,
 			DbNotificationMessages<T>
 		>,
-		name: string,
+		name: TName,
 	) {
 		this.connection = connection;
 		this.name = name;
@@ -159,7 +166,7 @@ export default class RemoteCollection<
 			action: 'create',
 			collection: this.name,
 			data,
-		} as DbRequestMessages<T>);
+		} as DbRequestMessages<TName, T>);
 
 		if (response.type !== 'db' || response.action !== 'create') {
 			throw new Error('Invalid response from RoomHost');
@@ -176,9 +183,9 @@ export default class RemoteCollection<
 }
 
 interface RemoteCollectionPrivate<T extends { id: string; revision: number }>
-	extends Omit<RemoteCollection<T>, 'connection'> {
+	extends Omit<RemoteCollection<string, T>, 'connection'> {
 	readonly connection: RemoteApi<
-		DbRequestMessages<T>,
+		DbRequestMessages<string, T>,
 		DbResponseMessages<T>,
 		void,
 		void,

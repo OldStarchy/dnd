@@ -2,10 +2,11 @@ import { BehaviorSubject, Observable } from 'rxjs';
 import { type ChangeSet } from '../lib/changeSet';
 
 export interface Collection<
+	TName extends string,
 	T extends { id: string; revision: number },
 	TFilter = void,
 > {
-	readonly name: string;
+	readonly name: TName;
 	get(filter?: TFilter): Promise<DocumentApi<T>[]>;
 	getOne(filter: TFilter): Promise<DocumentApi<T> | null>;
 	create(newItem: T): Promise<DocumentApi<T>>;
