@@ -39,7 +39,7 @@ describe('Collection', () => {
 		);
 
 		expect(collection).toBeInstanceOf(LocalStorageCollection);
-		expect(collection).toHaveProperty('storageKey', 'test');
+		expect(collection).toHaveProperty('storageKey', 'dnd.db.test');
 	});
 
 	it('can create a new item', async () => {
