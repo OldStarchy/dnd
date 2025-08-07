@@ -1,4 +1,4 @@
-import { filter, map, Observable, scan, Subject } from 'rxjs';
+import { BehaviorSubject, filter, map, Observable, scan, Subject } from 'rxjs';
 import { CallbackSet, type RemoteApiProvider } from '../RemoteApi';
 import { systemNotification, type SystemNotification } from '../RoomEvents';
 import type RoomHost from './RoomHost';
@@ -17,7 +17,7 @@ export default class RoomHostConnection<TUserMessage> {
 	private _notification$ = new Subject<SystemNotification>();
 	readonly notification$ = this._notification$.asObservable();
 
-	readonly members$: Observable<MemberPresence[]>;
+	readonly members$:  BehaviorSubject<MemberPresence[]>;
 	readonly messages$: Observable<{ sender: string; data: TUserMessage }>;
 
 	constructor(
@@ -43,29 +43,35 @@ export default class RoomHostConnection<TUserMessage> {
 			this._notification$.next(parsed.data);
 		});
 
-		this.members$ = this.notification$.pipe(
-			scan((members, notification) => {
-				switch (notification.type) {
-					case 'room.members.joined':
-						return [
-							...members,
-							{ id: notification.data.id, online: false },
-						];
-					case 'room.members.left':
-						return members.filter(
-							(m) => m.id !== notification.data.id,
-						);
-					case 'room.members.presence':
-						return members.map((m) =>
-							m.id === notification.data.id
-								? { ...m, online: notification.data.connected }
-								: m,
-						);
-					default:
-						return members;
-				}
-			}, members),
-		);
+		this.members$ = new BehaviorSubject<MemberPresence[]>(members);
+		this.notification$
+			.pipe(
+				scan((members, notification) => {
+					switch (notification.type) {
+						case 'room.members.joined':
+							return [
+								...members,
+								{ id: notification.data.id, online: false },
+							];
+						case 'room.members.left':
+							return members.filter(
+								(m) => m.id !== notification.data.id,
+							);
+						case 'room.members.presence':
+							return members.map((m) =>
+								m.id === notification.data.id
+									? {
+											...m,
+											online: notification.data.connected,
+										}
+									: m,
+							);
+						default:
+							return members;
+					}
+				}, members),
+			)
+			.subscribe(this.members$);
 
 		this.messages$ = this.notification$.pipe(
 			filter((n) => n.type === 'user.message'),
