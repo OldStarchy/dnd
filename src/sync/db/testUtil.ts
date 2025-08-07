@@ -53,7 +53,7 @@ export function createProviderApi(port: MessagePort) {
 	return new RemoteApi<
 		void,
 		void,
-		DbRequestMessages<'test', Record>,
+		DbRequestMessages<Record>,
 		DbResponseMessages<Record>,
 		DbNotificationMessages<Record>,
 		void
@@ -80,7 +80,7 @@ export function createConsumerConnection() {
 
 export function createConsumerApi(port: MessagePort) {
 	return new RemoteApi<
-		DbRequestMessages<'test', Record>,
+		DbRequestMessages<Record>,
 		DbResponseMessages<Record>,
 		void,
 		void,
@@ -97,9 +97,9 @@ export function createConsumerApi(port: MessagePort) {
 
 export function createDuplexApi(port: MessagePort) {
 	return new RemoteApi<
-		DbRequestMessages<'test', Record>,
+		DbRequestMessages<Record>,
 		DbResponseMessages<Record>,
-		DbRequestMessages<'test', Record>,
+		DbRequestMessages<Record>,
 		DbResponseMessages<Record>,
 		DbNotificationMessages<Record>,
 		DbNotificationMessages<Record>
@@ -129,7 +129,7 @@ export function createRamBackedRemoteCollection() {
 
 	const source = new RamCollection('test', () => true, typeSchema);
 
-	const host = new CollectionHost<'test', Record>(source);
+	const host = new CollectionHost<Record>(source);
 
 	host.provide(provider);
 

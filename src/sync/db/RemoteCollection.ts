@@ -1,7 +1,7 @@
 import type { Collection, DocumentApi } from '@/db/Collection';
 import type { ChangeSet } from '@/lib/changeSet';
 import { BehaviorSubject, filter, Subject } from 'rxjs';
-import type { RemoteApi, RemoteApiConsumer } from '../RemoteApi';
+import type { RemoteApiConsumer } from '../RemoteApi';
 import type {
 	DbNotificationMessages,
 	DbRequestMessages,
@@ -9,47 +9,34 @@ import type {
 } from './Messages';
 
 export default class RemoteCollection<
-	TName extends string,
 	T extends { id: string; revision: number },
 	TFilter = void,
-> implements Collection<TName, T, TFilter>
+> implements Collection<T, TFilter>
 {
 	readonly __connection: RemoteApiConsumer<
-		DbRequestMessages<TName, T>,
+		DbRequestMessages<T>,
 		DbResponseMessages<T>,
 		DbNotificationMessages<T>
 	>;
-	readonly name: TName;
+	readonly name: string;
 
-	private readonly _change$ = new Subject<DocumentApi<TName, T, TFilter>>();
+	private readonly _change$ = new Subject<DocumentApi<T>>();
 	readonly change$ = this._change$.asObservable();
 
-	private readonly records: Map<
-		string,
-		WeakRef<RemoteDocumentApi<TName, T, TFilter>>
-	>;
+	private readonly records: Map<string, WeakRef<RemoteDocumentApi<T>>>;
 
 	constructor(
-		connection: RemoteApi<
-			DbRequestMessages<TName, T>,
+		connection: RemoteApiConsumer<
+			DbRequestMessages<T>,
 			DbResponseMessages<T>,
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-			any,
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-			any,
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-			any,
 			DbNotificationMessages<T>
 		>,
-		name: TName,
+		name: string,
 	) {
 		this.__connection = connection;
 		this.name = name;
 
-		this.records = new Map<
-			string,
-			WeakRef<RemoteDocumentApi<TName, T, TFilter>>
-		>();
+		this.records = new Map<string, WeakRef<RemoteDocumentApi<T>>>();
 
 		// TODO: there isn't a notification for deleted records yet.
 		this.__connection.notification$
@@ -76,12 +63,12 @@ export default class RemoteCollection<
 			});
 	}
 
-	private getNotifyOne(data: T): DocumentApi<TName, T, TFilter> {
+	private getNotifyOne(data: T): DocumentApi<T> {
 		const id = data.id;
 		const existing = this.records.get(id)?.deref();
 
 		if (!existing) {
-			const newDoc = new RemoteDocumentApi<TName, T, TFilter>(
+			const newDoc = new RemoteDocumentApi<T>(
 				new BehaviorSubject(data),
 				this,
 			);
@@ -95,7 +82,7 @@ export default class RemoteCollection<
 		return existing;
 	}
 
-	private maybeGetOne(id: string): DocumentApi<TName, T, TFilter> | null {
+	private maybeGetOne(id: string): DocumentApi<T> | null {
 		const existing = this.records.get(id)?.deref();
 		if (existing) {
 			return existing;
@@ -103,7 +90,7 @@ export default class RemoteCollection<
 		return null;
 	}
 
-	async get(filter?: TFilter): Promise<DocumentApi<TName, T, TFilter>[]> {
+	async get(filter?: TFilter): Promise<DocumentApi<T>[]> {
 		const response = await this.__connection.request({
 			type: 'db',
 			action: 'get',
@@ -126,9 +113,7 @@ export default class RemoteCollection<
 		return data.map((item) => this.getNotifyOne(item));
 	}
 
-	async getOne(
-		filter: TFilter,
-	): Promise<DocumentApi<TName, T, TFilter> | null> {
+	async getOne(filter: TFilter): Promise<DocumentApi<T> | null> {
 		const cached = this.maybeGetOne(filter as unknown as string);
 
 		// TODO: Given that changes are pushed from the host, we probably don't
@@ -167,15 +152,13 @@ export default class RemoteCollection<
 		return await fetchPromise;
 	}
 
-	async create(
-		data: Omit<T, 'id' | 'revision'>,
-	): Promise<DocumentApi<TName, T, TFilter>> {
+	async create(data: Omit<T, 'id' | 'revision'>): Promise<DocumentApi<T>> {
 		const response = await this.__connection.request({
 			type: 'db',
 			action: 'create',
 			collection: this.name,
 			data,
-		} as DbRequestMessages<TName, T>);
+		} as DbRequestMessages<T>);
 
 		if (response.type !== 'db' || response.action !== 'create') {
 			throw new Error('Invalid response from RoomHost');
@@ -191,18 +174,17 @@ export default class RemoteCollection<
 	}
 }
 
-class RemoteDocumentApi<
-	TName extends string,
-	T extends { id: string; revision: number },
-	TFilter,
-> implements DocumentApi<TName, T, TFilter>
+class RemoteDocumentApi<T extends { id: string; revision: number }>
+	implements DocumentApi<T>
 {
 	readonly data: BehaviorSubject<T>;
-	readonly collection: RemoteCollection<TName, T, TFilter>;
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	readonly collection: RemoteCollection<T, any>;
 
 	constructor(
 		data: BehaviorSubject<T>,
-		collection: RemoteCollection<TName, T, TFilter>,
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		collection: RemoteCollection<T, any>,
 	) {
 		this.data = data;
 		this.collection = collection;

@@ -21,9 +21,11 @@ export class RoomHostConnectionTransport<TMessage>
 	async send(data: TMessage): Promise<void> {
 		await this.connection.sendTo(this.peerId, data);
 	}
+
 	close(): void {
 		this.connection.close();
 	}
+
 	isOpen(): boolean {
 		return this.connection.isOpen();
 	}

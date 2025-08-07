@@ -11,7 +11,7 @@ describe('Integration Tests', () => {
 
 		const source = new RamCollection('test', () => true, typeSchema);
 
-		const host = new CollectionHost<'test', Record>(source);
+		const host = new CollectionHost<Record>(source);
 
 		host.provide(provider);
 
