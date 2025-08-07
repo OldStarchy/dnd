@@ -11,7 +11,7 @@
     "test": "vitest",
     "coverage": "vitest run --coverage",
     "bundle-swagger": "cd dnd5eapi && npm ci && npm run bundle-swagger",
-    "generate-swagger": "swagger-typescript-api generate --clean-output --path ./dnd5eapi/dist/openapi.json --output ./src/generated/dnd5eapi --name Dnd5eApi --api-class-name Dnd5eApi --templates ./swagger-template",
+    "generate-swagger": "openapi-typescript ./dnd5eapi/dist/openapi.json -o ./src/generated/dnd5eapi.d.ts",
     "generate": "yarn bundle-swagger && yarn generate-swagger"
   },
   "dependencies": {
@@ -36,6 +36,7 @@
     "clsx": "^2.1.1",
     "embla-carousel-react": "^8.6.0",
     "lucide-react": "^0.513.0",
+    "openapi-fetch": "^0.14.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "react-hook-form": "^7.57.0",
@@ -49,6 +50,7 @@
     "zod": "^3.25.64"
   },
   "devDependencies": {
+    "@babel/plugin-proposal-decorators": "^7.28.0",
     "@eslint/js": "^9.25.0",
     "@types/node": "^22.15.17",
     "@types/react": "^19.1.2",
@@ -61,10 +63,10 @@
     "eslint-plugin-react-hooks": "^5.2.0",
     "eslint-plugin-react-refresh": "^0.4.19",
     "globals": "^16.0.0",
+    "openapi-typescript": "^7.8.0",
     "playwright": "^1.53.0",
     "prettier": "^3.5.3",
     "shadcn": "^2.6.3",
-    "swagger-typescript-api": "^13.2.1",
     "tw-animate-css": "^1.2.9",
     "typescript": "~5.8.3",
     "typescript-eslint": "^8.30.1",
