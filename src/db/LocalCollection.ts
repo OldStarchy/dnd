@@ -4,25 +4,21 @@ import type { ZodType as ZodSchema } from 'zod';
 import type { Collection, DocumentApi } from './Collection';
 
 export abstract class LocalCollection<
-	const TName extends string,
 	T extends { id: string; revision: number },
 	TFilter,
-> implements Collection<TName, T, TFilter>
+> implements Collection<T, TFilter>
 {
-	readonly name: TName;
+	readonly name: string;
 	private readonly filterFn: (item: T, filter?: TFilter) => boolean;
 	protected readonly schema: ZodSchema<T>;
 
-	private _change$ = new Subject<DocumentApi<TName, T, TFilter>>();
+	private _change$ = new Subject<DocumentApi<T>>();
 	readonly change$ = this._change$.asObservable();
 
-	private readonly records: Map<
-		string,
-		WeakRef<DocumentApiImpl<TName, T, TFilter>>
-	>;
+	private readonly records: Map<string, WeakRef<DocumentApiImpl<T>>>;
 
 	constructor(
-		name: TName,
+		name: string,
 		filterFn: (item: T, filter?: TFilter) => boolean,
 		schema: ZodSchema<T>,
 	) {
@@ -30,10 +26,7 @@ export abstract class LocalCollection<
 		this.filterFn = filterFn;
 		this.schema = schema;
 
-		this.records = new Map<
-			string,
-			WeakRef<DocumentApiImpl<TName, T, TFilter>>
-		>();
+		this.records = new Map<string, WeakRef<DocumentApiImpl<T>>>();
 	}
 
 	private generateId(): string {
@@ -44,13 +37,13 @@ export abstract class LocalCollection<
 
 	protected abstract setRaw(items: T[]): void;
 
-	getNotifyOne(data: T): DocumentApi<TName, T, TFilter> {
+	getNotifyOne(data: T): DocumentApi<T> {
 		const id = data.id;
 
 		const existing = this.records.get(id)?.deref();
 
 		if (!existing) {
-			const newDoc = new DocumentApiImpl<TName, T, TFilter>(
+			const newDoc = new DocumentApiImpl<T>(
 				new BehaviorSubject(data),
 				this,
 				{ __set: this.__set, __delete: this.__delete },
@@ -68,23 +61,19 @@ export abstract class LocalCollection<
 		return existing;
 	}
 
-	async get(filter?: TFilter): Promise<DocumentApi<TName, T, TFilter>[]> {
+	async get(filter?: TFilter): Promise<DocumentApi<T>[]> {
 		const items = this.getRaw();
 		return items
 			.filter((item: T) => this.filterFn(item, filter))
 			.map((item: T) => this.getNotifyOne(item));
 	}
 
-	async getOne(
-		filter?: TFilter,
-	): Promise<DocumentApi<TName, T, TFilter> | null> {
+	async getOne(filter?: TFilter): Promise<DocumentApi<T> | null> {
 		const items = await this.get(filter);
 		return items.length > 0 ? items[0] : null;
 	}
 
-	async create(
-		newItem: Omit<T, 'id' | 'revision'>,
-	): Promise<DocumentApi<TName, T, TFilter>> {
+	async create(newItem: Omit<T, 'id' | 'revision'>): Promise<DocumentApi<T>> {
 		const items = this.getRaw();
 		const data = {
 			...newItem,
@@ -145,14 +134,12 @@ export abstract class LocalCollection<
 		this.records.delete(id);
 	};
 }
-class DocumentApiImpl<
-	TName extends string,
-	T extends { id: string; revision: number },
-	TFilter,
-> implements DocumentApi<TName, T, TFilter>
+class DocumentApiImpl<T extends { id: string; revision: number }>
+	implements DocumentApi<T>
 {
 	public readonly data: BehaviorSubject<T>;
-	readonly collection: LocalCollection<TName, T, TFilter>;
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	readonly collection: LocalCollection<T, any>;
 	private readonly schema: ZodSchema<T>;
 
 	private friendFunctions: {
@@ -162,7 +149,8 @@ class DocumentApiImpl<
 
 	constructor(
 		data: BehaviorSubject<T>,
-		collection: LocalCollection<TName, T, TFilter>,
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		collection: LocalCollection<T, any>,
 		friendFunctions: {
 			__set(item: T): void;
 			__delete: (id: string) => void;

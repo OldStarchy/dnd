@@ -2,13 +2,12 @@ import type { ZodType as ZodSchema } from 'zod';
 import { LocalCollection } from './LocalCollection';
 
 export class LocalStorageCollection<
-	const TName extends string,
 	T extends { id: string; revision: number },
 	TFilter,
-> extends LocalCollection<TName, T, TFilter> {
+> extends LocalCollection<T, TFilter> {
 	private readonly storageKey: string;
 	constructor(
-		name: TName,
+		name: string,
 		filterFn: (item: T, filter?: TFilter) => boolean,
 		schema: ZodSchema<T>,
 	) {

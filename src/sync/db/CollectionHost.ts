@@ -7,25 +7,22 @@ import type {
 	DbResponseMessages,
 } from './Messages';
 
-function isDbRequestActionMessage<TName extends string, T, const TAction>(
-	message: DbRequestMessages<TName, T>,
+function isDbRequestActionMessage<T, const TAction>(
+	message: DbRequestMessages<T>,
 	action: TAction,
 ): message is typeof message & { type: 'db'; action: TAction } {
 	return message.type === 'db' && message.action === action;
 }
 
-export class CollectionHost<
-	const TName extends string,
-	T extends { id: string; revision: number },
-> {
-	readonly source: Collection<TName, T, unknown>;
-	constructor(source: Collection<TName, T, unknown>) {
+export class CollectionHost<T extends { id: string; revision: number }> {
+	readonly source: Collection<T, unknown>;
+	constructor(source: Collection<T, unknown>) {
 		this.source = source;
 	}
 
 	provide(
 		connection: RemoteApiProvider<
-			DbRequestMessages<TName, T>,
+			DbRequestMessages<T>,
 			DbResponseMessages<T>,
 			DbNotificationMessages<T>
 		>,
@@ -46,7 +43,7 @@ export class CollectionHost<
 				if (request.type !== 'db') return null;
 				if (request.collection !== this.source.name) return null;
 
-				if (isDbRequestActionMessage<TName, T, 'get'>(request, 'get')) {
+				if (isDbRequestActionMessage<T, 'get'>(request, 'get')) {
 					return this.source.get(request.action).then((result) => {
 						return {
 							type: 'db',
@@ -56,10 +53,7 @@ export class CollectionHost<
 						};
 					});
 				} else if (
-					isDbRequestActionMessage<TName, T, 'getOne'>(
-						request,
-						'getOne',
-					)
+					isDbRequestActionMessage<T, 'getOne'>(request, 'getOne')
 				) {
 					return this.source.getOne(request.filter).then((result) => {
 						return {
@@ -70,10 +64,7 @@ export class CollectionHost<
 						};
 					});
 				} else if (
-					isDbRequestActionMessage<TName, T, 'create'>(
-						request,
-						'create',
-					)
+					isDbRequestActionMessage<T, 'create'>(request, 'create')
 				) {
 					return this.source
 						.create(request.data as T)

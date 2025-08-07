@@ -27,20 +27,16 @@ export default class Room {
 		// TODO:
 	}
 
-	readonly meta: DocumentApi<string, RoomMeta, void>;
-	readonly creatures: Collection<
-		'creature',
-		Creature,
-		{ id: string } | { name: string }
-	>;
-	readonly members: Collection<'member', Member, void>;
+	readonly meta: DocumentApi<RoomMeta>;
+	readonly creatures: Collection<Creature, { id: string } | { name: string }>;
+	readonly members: Collection<Member, void>;
 
 	get hosts(): ReadonlyMap<string, RoomPublication> {
 		return this._hosts;
 	}
 	private readonly _hosts: Map<string, RoomPublication>;
 
-	private constructor(meta: DocumentApi<string, RoomMeta, void>) {
+	private constructor(meta: DocumentApi<RoomMeta>) {
 		this.meta = meta;
 
 		this.creatures = new LocalStorageCollection(
@@ -48,6 +44,7 @@ export default class Room {
 			() => true,
 			creatureSchema,
 		);
+
 		this.members = new LocalStorageCollection(
 			'member',
 			() => true,
@@ -73,7 +70,7 @@ export default class Room {
 		if (!info) {
 			return null;
 		}
-		const { id, gameMasterId, roomCode, members } = info;
+		const { id, gameMasterId: _, roomCode, members } = info;
 
 		const metaCollection = new LocalStorageCollection(
 			'room',

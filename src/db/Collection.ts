@@ -2,16 +2,15 @@ import { BehaviorSubject, Observable } from 'rxjs';
 import { type ChangeSet } from '../lib/changeSet';
 
 export interface Collection<
-	TName extends string,
 	T extends { id: string; revision: number },
 	TFilter = void,
 > {
-	readonly name: TName;
-	get(filter?: TFilter): Promise<DocumentApi<TName, T, TFilter>[]>;
-	getOne(filter: TFilter): Promise<DocumentApi<TName, T, TFilter> | null>;
-	create(newItem: T): Promise<DocumentApi<TName, T, TFilter>>;
+	readonly name: string;
+	get(filter?: TFilter): Promise<DocumentApi<T>[]>;
+	getOne(filter: TFilter): Promise<DocumentApi<T> | null>;
+	create(newItem: T): Promise<DocumentApi<T>>;
 
-	readonly change$: Observable<DocumentApi<TName, T, TFilter>>;
+	readonly change$: Observable<DocumentApi<T>>;
 }
 
 export interface CollectionPrivate<T extends { id: string; revision: number }> {
@@ -19,13 +18,9 @@ export interface CollectionPrivate<T extends { id: string; revision: number }> {
 	__delete(id: string): void;
 }
 
-export interface DocumentApi<
-	TName extends string,
-	T extends { id: string; revision: number },
-	TFilter,
-> {
+export interface DocumentApi<T extends { id: string; revision: number }> {
 	readonly data: Omit<BehaviorSubject<T>, 'next'>;
-	readonly collection: Collection<TName, T, TFilter>;
+	readonly collection: Collection<T, never>;
 
 	update(changeSet: ChangeSet<Omit<T, 'id' | 'revision'>>): Promise<void>;
 	delete(): Promise<void>;
