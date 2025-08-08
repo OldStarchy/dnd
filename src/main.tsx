@@ -1,5 +1,5 @@
-import { PopoutProvider } from '@/components/PopoutProvider';
-import { ShareProvider } from '@/components/ShareProvider';
+import { PopoutProvider } from '@/components/context/PopoutProvider';
+import { ShareProvider } from '@/components/context/ShareProvider';
 import { ThemeProvider } from '@/components/theme-provider';
 import '@/index.css';
 import Layout from '@/layout/layout';
@@ -19,7 +19,8 @@ import {
 	RouterProvider,
 	type RouteObject,
 } from 'react-router';
-import { ConfigurableBackendApiProvider } from './components/ConfigurableBackendApiProvider';
+import { ConfigurableBackendApiProvider } from './components/context/ConfigurableBackendApiProvider';
+import LocalStorageCreatureListProvider from './components/context/LocalStorageCreatureListProvider';
 import RoomView from './views/Room';
 
 Logger.default.addWriter(Logger.INFO, consoleWriter);
@@ -27,11 +28,13 @@ Logger.default.addWriter(Logger.INFO, consoleWriter);
 function GmLayout() {
 	return (
 		<Provider store={primaryStore}>
-			<ShareProvider>
-				<PopoutProvider>
-					<Layout />
-				</PopoutProvider>
-			</ShareProvider>
+			<LocalStorageCreatureListProvider>
+				<ShareProvider>
+					<PopoutProvider>
+						<Layout />
+					</PopoutProvider>
+				</ShareProvider>
+			</LocalStorageCreatureListProvider>
 		</Provider>
 	);
 }

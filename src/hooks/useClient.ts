@@ -1,15 +1,17 @@
-import { ClientContext } from '@/context/ClientContext';
-import type { ClientHandler } from '@/sync/RemoteClient';
-import { useContext, useEffect } from 'react';
+import { RemoteClient } from '@/sync/RemoteClient';
+import { useMemo } from 'react';
+import useTransport from './context/useTransport';
 
-export function useClient(handler: Partial<ClientHandler> = {}) {
-	const clientContext = useContext(ClientContext);
+export default function useClient() {
+	const transportFactory = useTransport();
 
-	useEffect(() => {
-		if (clientContext) {
-			Object.assign(clientContext, handler);
+	const client = useMemo(() => {
+		if (transportFactory === null) {
+			return null;
 		}
-	}, [clientContext, handler]);
 
-	return clientContext;
+		return new RemoteClient(transportFactory);
+	}, [transportFactory]);
+
+	return client;
 }

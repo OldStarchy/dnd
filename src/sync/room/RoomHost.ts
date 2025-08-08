@@ -22,21 +22,19 @@ const roomFound = z.object({
 		.array(),
 });
 
-export default class RoomHost<TUserMessage> {
+export default class RoomHost {
 	readonly host: string;
-	readonly userMessageSchema: z.ZodSchema<TUserMessage>;
 
-	constructor(host: string, userMessageSchema: z.ZodSchema<TUserMessage>) {
+	constructor(host: string) {
 		this.host = host;
-		this.userMessageSchema = userMessageSchema;
 	}
 
 	readonly room = new RoomResource(this);
 }
 
-class RoomResource<TUserMessage> {
-	private server: RoomHost<TUserMessage>;
-	constructor(host: RoomHost<TUserMessage>) {
+class RoomResource {
+	private server: RoomHost;
+	constructor(host: RoomHost) {
 		this.server = host;
 	}
 	async create(): Promise<z.infer<typeof roomCreated>> {
@@ -124,7 +122,7 @@ class RoomResource<TUserMessage> {
 		}
 	}
 
-	async connect(
+	async connect<TUserMessage>(
 		membershipToken: MembershipToken,
 	): Promise<RoomHostConnection<TUserMessage>> {
 		const info = await this.get(membershipToken);

@@ -2,11 +2,23 @@ import type { Collection, DocumentApi } from '@/db/Collection';
 import type { ChangeSet } from '@/lib/changeSet';
 import { BehaviorSubject, filter, Subject } from 'rxjs';
 import type { RemoteApiConsumer } from '../RemoteApi';
+import type { RoomHostConnectionForApiProvider } from '../room/RoomHostConnection';
 import type {
 	DbNotificationMessages,
 	DbRequestMessages,
 	DbResponseMessages,
 } from './Messages';
+
+export type RemoteCollectionMessages<T> =
+	| DbRequestMessages<T>
+	| DbResponseMessages<T>
+	| DbNotificationMessages<T>;
+
+export type CollectionProviderApi<T> = RoomHostConnectionForApiProvider<
+	DbRequestMessages<T>,
+	DbResponseMessages<T>,
+	DbNotificationMessages<T>
+>;
 
 export default class RemoteCollection<
 	T extends { id: string; revision: number },
