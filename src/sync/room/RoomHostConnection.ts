@@ -17,7 +17,7 @@ export default class RoomHostConnection<TUserMessage> {
 	private _notification$ = new Subject<SystemNotification>();
 	readonly notification$ = this._notification$.asObservable();
 
-	readonly members$:  BehaviorSubject<MemberPresence[]>;
+	readonly members$: BehaviorSubject<MemberPresence[]>;
 	readonly messages$: Observable<{ sender: string; data: TUserMessage }>;
 
 	constructor(
@@ -133,28 +133,31 @@ export default class RoomHostConnection<TUserMessage> {
 	}
 }
 
-type RoomHostConnectionForApiProvider<TRequest, TResponse, TNotification> =
-	RoomHostConnection<
-		| {
-				type: 'request';
-				id: string;
-				data: TRequest;
-		  }
-		| {
-				type: 'response';
-				id: string;
-				data: TResponse;
-		  }
-		| {
-				type: 'response-error';
-				id: string;
-				error: string;
-		  }
-		| {
-				type: 'notification';
-				data: TNotification;
-		  }
-	>;
+export type RoomHostConnectionForApiProvider<
+	TRequest,
+	TResponse,
+	TNotification,
+> = RoomHostConnection<
+	| {
+			type: 'request';
+			id: string;
+			data: TRequest;
+	  }
+	| {
+			type: 'response';
+			id: string;
+			data: TResponse;
+	  }
+	| {
+			type: 'response-error';
+			id: string;
+			error: string;
+	  }
+	| {
+			type: 'notification';
+			data: TNotification;
+	  }
+>;
 
 export class RoomHostConnectionApiProvider<TRequest, TResponse, TNotification>
 	implements RemoteApiProvider<TRequest, TResponse, TNotification>
