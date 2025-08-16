@@ -1,3 +1,4 @@
+import type { RecordFilter, RecordType } from '@/db/RecordType';
 import { z } from 'zod';
 import { debuffSpec } from './Debuff';
 
@@ -40,3 +41,51 @@ export const creatureSchema = z.object({
  * Represents a creature (player, NPC, monster, etc.) in the game.
  */
 export type Creature = z.infer<typeof creatureSchema>;
+
+export type CreatureRecordType = RecordType<
+	Creature,
+	{
+		id?: string;
+		name?: string;
+		race?: string;
+		hp?: number | { min?: number; max?: number };
+	}
+>;
+
+export const filterCreature: RecordFilter<CreatureRecordType> = (
+	creature,
+	filter,
+) => {
+	if (!filter) {
+		return true;
+	}
+
+	if (filter.id && creature.id !== filter.id) {
+		return false;
+	}
+
+	if (filter.name && creature.name !== filter.name) {
+		return false;
+	}
+
+	if (filter.race && creature.race !== filter.race) {
+		return false;
+	}
+
+	if (filter.hp) {
+		if (typeof filter.hp === 'number') {
+			if (creature.hp !== filter.hp) {
+				return false;
+			}
+		} else {
+			if (filter.hp.min && creature.hp < filter.hp.min) {
+				return false;
+			}
+			if (filter.hp.max && creature.hp > filter.hp.max) {
+				return false;
+			}
+		}
+	}
+
+	return true;
+};

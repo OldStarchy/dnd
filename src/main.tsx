@@ -57,6 +57,10 @@ const routes: RouteObject[] = [
 				Component: Monsters,
 			},
 			{
+				path: '/database',
+				Component: DatabaseViewer,
+			},
+			{
 				path: '/sandbox',
 				Component: Sandbox,
 			},

@@ -1,27 +1,45 @@
 import { BehaviorSubject, Observable } from 'rxjs';
 import { type ChangeSet } from '../lib/changeSet';
+import type { AnyRecordType } from './RecordType';
 
-export interface Collection<
-	T extends { id: string; revision: number },
-	TFilter = void,
-> {
+export interface ReadonlyCollection<in out RecordType extends AnyRecordType> {
 	readonly name: string;
-	get(filter?: TFilter): Promise<DocumentApi<T>[]>;
-	getOne(filter: TFilter): Promise<DocumentApi<T> | null>;
-	create(newItem: T): Promise<DocumentApi<T>>;
+	get(
+		filter?: RecordType['filter'],
+	): Promise<ReadonlyDocumentApi<RecordType>[]>;
+	getOne(
+		filter: RecordType['filter'],
+	): Promise<ReadonlyDocumentApi<RecordType> | null>;
 
-	readonly change$: Observable<DocumentApi<T>>;
+	readonly change$: Observable<ReadonlyDocumentApi<RecordType>>;
 }
 
-export interface CollectionPrivate<T extends { id: string; revision: number }> {
-	__set(item: T): void;
-	__delete(id: string): void;
+export interface ReadonlyDocumentApi<in out RecordType extends AnyRecordType> {
+	readonly data: Omit<BehaviorSubject<RecordType['record']>, 'next'>;
+	readonly collection: ReadonlyCollection<RecordType>;
 }
 
-export interface DocumentApi<T extends { id: string; revision: number }> {
-	readonly data: Omit<BehaviorSubject<T>, 'next'>;
-	readonly collection: Collection<T, never>;
+export interface Collection<in out RecordType extends AnyRecordType>
+	extends ReadonlyCollection<RecordType> {
+	readonly name: string;
+	get(filter?: RecordType['filter']): Promise<DocumentApi<RecordType>[]>;
+	getOne(
+		filter: RecordType['filter'],
+	): Promise<DocumentApi<RecordType> | null>;
+	create(
+		newItem: Omit<RecordType['record'], 'id' | 'revision'>,
+	): Promise<DocumentApi<RecordType>>;
 
-	update(changeSet: ChangeSet<Omit<T, 'id' | 'revision'>>): Promise<void>;
+	readonly change$: Observable<DocumentApi<RecordType>>;
+}
+
+export interface DocumentApi<in out RecordType extends AnyRecordType>
+	extends ReadonlyDocumentApi<RecordType> {
+	readonly data: Omit<BehaviorSubject<RecordType['record']>, 'next'>;
+	readonly collection: Collection<RecordType>;
+
+	update(
+		changeSet: ChangeSet<Omit<RecordType['record'], 'id' | 'revision'>>,
+	): Promise<void>;
 	delete(): Promise<void>;
 }

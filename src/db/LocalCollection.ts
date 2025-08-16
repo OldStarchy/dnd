@@ -2,48 +2,42 @@ import { type ChangeSet, applyChangeset } from '@/lib/changeSet';
 import { BehaviorSubject, Subject } from 'rxjs';
 import type { ZodType as ZodSchema } from 'zod';
 import type { Collection, DocumentApi } from './Collection';
+import type { AnyRecordType } from './RecordType';
 
-export abstract class LocalCollection<
-	T extends { id: string; revision: number },
-	TFilter,
-> implements Collection<T, TFilter>
+export abstract class LocalCollection<in out RecordType extends AnyRecordType>
+	implements Collection<RecordType>
 {
-	readonly name: string;
-	private readonly filterFn: (item: T, filter?: TFilter) => boolean;
-	protected readonly schema: ZodSchema<T>;
-
-	private _change$ = new Subject<DocumentApi<T>>();
+	private _change$ = new Subject<DocumentApi<RecordType>>();
 	readonly change$ = this._change$.asObservable();
 
-	private readonly records: Map<string, WeakRef<DocumentApiImpl<T>>>;
+	private readonly records: Map<string, WeakRef<DocumentApiImpl<RecordType>>>;
 
 	constructor(
-		name: string,
-		filterFn: (item: T, filter?: TFilter) => boolean,
-		schema: ZodSchema<T>,
+		readonly name: string,
+		private readonly filterFn: (
+			item: RecordType['record'],
+			filter?: RecordType['filter'],
+		) => boolean,
+		protected readonly schema: ZodSchema<RecordType['record']>,
 	) {
-		this.name = name;
-		this.filterFn = filterFn;
-		this.schema = schema;
-
-		this.records = new Map<string, WeakRef<DocumentApiImpl<T>>>();
+		this.records = new Map<string, WeakRef<DocumentApiImpl<RecordType>>>();
 	}
 
 	private generateId(): string {
 		return crypto.randomUUID();
 	}
 
-	protected abstract getRaw(): T[];
+	protected abstract getRaw(): RecordType['record'][];
 
-	protected abstract setRaw(items: T[]): void;
+	protected abstract setRaw(items: RecordType['record'][]): void;
 
-	getNotifyOne(data: T): DocumentApi<T> {
+	getNotifyOne(data: RecordType['record']): DocumentApi<RecordType> {
 		const id = data.id;
 
 		const existing = this.records.get(id)?.deref();
 
 		if (!existing) {
-			const newDoc = new DocumentApiImpl<T>(
+			const newDoc = new DocumentApiImpl<RecordType>(
 				new BehaviorSubject(data),
 				this,
 				{ __set: this.__set, __delete: this.__delete },
@@ -61,32 +55,44 @@ export abstract class LocalCollection<
 		return existing;
 	}
 
-	async get(filter?: TFilter): Promise<DocumentApi<T>[]> {
+	async get(
+		filter?: RecordType['filter'],
+	): Promise<DocumentApi<RecordType>[]> {
 		const items = this.getRaw();
 		return items
-			.filter((item: T) => this.filterFn(item, filter))
-			.map((item: T) => this.getNotifyOne(item));
+			.filter((item: RecordType['record']) => this.filterFn(item, filter))
+			.map((item: RecordType['record']) => this.getNotifyOne(item));
 	}
 
-	async getOne(filter?: TFilter): Promise<DocumentApi<T> | null> {
+	async getOne(
+		filter?: RecordType['filter'],
+	): Promise<DocumentApi<RecordType> | null> {
 		const items = await this.get(filter);
 		return items.length > 0 ? items[0] : null;
 	}
 
-	async create(newItem: Omit<T, 'id' | 'revision'>): Promise<DocumentApi<T>> {
-		const items = this.getRaw();
+	async create(
+		newItem: Omit<RecordType['record'], 'id' | 'revision'>,
+	): Promise<DocumentApi<RecordType>> {
 		const data = {
 			...newItem,
 			id: this.generateId(),
 			revision: 0,
-		} as T;
+		} as RecordType['record'];
+		const parsed = await this.schema.safeParseAsync(data);
+
+		if (!parsed.success) {
+			throw new Error(`Invalid data: ${JSON.stringify(parsed.error)}`);
+		}
+
+		const items = this.getRaw();
 		items.push(data);
 		this.setRaw(items);
 
 		return this.getNotifyOne(data);
 	}
 
-	private __set = (item: T): void => {
+	private __set = (item: RecordType['record']): void => {
 		const records = this.getRaw();
 
 		const existingIndex = records.findIndex((i) => i.id === item.id);
@@ -134,28 +140,26 @@ export abstract class LocalCollection<
 		this.records.delete(id);
 	};
 }
-class DocumentApiImpl<T extends { id: string; revision: number }>
-	implements DocumentApi<T>
+class DocumentApiImpl<in out RecordType extends AnyRecordType>
+	implements DocumentApi<RecordType>
 {
-	public readonly data: BehaviorSubject<T>;
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	readonly collection: LocalCollection<T, any>;
-	private readonly schema: ZodSchema<T>;
+	public readonly data: BehaviorSubject<RecordType['record']>;
+	readonly collection: LocalCollection<RecordType>;
+	private readonly schema: ZodSchema<RecordType['record']>;
 
 	private friendFunctions: {
-		__set(item: T): void;
+		__set(item: RecordType['record']): void;
 		__delete: (id: string) => void;
 	};
 
 	constructor(
-		data: BehaviorSubject<T>,
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		collection: LocalCollection<T, any>,
+		data: BehaviorSubject<RecordType['record']>,
+		collection: LocalCollection<RecordType>,
 		friendFunctions: {
-			__set(item: T): void;
+			__set(item: RecordType['record']): void;
 			__delete: (id: string) => void;
 		},
-		schema: ZodSchema<T>,
+		schema: ZodSchema<RecordType['record']>,
 	) {
 		this.data = data;
 		this.collection = collection;
@@ -164,7 +168,7 @@ class DocumentApiImpl<T extends { id: string; revision: number }>
 	}
 
 	async update(
-		changeSet: ChangeSet<Omit<T, 'id' | 'revision'>>,
+		changeSet: ChangeSet<Omit<RecordType['record'], 'id' | 'revision'>>,
 	): Promise<void> {
 		const updated = applyChangeset(this.data.getValue(), changeSet);
 

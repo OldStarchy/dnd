@@ -1,21 +1,21 @@
 import type { ZodType as ZodSchema } from 'zod';
 import { LocalCollection } from './LocalCollection';
+import type { AnyRecordType, RecordFilter } from './RecordType';
 
 export class LocalStorageCollection<
-	T extends { id: string; revision: number },
-	TFilter,
-> extends LocalCollection<T, TFilter> {
+	in out RecordType extends AnyRecordType,
+> extends LocalCollection<RecordType> {
 	private readonly storageKey: string;
 	constructor(
 		name: string,
-		filterFn: (item: T, filter?: TFilter) => boolean,
-		schema: ZodSchema<T>,
+		filterFn: RecordFilter<RecordType>,
+		schema: ZodSchema<RecordType['record']>,
 	) {
 		super(name, filterFn, schema);
 		this.storageKey = `dnd.db.${this.name}`;
 	}
 
-	protected override getRaw(): T[] {
+	protected override getRaw(): RecordType['record'][] {
 		const items = localStorage.getItem(this.storageKey);
 		try {
 			const parsed = items ? JSON.parse(items) : [];
@@ -29,7 +29,7 @@ export class LocalStorageCollection<
 				return [];
 			}
 
-			const validItems: T[] = [];
+			const validItems: RecordType['record'][] = [];
 			for (const item of parsed) {
 				const parsedItem = this.schema.safeParse(item);
 				if (parsedItem.success) {
@@ -43,7 +43,9 @@ export class LocalStorageCollection<
 			}
 
 			return validItems.filter(
-				(item: T | null): item is T => item !== null,
+				(
+					item: RecordType['record'] | null,
+				): item is RecordType['record'] => item !== null,
 			);
 		} catch (error) {
 			console.error(
@@ -54,7 +56,7 @@ export class LocalStorageCollection<
 		}
 	}
 
-	protected override setRaw(items: T[]): void {
+	protected override setRaw(items: RecordType['record'][]): void {
 		try {
 			localStorage.setItem(this.storageKey, JSON.stringify(items));
 		} catch (error) {

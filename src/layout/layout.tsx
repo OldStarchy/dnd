@@ -26,6 +26,7 @@ import {
 	ChevronUp,
 	Cog,
 	Crown,
+	Database,
 	Dog,
 	GraduationCap,
 	LogOut,
@@ -143,6 +144,16 @@ export function AppSidebar() {
 					label: '5e Monsters',
 					icon: <Dog />,
 					to: '/monsters',
+				},
+			],
+		},
+		{
+			label: 'Database',
+			children: [
+				{
+					label: 'Database',
+					icon: <Database />,
+					to: '/database',
 				},
 			],
 		},
