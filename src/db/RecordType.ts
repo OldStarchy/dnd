@@ -3,7 +3,6 @@ import type {
 	DbRequestMessages,
 	DbResponseMessages,
 } from '@/sync/db/Messages';
-import type { RequestResponseNotificationMessages } from '@/sync/room/RoomHostConnection';
 
 export type RecordType<
 	TRecord extends { id: string; revision: number },
@@ -23,10 +22,3 @@ export type RecordFilter<T extends AnyRecordType> = (
 	record: T['record'],
 	filter: T['filter'],
 ) => boolean;
-
-export type CollectionProviderMessage<RecordType extends AnyRecordType> =
-	RequestResponseNotificationMessages<
-		RecordType['request'],
-		RecordType['response'],
-		RecordType['notification']
-	>;

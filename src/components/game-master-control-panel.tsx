@@ -1,4 +1,3 @@
-import sybilProfile from '@/components/InitiativeTable/fixtures/sybil_profile.png';
 import { Button } from '@/components/ui/button';
 import {
 	ResizableHandle,
@@ -6,11 +5,11 @@ import {
 	ResizablePanelGroup,
 } from '@/components/ui/resizable';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Dnd5eApi } from '@/generated/dnd5eapi/Dnd5eApi';
+import { dnd5eApi, dnd5eApiUrl } from '@/dnd5eApi';
+import { useShareCode } from '@/hooks/context/useShareCode';
 import useCustomCreatureList from '@/hooks/useCustomCreatureList';
 import useLocalStorage from '@/hooks/useLocalStorage';
 import useMonsterList from '@/hooks/useMonsterList';
-import { useShareCode } from '@/hooks/useShareCode';
 import { usePrimaryDispatch, usePrimarySelector } from '@/store/primary-store';
 import {
 	removeEntity,
@@ -24,11 +23,13 @@ import {
 	HealthObfuscation,
 	type Entity,
 } from '@/store/types/Entity';
+import type { Creature } from '@/type/Creature';
 import { DropdownMenuTrigger } from '@radix-ui/react-dropdown-menu';
 import { ChevronDown, Plus, Trash } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { usePopout } from '../hooks/usePopout';
-import EntityPropertyPanel from './entity-property-panel';
+import EntityPropertyPanel, {
+	type EntityPropertySchema,
+} from './entity-property-panel';
 import InitiativeTable from './InitiativeTable/InitiativeTable';
 import type { InitiativeTableEntry } from './InitiativeTable/InitiativeTableEntry';
 import {
@@ -52,38 +53,37 @@ function GameMasterControlPanel() {
 	);
 	const dispatch = usePrimaryDispatch();
 
-	const [characters] = useCustomCreatureList();
+	const { list, update } = useCustomCreatureList();
 	const { monsters } = useMonsterList();
+
+	const [characters, setCreaturesState] = useState<Creature[]>([]);
+
+	useEffect(() => {
+		list().then((creatures) => {
+			setCreaturesState(creatures);
+		});
+	}, [list]);
 
 	useEffect(() => {
 		dispatch(
-			setDefault([
-				{
+			setDefault(
+				characters.map((creature) => ({
 					id: crypto.randomUUID(),
-					visible: true,
-					initiative: 10,
+					visible: false,
+					initiative: 0,
 					obfuscateHealth: HealthObfuscation.NO,
-
 					creature: {
-						id: crypto.randomUUID(),
-						name: 'Sybil Snow',
-						race: 'Human',
-						notes: "Sybil is a cool chick who doesn't afraid of anything.",
-						images: [sybilProfile],
-						hp: 11,
-						maxHp: 11,
-						debuffs: [],
+						type: 'unique',
+						id: creature.id,
 					},
-				},
-			]),
+				})),
+			),
 		);
-	}, [dispatch]);
+	}, [dispatch, characters]);
 
 	const [selectedEntityId, setSelectedEntityId] = useState<string | null>(
 		null,
 	);
-
-	const { setOpen } = usePopout();
 
 	const selectedEntity = entities.find(
 		(entity) => entity.id === selectedEntityId,
@@ -96,12 +96,14 @@ function GameMasterControlPanel() {
 			initiative: 0,
 			obfuscateHealth: HealthObfuscation.NO,
 			creature: {
-				id: crypto.randomUUID(),
-				name: 'New Entity',
-				race: 'Ghost',
-				hp: 10,
-				maxHp: 10,
-				debuffs: [],
+				type: 'generic',
+				data: {
+					name: 'New Entity',
+					race: 'Ghost',
+					hp: 10,
+					maxHp: 10,
+					debuffs: [],
+				},
 			},
 		};
 		dispatch(setEntity(newEntity));
@@ -110,32 +112,112 @@ function GameMasterControlPanel() {
 
 	const entitiesView: InitiativeTableEntry[] = useMemo(
 		() =>
-			entities.map((entity) => {
-				const ety: InitiativeTableEntry = {
-					initiative: entity.initiative,
-					name: entity.creature.name,
-					ac: entity.creature.ac,
-					race: entity.creature.race,
-					images: entity.creature.images,
-					description: entity.creature.notes,
-					id: entity.id,
-					healthDisplay:
-						`${entity.creature.hp}/${entity.creature.maxHp}${entity.creature.hitpointsRoll ? ` (${entity.creature.hitpointsRoll})` : ''}` +
-						(entity.obfuscateHealth !== HealthObfuscation.NO
-							? ` (${getObfuscatedHealthText(
-									entity.creature.hp,
-									entity.creature.maxHp,
-									entity.obfuscateHealth,
-								)})`
-							: ''),
-					debuffs: entity.creature.debuffs ?? [],
-				};
-				if (!entity.visible) {
-					ety.effect = 'invisible';
-				}
-				return ety;
-			}),
-		[entities],
+			entities
+				.filter((entity) => {
+					if (entity.creature.type === 'unique') {
+						const id = entity.creature.id;
+						return characters.some((c) => c.id === id);
+					}
+				})
+				.map((entity) => {
+					const creature = (() => {
+						if (entity.creature.type === 'unique') {
+							const id = entity.creature.id;
+							return characters.find((c) => c.id === id)!;
+						} else return entity.creature.data;
+					})();
+					const ety: InitiativeTableEntry = {
+						id: entity.id,
+						initiative: entity.initiative,
+						creature: entity.creature,
+						healthDisplay:
+							`${creature.hp}/${creature.maxHp}${creature.hitpointsRoll ? ` (${creature.hitpointsRoll})` : ''}` +
+							(entity.obfuscateHealth !== HealthObfuscation.NO
+								? ` (${getObfuscatedHealthText(
+										creature.hp,
+										creature.maxHp,
+										entity.obfuscateHealth,
+									)})`
+								: ''),
+					};
+					if (!entity.visible) {
+						ety.effect = 'invisible';
+					}
+					return ety;
+				}),
+		[entities, characters],
+	);
+
+	const entityToEditPanelSchema = useCallback(
+		(entity: Entity): EntityPropertySchema => {
+			const creature = (() => {
+				if (entity.creature.type === 'unique') {
+					const id = entity.creature.id;
+					return characters.find((c) => c.id === id)!;
+				} else return entity.creature.data;
+			})();
+
+			return {
+				initiative: entity.initiative,
+				visible: entity.visible,
+				images: creature.images,
+				obfuscateHealth: entity.obfuscateHealth,
+				name: creature.name,
+				hp: creature.hp,
+				maxHp: creature.maxHp,
+				ac: creature.ac,
+				debuffs: creature.debuffs ?? [],
+			};
+		},
+		[characters],
+	);
+
+	const saveEntityPanelChanges = useCallback(
+		(id: string, data: EntityPropertySchema) => {
+			const entity = entities.find((e) => e.id === id);
+			if (!entity) return;
+
+			if (entity.creature.type === 'unique') {
+				const id = entity.creature.id;
+				update(id, {
+					name: { value: data.name },
+					ac: { value: data.ac },
+					hp: { value: data.hp },
+					maxHp: { value: data.maxHp },
+					debuffs: { value: data.debuffs },
+					images: { value: data.images },
+				});
+				dispatch(setEntity({ ...entity, visible: data.visible }));
+			} else {
+				dispatch(
+					setEntity({
+						...entity,
+						creature: {
+							...entity.creature,
+							data: {
+								...entity.creature.data,
+								name: data.name || entity.creature.data.name,
+								ac: data.ac ?? entity.creature.data.ac,
+								hp: data.hp ?? entity.creature.data.hp,
+								maxHp: data.maxHp ?? entity.creature.data.maxHp,
+								debuffs: data.debuffs,
+								images:
+									(
+										data.images ??
+										entity.creature.data.images ??
+										[]
+									).filter((i) => i !== undefined) ?? [],
+							},
+						},
+						initiative: data.initiative ?? entity.initiative,
+						obfuscateHealth:
+							data.obfuscateHealth ?? entity.obfuscateHealth,
+						visible: data.visible ?? entity.visible,
+					}),
+				);
+			}
+		},
+		[entities, dispatch, update],
 	);
 
 	const advanceTurn = useCallback(() => {
@@ -147,12 +229,15 @@ function GameMasterControlPanel() {
 
 		const nextIndex = (currentIndex + 1) % entities.length;
 		const nextEntity = entities[nextIndex];
-		if (
-			currentEntity.creature.debuffs?.some(
-				(debuff) => debuff.duration !== undefined,
-			)
-		) {
-			const newDebuffs = currentEntity.creature.debuffs
+
+		const creature = (() => {
+			if (currentEntity.creature.type === 'unique') {
+				const id = currentEntity.creature.id;
+				return characters.find((c) => c.id === id)!;
+			} else return currentEntity.creature.data;
+		})();
+		if (creature.debuffs?.some((debuff) => debuff.duration !== undefined)) {
+			const newDebuffs = creature.debuffs
 				.map((debuff) => {
 					if (debuff.duration !== undefined) {
 						return {
@@ -167,18 +252,28 @@ function GameMasterControlPanel() {
 						debuff.duration === undefined || debuff.duration > 0,
 				);
 
-			dispatch(
-				setEntity({
-					...currentEntity,
-					creature: {
-						...currentEntity.creature,
-						debuffs: newDebuffs,
-					},
-				}),
-			);
+			if (currentEntity.creature.type === 'generic') {
+				dispatch(
+					setEntity({
+						...currentEntity,
+						creature: {
+							...currentEntity.creature,
+							data: {
+								...currentEntity.creature.data,
+								debuffs: newDebuffs,
+							},
+						},
+					}),
+				);
+			} else {
+				const id = currentEntity.creature.id;
+				update(id, {
+					debuffs: { value: newDebuffs },
+				});
+			}
 		}
 		dispatch(setCurrentTurnEntityId(nextEntity.id));
-	}, [entities, currentTurnEntityId, dispatch]);
+	}, [entities, currentTurnEntityId, dispatch, characters, update]);
 
 	return (
 		<ResizablePanelGroup
@@ -187,12 +282,10 @@ function GameMasterControlPanel() {
 		>
 			<ResizablePanel defaultSize={50}>
 				<ScrollArea className="h-full">
-					<Button onClick={() => setOpen(true)}>
-						Open in Popout
-					</Button>
+					<Button onClick={() => alert('NYI')}>Open in Popout</Button>
 					<Input
 						type="text"
-						value={shareCodes.roomCode ?? ''}
+						value={shareCodes?.roomCode ?? ''}
 						readOnly
 					/>
 					<InitiativeTable
@@ -265,8 +358,10 @@ function GameMasterControlPanel() {
 														const newEntity: Entity =
 															{
 																id: crypto.randomUUID(),
-																creature:
-																	character,
+																creature: {
+																	type: 'unique',
+																	id: character.id,
+																},
 																visible: false,
 																initiative: 0,
 																obfuscateHealth:
@@ -303,13 +398,20 @@ function GameMasterControlPanel() {
 													key={monster.index}
 													onClick={() => {
 														(async () => {
-															const api =
-																new Dnd5eApi();
-															const result = (
-																await api.api._2014MonstersDetail(
-																	monster.index,
-																)
-															).data;
+															const {
+																data: result,
+															} =
+																await dnd5eApi.GET(
+																	'/api/2014/monsters/{index}',
+																	{
+																		params: {
+																			path: {
+																				index: monster.index,
+																			},
+																		},
+																	},
+																);
+															if (!result) return;
 															const hitpoints =
 																result.hit_points_roll !==
 																undefined
@@ -330,34 +432,36 @@ function GameMasterControlPanel() {
 																	obfuscateHealth:
 																		HealthObfuscation.TEXT,
 																	creature: {
-																		id: result.index!,
-																		name: result.name!,
-																		race: result.name!,
-																		hp: hitpoints,
-																		maxHp: hitpoints,
-																		attributes:
-																			{
-																				strength:
-																					result.strength,
-																				dexterity:
-																					result.dexterity,
-																				constitution:
-																					result.constitution,
-																				intelligence:
-																					result.intelligence,
-																				wisdom: result.wisdom,
-																				charisma:
-																					result.charisma,
-																			},
-																		speed: result.speed,
-																		images: [
-																			api.baseUrl +
-																				result.image,
-																		],
-																		hitpointsRoll:
-																			result.hit_points_roll,
-																		debuffs:
-																			[],
+																		type: 'generic',
+																		data: {
+																			name: result.name!,
+																			race: result.name!,
+																			hp: hitpoints,
+																			maxHp: hitpoints,
+																			attributes:
+																				{
+																					strength:
+																						result.strength,
+																					dexterity:
+																						result.dexterity,
+																					constitution:
+																						result.constitution,
+																					intelligence:
+																						result.intelligence,
+																					wisdom: result.wisdom,
+																					charisma:
+																						result.charisma,
+																				},
+																			speed: result.speed,
+																			images: [
+																				dnd5eApiUrl +
+																					result.image,
+																			],
+																			hitpointsRoll:
+																				result.hit_points_roll,
+																			debuffs:
+																				[],
+																		},
 																	},
 																};
 															dispatch(
@@ -392,10 +496,13 @@ function GameMasterControlPanel() {
 					{selectedEntity ? (
 						<div className="pl-4 pr-6 py-4">
 							<EntityPropertyPanel
-								entity={selectedEntity}
+								entity={entityToEditPanelSchema(selectedEntity)}
 								key={selectedEntity.id}
 								onChange={(entity) => {
-									dispatch(setEntity(entity));
+									saveEntityPanelChanges(
+										selectedEntity.id,
+										entity,
+									);
 								}}
 							/>
 						</div>

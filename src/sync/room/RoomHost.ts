@@ -1,42 +1,42 @@
 import { z } from 'zod';
+import { inboundSystemMessageSchema } from '../message/schema/InboundSystemMessage';
+import { ClosableJsonTransport } from '../transports/JsonTransport';
+import ReconnectingWebSocket from './ReconnectingWebSocket';
 import RoomHostConnection from './RoomHostConnection';
 import type { MembershipToken } from './types';
 
 const roomCreated = z.object({
-	id: z.string(),
-	membershipToken: z.string(),
-	roomCode: z.string(),
+	membershipToken: z.string().brand<'MembershipToken'>(),
+	roomCode: z.string().brand<'RoomCode'>(),
 });
 const roomJoined = z.object({
-	membershipToken: z.string(),
+	membershipToken: z.string().brand<'MembershipToken'>(),
 });
 const roomFound = z.object({
-	roomCode: z.string(),
-	id: z.string(),
-	gameMasterId: z.string(),
+	roomCode: z.string().brand<'RoomCode'>(),
+	id: z.string().brand<'MemberId'>(),
+	gameMasterId: z.string().brand<'MemberId'>(),
 	members: z
 		.object({
-			id: z.string(),
+			id: z.string().brand<'MemberId'>(),
 			online: z.boolean(),
 		})
 		.array(),
 });
 
-export default class RoomHost<TUserMessage> {
+export default class RoomHost {
 	readonly host: string;
-	readonly userMessageSchema: z.ZodSchema<TUserMessage>;
 
-	constructor(host: string, userMessageSchema: z.ZodSchema<TUserMessage>) {
+	constructor(host: string) {
 		this.host = host;
-		this.userMessageSchema = userMessageSchema;
 	}
 
 	readonly room = new RoomResource(this);
 }
 
-class RoomResource<TUserMessage> {
-	private server: RoomHost<TUserMessage>;
-	constructor(host: RoomHost<TUserMessage>) {
+class RoomResource {
+	private server: RoomHost;
+	constructor(host: RoomHost) {
 		this.server = host;
 	}
 	async create(): Promise<z.infer<typeof roomCreated>> {
@@ -126,7 +126,7 @@ class RoomResource<TUserMessage> {
 
 	async connect(
 		membershipToken: MembershipToken,
-	): Promise<RoomHostConnection<TUserMessage>> {
+	): Promise<RoomHostConnection> {
 		const info = await this.get(membershipToken);
 		if (!info.id) {
 			throw new Error('Room not found or invalid membership token');
@@ -134,8 +134,13 @@ class RoomResource<TUserMessage> {
 
 		const { id, gameMasterId, members } = info;
 
-		const ws = new WebSocket(
+		const ws = new ReconnectingWebSocket(
 			`${this.server.host.replace(/^http/, 'ws')}/room/ws/${membershipToken}`,
+		);
+
+		const connection = new ClosableJsonTransport(
+			ws,
+			inboundSystemMessageSchema,
 		);
 
 		return new RoomHostConnection(
@@ -143,7 +148,7 @@ class RoomResource<TUserMessage> {
 			gameMasterId,
 			members,
 			this.server,
-			ws,
+			connection,
 		);
 	}
 }

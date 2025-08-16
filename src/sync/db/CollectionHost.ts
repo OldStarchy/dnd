@@ -1,87 +1,97 @@
 import type { Collection } from '@/db/Collection';
-import { Subscription } from 'rxjs';
-import type { RemoteApiProvider } from '../RemoteApi';
-import type {
-	DbNotificationMessages,
-	DbRequestMessages,
-	DbResponseMessages,
-} from './Messages';
+import type { AnyRecordType } from '@/db/RecordType';
+import { filter, Subscription } from 'rxjs';
+import type { InboundRequest } from '../message/inbound';
+import type { UserMessageOfType } from '../message/raw';
+import type RoomHostConnection from '../room/RoomHostConnection';
+import { DbChangeNotification } from './message/notification';
 
-function isDbRequestActionMessage<T, const TAction>(
-	message: DbRequestMessages<T>,
-	action: TAction,
-): message is typeof message & { type: 'db'; action: TAction } {
-	return message.type === 'db' && message.action === action;
-}
-
-export class CollectionHost<T extends { id: string; revision: number }> {
-	readonly source: Collection<T, unknown>;
-	constructor(source: Collection<T, unknown>) {
-		this.source = source;
+export class CollectionHost<
+	const RecordMap extends {
+		[name: string]: AnyRecordType;
+	},
+> {
+	readonly sources: {
+		[K in keyof RecordMap]?: Collection<RecordMap[K]>;
+	};
+	constructor(sources: { [K in keyof RecordMap]: Collection<RecordMap[K]> }) {
+		this.sources = sources;
 	}
 
-	provide(
-		connection: RemoteApiProvider<
-			DbRequestMessages<T>,
-			DbResponseMessages<T>,
-			DbNotificationMessages<T>
-		>,
-	) {
+	provide(connection: RoomHostConnection): Subscription {
 		const subscription = new Subscription();
 
-		const sub = this.source.change$.subscribe((doc) => {
-			connection.notify({
-				type: 'db',
-				collection: this.source.name,
-				items: [doc.data.getValue()],
-			} as DbNotificationMessages<T>);
-		});
-		subscription.add(sub);
+		Object.entries(this.sources)
+			.map(([name, collection]: [string, Collection<AnyRecordType>]) => {
+				return collection.change$.subscribe((doc) => {
+					connection.broadcast(
+						new DbChangeNotification(name, [doc.data.getValue()]),
+					);
+				});
+			})
+			.forEach((sub) => subscription.add(sub));
 
-		const sub2 = connection.$request.on(
-			(request): Promise<DbResponseMessages<T>> | null => {
-				if (request.type !== 'db') return null;
-				if (request.collection !== this.source.name) return null;
-
-				if (isDbRequestActionMessage<T, 'get'>(request, 'get')) {
-					return this.source.get(request.action).then((result) => {
-						return {
-							type: 'db',
-							collection: this.source.name,
-							action: 'get',
-							data: result.map((item) => item.data.getValue()),
-						};
-					});
-				} else if (
-					isDbRequestActionMessage<T, 'getOne'>(request, 'getOne')
-				) {
-					return this.source.getOne(request.filter).then((result) => {
-						return {
-							type: 'db',
-							collection: this.source.name,
-							action: 'getOne',
-							data: result && result.data.getValue(),
-						};
-					});
-				} else if (
-					isDbRequestActionMessage<T, 'create'>(request, 'create')
-				) {
-					return this.source
-						.create(request.data as T)
-						.then((result) => {
-							return {
-								type: 'db',
-								collection: this.source.name,
-								action: 'create',
-								data: result.data.getValue(),
-							};
-						});
-				}
-				return null;
-			},
-		);
+		const sub2 = connection.request$
+			.pipe(filter((request) => request.data.type === 'db'))
+			.subscribe((request) => {
+				this.handleRequest(request);
+			});
 		subscription.add(sub2);
 
 		return subscription;
+	}
+
+	async handleRequest(
+		request: InboundRequest<UserMessageOfType<'request'> & { type: 'db' }>,
+	) {
+		const data = request.data;
+		const collection = this.sources[data.collection];
+
+		request.respond(async (): Promise<UserMessageOfType<'response'>> => {
+			if (!collection) throw 'Collection not found';
+
+			switch (data.action) {
+				case 'get':
+					return {
+						data: (await collection.get(data.action)).toRaw(),
+					};
+
+				case 'getOne':
+					return {
+						data: await collection
+							.getOne(data.filter)
+							.map((doc) => doc.data.getValue())
+							.unwrapOrNull(),
+					};
+
+				case 'create':
+					return {
+						data: (
+							await collection
+								// eslint-disable-next-line @typescript-eslint/no-explicit-any
+								.create(data.data as any)
+						).data.getValue(),
+					};
+
+				case 'update':
+					await collection
+						.getOne({ id: data.id })
+						.map((doc) => doc.update(data.changeSet));
+
+					return null;
+
+				case 'delete':
+					await collection
+						.getOne({ id: data.id })
+						.map((doc) => doc.delete());
+
+					return null;
+
+				default: {
+					const _exhaustiveCheck: never = data;
+					throw new Error(`Unsupported action: ${data['action']}`);
+				}
+			}
+		});
 	}
 }

@@ -1,6 +1,6 @@
 import type { ZodType as ZodSchema } from 'zod';
 import { LocalCollection } from './LocalCollection';
-import type { AnyRecordType } from './RecordType';
+import type { AnyRecordType, RecordFilter } from './RecordType';
 
 export class RamCollection<
 	in out RecordType extends AnyRecordType,
@@ -8,10 +8,7 @@ export class RamCollection<
 	private storage: RecordType['record'][];
 	constructor(
 		name: string,
-		filterFn: (
-			item: RecordType['record'],
-			filter?: RecordType['filter'],
-		) => boolean,
+		filterFn: RecordFilter<RecordType>,
 		schema: ZodSchema<RecordType['record']>,
 	) {
 		super(name, filterFn, schema);

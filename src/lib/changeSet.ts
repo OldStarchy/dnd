@@ -4,7 +4,7 @@ type AtLeastOne<T> = {
 }[keyof T];
 
 type Replace<T> = { replace: T };
-type Merge<T> =
+export type Merge<T> =
 	T extends Record<string, unknown>
 		? { merge: { [K in keyof T]?: ChangeSet<T[K]> } }
 		: never;
@@ -156,6 +156,8 @@ export function applyChangeset<T>(
 
 			const newOrder = reorder.map((filter: number) => merged[filter]);
 			return newOrder as T;
+		} else if ('extend' in update) {
+			return [...merged, ...update.extend] as typeof merged;
 		}
 	}
 

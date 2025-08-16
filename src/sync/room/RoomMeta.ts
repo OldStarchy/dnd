@@ -1,3 +1,4 @@
+import type { RecordType } from '@/db/RecordType';
 import z from 'zod';
 
 export const roomMetaSchema = z.object({
@@ -8,3 +9,5 @@ export const roomMetaSchema = z.object({
 });
 
 export type RoomMeta = z.infer<typeof roomMetaSchema>;
+
+export type RoomMetaRecordType = RecordType<RoomMeta, void>;

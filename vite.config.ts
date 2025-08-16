@@ -10,6 +10,13 @@ export default defineConfig({
 			babel: {
 				plugins: [
 					[
+						'@babel/plugin-transform-typescript',
+						{
+							allowDeclareFields: true,
+							isTSX: true,
+						},
+					],
+					[
 						'@babel/plugin-proposal-decorators',
 						{ version: '2023-11' },
 					],

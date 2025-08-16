@@ -1,6 +1,13 @@
+import useCustomCreatureList from '@/hooks/useCustomCreatureList';
 import { cn } from '@/lib/utils';
+import { type Creature } from '@/type/Creature';
 import { ArrowRight, ChevronLeft } from 'lucide-react';
-import { useState, type ComponentPropsWithoutRef, type ReactNode } from 'react';
+import {
+	useEffect,
+	useState,
+	type ComponentPropsWithoutRef,
+	type ReactNode,
+} from 'react';
 import Debuff from '../Debuff';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Button } from '../ui/button';
@@ -39,6 +46,42 @@ export default function InitiativeTableRow({
 	fieldVisibility: FieldVisibility;
 } & ComponentPropsWithoutRef<typeof TableRow>) {
 	const [dialogIsOpen, setDialogIsOpen] = useState(false);
+	//TODO: pull creature information from a provider, and use either a local
+	// storage provider for gm or a sync provider for players
+	const { get } = useCustomCreatureList();
+
+	const [creatureInfo, setCreatureInfo] = useState<Omit<
+		Creature,
+		'id'
+	> | null>(null);
+
+	useEffect(() => {
+		(async () => {
+			if (entry.creature.type === 'unique') {
+				const id = entry.creature.id;
+				const creature = await get(id);
+				if (creature) {
+					setCreatureInfo(creature);
+				} else {
+					console.error(`Creature with id ${id} not found.`);
+				}
+			} else {
+				setCreatureInfo(entry.creature.data);
+			}
+		})();
+	}, [entry.creature, get]);
+
+	if (!creatureInfo) {
+		return (
+			<TableBody>
+				<TableRow className="text-muted-foreground">
+					<TableCell colSpan={8}>
+						Loading creature information...
+					</TableCell>
+				</TableRow>
+			</TableBody>
+		);
+	}
 
 	return (
 		<>
@@ -80,15 +123,15 @@ export default function InitiativeTableRow({
 								<TableCell className="w-0">
 									<Avatar>
 										<AvatarImage
-											src={entry.images?.[0]}
-											alt={entry.name}
+											src={creatureInfo.images?.[0]}
+											alt={creatureInfo.name}
 											className="cursor-zoom-in"
 											onClick={() =>
 												setDialogIsOpen(true)
 											}
 										/>
 										<AvatarFallback>
-											{entry.name
+											{creatureInfo.name
 												.replace(/[^a-zA-Z0-9 ]+/g, ' ')
 												.replace(
 													/(?:^| )(\w)\w+/g,
@@ -100,25 +143,27 @@ export default function InitiativeTableRow({
 								</TableCell>
 								<TableCell>
 									{entry.effect === 'invisible'
-										? `(${entry.name})`
-										: entry.name}
+										? `(${creatureInfo.name})`
+										: creatureInfo.name}
 								</TableCell>
 							</>
 						)}
-						{vis.race && <TableCell>{entry.race}</TableCell>}
-						{vis.ac && <TableCell>{entry.ac}</TableCell>}
+						{vis.race && <TableCell>{creatureInfo.race}</TableCell>}
+						{vis.ac && <TableCell>{creatureInfo.ac}</TableCell>}
 						{vis.health && (
 							<TableCell>{entry.healthDisplay}</TableCell>
 						)}
 						{vis.debuffs && (
 							<TableCell className="pr-4">
 								<div className="flex space-x-2">
-									{entry.debuffs?.map((debuff, index) => (
-										<Debuff
-											debuff={{ ...debuff }}
-											key={index}
-										/>
-									))}
+									{creatureInfo.debuffs?.map(
+										(debuff, index) => (
+											<Debuff
+												debuff={{ ...debuff }}
+												key={index}
+											/>
+										),
+									)}
 								</div>
 							</TableCell>
 						)}
@@ -127,21 +172,22 @@ export default function InitiativeTableRow({
 								className="flex gap-1"
 								onClick={(e) => e.stopPropagation()}
 							>
-								{entry.description && vis.description && (
-									<CollapsibleTrigger asChild>
-										<Button
-											className="group opacity-0 group-hover:opacity-100"
-											variant="ghost"
-											size="icon"
-											aria-label="Toggle Details"
-										>
-											<span className="sr-only">
-												Toggle Details
-											</span>
-											<ChevronLeft className="h-4 w-4 transition-transform duration-200 group-data-[state=open]:-rotate-90" />
-										</Button>
-									</CollapsibleTrigger>
-								)}
+								{creatureInfo.description &&
+									vis.description && (
+										<CollapsibleTrigger asChild>
+											<Button
+												className="group opacity-0 group-hover:opacity-100"
+												variant="ghost"
+												size="icon"
+												aria-label="Toggle Details"
+											>
+												<span className="sr-only">
+													Toggle Details
+												</span>
+												<ChevronLeft className="h-4 w-4 transition-transform duration-200 group-data-[state=open]:-rotate-90" />
+											</Button>
+										</CollapsibleTrigger>
+									)}
 								{actions?.()}
 							</div>
 						</TableCell>
@@ -151,10 +197,11 @@ export default function InitiativeTableRow({
 							<TableCell colSpan={8}>
 								<CollapsibleContent asChild>
 									<div className="flex gap-x-4">
-										{(entry.images?.length ?? 0) > 0 && (
+										{(creatureInfo.images?.length ?? 0) >
+											0 && (
 											<img
-												src={entry.images?.[0]}
-												alt={`${entry.name} - Profile`}
+												src={creatureInfo.images?.[0]}
+												alt={`${creatureInfo.name} - Profile`}
 												width={64}
 												className="cursor-zoom-in"
 												onClick={() =>
@@ -167,12 +214,12 @@ export default function InitiativeTableRow({
 												className={cn('text-sm', {
 													'text-muted-foreground': !(
 														vis.description &&
-														entry.description
+														creatureInfo.description
 													),
 												})}
 											>
 												{(vis.description &&
-													entry.description) ||
+													creatureInfo.description) ||
 													'No description available.'}
 											</p>
 										</div>
@@ -185,14 +232,17 @@ export default function InitiativeTableRow({
 			</Collapsible>
 			<Dialog open={dialogIsOpen} onOpenChange={setDialogIsOpen}>
 				<DialogContent>
-					<DialogHeader>{entry.name}</DialogHeader>
-					{(entry.images?.length ?? 0) > 1 ? (
+					<DialogHeader>{creatureInfo.name}</DialogHeader>
+					{(creatureInfo.images?.length ?? 0) > 1 ? (
 						<Carousel className="mx-8">
 							<CarouselContent>
-								{entry.images?.map((image, index) => (
+								{creatureInfo.images?.map((image, index) => (
 									<>
 										<CarouselItem key={index}>
-											<img src={image} alt={entry.name} />
+											<img
+												src={image}
+												alt={creatureInfo.name}
+											/>
 										</CarouselItem>
 									</>
 								))}
@@ -201,8 +251,11 @@ export default function InitiativeTableRow({
 							<CarouselNext />
 						</Carousel>
 					) : (
-						entry.images?.[0] && (
-							<img src={entry.images?.[0]} alt={entry.name} />
+						creatureInfo.images?.[0] && (
+							<img
+								src={creatureInfo.images?.[0]}
+								alt={creatureInfo.name}
+							/>
 						)
 					)}
 				</DialogContent>

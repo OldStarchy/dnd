@@ -1,5 +1,3 @@
-import { PopoutProvider } from '@/components/PopoutProvider';
-import { ShareProvider } from '@/components/ShareProvider';
 import { ThemeProvider } from '@/components/theme-provider';
 import '@/index.css';
 import Layout from '@/layout/layout';
@@ -19,7 +17,10 @@ import {
 	RouterProvider,
 	type RouteObject,
 } from 'react-router';
-import { ConfigurableBackendApiProvider } from './components/ConfigurableBackendApiProvider';
+import { ConfigurableRoomHostProvider } from './components/context/ConfigurableRoomHostProvider';
+import LocalStorageCreatureListProvider from './components/context/LocalStorageCreatureListProvider';
+import RoomContextProvider from './sync/react/components/RoomActionsContextProvider';
+import DatabaseViewer from './views/DatabaseViewer';
 import RoomView from './views/Room';
 
 Logger.default.addWriter(Logger.INFO, consoleWriter);
@@ -27,11 +28,9 @@ Logger.default.addWriter(Logger.INFO, consoleWriter);
 function GmLayout() {
 	return (
 		<Provider store={primaryStore}>
-			<ShareProvider>
-				<PopoutProvider>
-					<Layout />
-				</PopoutProvider>
-			</ShareProvider>
+			<LocalStorageCreatureListProvider>
+				<Layout />
+			</LocalStorageCreatureListProvider>
 		</Provider>
 	);
 }
@@ -79,10 +78,12 @@ const router = useHashRouter
 
 createRoot(document.getElementById('root')!).render(
 	<StrictMode>
-		<ConfigurableBackendApiProvider>
-			<ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
-				<RouterProvider router={router} />
-			</ThemeProvider>
-		</ConfigurableBackendApiProvider>
+		<ConfigurableRoomHostProvider>
+			<RoomContextProvider>
+				<ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
+					<RouterProvider router={router} />
+				</ThemeProvider>
+			</RoomContextProvider>
+		</ConfigurableRoomHostProvider>
 	</StrictMode>,
 );

@@ -1,7 +1,9 @@
+import { AsyncOption } from '@/lib/AsyncOption';
 import { type ChangeSet, applyChangeset } from '@/lib/changeSet';
 import { BehaviorSubject, Subject } from 'rxjs';
 import type { ZodType as ZodSchema } from 'zod';
 import type { Collection, DocumentApi } from './Collection';
+import { QueryResults } from './QueryResults';
 import type { AnyRecordType } from './RecordType';
 
 export abstract class LocalCollection<in out RecordType extends AnyRecordType>
@@ -57,18 +59,21 @@ export abstract class LocalCollection<in out RecordType extends AnyRecordType>
 
 	async get(
 		filter?: RecordType['filter'],
-	): Promise<DocumentApi<RecordType>[]> {
+	): Promise<QueryResults<RecordType>> {
 		const items = this.getRaw();
-		return items
-			.filter((item: RecordType['record']) => this.filterFn(item, filter))
-			.map((item: RecordType['record']) => this.getNotifyOne(item));
+		return new QueryResults(
+			...items
+				.filter((item: RecordType['record']) =>
+					this.filterFn(item, filter),
+				)
+				.map((item: RecordType['record']) => this.getNotifyOne(item)),
+		);
 	}
 
-	async getOne(
+	getOne(
 		filter?: RecordType['filter'],
-	): Promise<DocumentApi<RecordType> | null> {
-		const items = await this.get(filter);
-		return items.length > 0 ? items[0] : null;
+	): AsyncOption<DocumentApi<RecordType>> {
+		return AsyncOption.of(this.get(filter).then((items) => items[0]));
 	}
 
 	async create(
@@ -170,11 +175,14 @@ class DocumentApiImpl<in out RecordType extends AnyRecordType>
 	async update(
 		changeSet: ChangeSet<Omit<RecordType['record'], 'id' | 'revision'>>,
 	): Promise<void> {
-		const updated = applyChangeset(this.data.getValue(), changeSet);
+		const oldData = this.data.getValue();
+		let updated = applyChangeset(oldData, changeSet);
 
-		if (updated === this.data.getValue()) {
+		if (updated === oldData) {
 			return; // No changes made
 		}
+
+		updated = { ...updated, id: oldData.id, revision: oldData.revision };
 
 		const parsed = this.schema.parse(updated);
 		this.friendFunctions.__set(parsed);

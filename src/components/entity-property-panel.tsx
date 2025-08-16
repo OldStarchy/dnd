@@ -1,6 +1,6 @@
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { HealthObfuscation, type Entity } from '@/store/types/Entity';
+import { HealthObfuscation } from '@/store/types/Entity';
 import { Debuff, debuffSpec } from '@/type/Debuff';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { ChevronDown, Plus } from 'lucide-react';
@@ -69,57 +69,35 @@ const entityPropertySpec = z.object({
 		.number()
 		.int()
 		.min(0, 'Initiative must be a non-negative integer'),
-	images: z.array(z.string().optional()).optional(),
+	images: z.array(z.string()).optional(),
 	visible: z.boolean(),
-	ac: z.coerce.number().int().min(0, 'AC must be a non-negative integer'),
+	ac: z.coerce
+		.number()
+		.int()
+		.min(0, 'AC must be a non-negative integer')
+		.optional(),
 	hp: z.coerce.number().int(),
 	maxHp: z.coerce.number().int().min(1, 'Max Health must be at least 1'),
 	obfuscateHealth: z.nativeEnum(HealthObfuscation),
 	debuffs: z.array(debuffSpec),
 });
-type EntityPropertySchema = z.infer<typeof entityPropertySpec>;
+export type EntityPropertySchema = z.infer<typeof entityPropertySpec>;
 
 function EntityPropertyPanel({
 	entity,
 	onChange,
 }: {
-	entity: Entity;
-	onChange: (entity: Entity) => void;
+	entity: EntityPropertySchema;
+	onChange: (entity: EntityPropertySchema) => void;
 }) {
 	const form = useForm<EntityPropertySchema>({
 		resolver: zodResolver(entityPropertySpec),
-		defaultValues: {
-			name: entity.creature.name,
-			ac: entity.creature.ac,
-			initiative: entity.initiative,
-			images: entity.creature.images,
-			visible: entity.visible,
-			hp: entity.creature.hp,
-			maxHp: entity.creature.maxHp,
-			obfuscateHealth: entity.obfuscateHealth,
-			debuffs: entity.creature.debuffs ?? [],
-		},
+		defaultValues: entity,
 	});
 
 	function handleSubmit(data: EntityPropertySchema) {
 		// TODO: don't return new objects unless there are changes as it triggers updates to other players
-		onChange({
-			...entity,
-			creature: {
-				...entity.creature,
-				name: data.name || entity.creature.name,
-				ac: data.ac ?? entity.creature.ac,
-				hp: data.hp ?? entity.creature.hp,
-				maxHp: data.maxHp ?? entity.creature.maxHp,
-				debuffs: data.debuffs,
-				images: (data.images ?? entity.creature.images ?? []).filter(
-					(i) => i !== undefined,
-				),
-			},
-			initiative: data.initiative ?? entity.initiative,
-			obfuscateHealth: data.obfuscateHealth ?? entity.obfuscateHealth,
-			visible: data.visible ?? entity.visible,
-		});
+		onChange(data);
 	}
 
 	const debuffFields = useFieldArray({

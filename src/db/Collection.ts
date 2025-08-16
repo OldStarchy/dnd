@@ -1,15 +1,17 @@
+import type { AsyncOption } from '@/lib/AsyncOption';
 import { BehaviorSubject, Observable } from 'rxjs';
 import { type ChangeSet } from '../lib/changeSet';
+import type { QueryResults, ReadonlyQueryResults } from './QueryResults';
 import type { AnyRecordType } from './RecordType';
 
 export interface ReadonlyCollection<in out RecordType extends AnyRecordType> {
 	readonly name: string;
 	get(
 		filter?: RecordType['filter'],
-	): Promise<ReadonlyDocumentApi<RecordType>[]>;
+	): Promise<ReadonlyQueryResults<RecordType>>;
 	getOne(
 		filter: RecordType['filter'],
-	): Promise<ReadonlyDocumentApi<RecordType> | null>;
+	): AsyncOption<ReadonlyDocumentApi<RecordType>>;
 
 	readonly change$: Observable<ReadonlyDocumentApi<RecordType>>;
 }
@@ -22,10 +24,8 @@ export interface ReadonlyDocumentApi<in out RecordType extends AnyRecordType> {
 export interface Collection<in out RecordType extends AnyRecordType>
 	extends ReadonlyCollection<RecordType> {
 	readonly name: string;
-	get(filter?: RecordType['filter']): Promise<DocumentApi<RecordType>[]>;
-	getOne(
-		filter: RecordType['filter'],
-	): Promise<DocumentApi<RecordType> | null>;
+	get(filter?: RecordType['filter']): Promise<QueryResults<RecordType>>;
+	getOne(filter: RecordType['filter']): AsyncOption<DocumentApi<RecordType>>;
 	create(
 		newItem: Omit<RecordType['record'], 'id' | 'revision'>,
 	): Promise<DocumentApi<RecordType>>;

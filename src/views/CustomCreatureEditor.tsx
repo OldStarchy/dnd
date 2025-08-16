@@ -7,7 +7,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import useCustomCreatureList from '@/hooks/useCustomCreatureList';
+import useLocalStorageCreatureList from '@/hooks/useLocalStorageCreatureList';
 import { AccordionHeader, AccordionTrigger } from '@radix-ui/react-accordion';
 import { ChevronDownIcon, Plus } from 'lucide-react';
 import { useCallback } from 'react';
@@ -16,7 +16,8 @@ import { useCallback } from 'react';
  * Allows editing of player characters.
  */
 function CustomCreatureEditor() {
-	const [creatures, setCreatures] = useCustomCreatureList();
+	// TODO: useCreatureList(); for Players
+	const [creatures, setCreatures] = useLocalStorageCreatureList();
 
 	const addCreature = useCallback(
 		(character: CreatureFormData) => {

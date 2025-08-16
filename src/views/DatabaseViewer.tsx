@@ -12,17 +12,17 @@ import {
 import type { Collection } from '@/db/Collection';
 import { LocalStorageCollection } from '@/db/LocalStorageCollection';
 import type { AnyRecordType } from '@/db/RecordType';
+import useCollectionQuery from '@/hooks/useCollectionQuery';
 import {
 	filterMember,
 	type MemberRecordType,
 	memberSchema,
-} from '@/sync/room/Member';
+} from '@/sync/room/member/Record';
 import {
 	type CreatureRecordType,
 	creatureSchema,
 	filterCreature,
 } from '@/type/Creature';
-import { useEffect, useState } from 'react';
 
 const creatures = new LocalStorageCollection<CreatureRecordType>(
 	'creatures',
@@ -80,31 +80,7 @@ function CollectionView<RecordType extends AnyRecordType>({
 		getter: (record: RecordType['record']) => string,
 	][];
 }) {
-	const [records, setRecords] = useState<RecordType['record'][]>([]);
-
-	useEffect(() => {
-		(async () => {
-			const all = await collection.get();
-
-			setRecords(all.map((record) => record.data.getValue()));
-		})();
-
-		const sub = collection.change$.subscribe((record) => {
-			setRecords((prev) => {
-				if (prev.some((r) => r.id === record.data.getValue().id)) {
-					return prev.map((r) =>
-						r.id === record.data.getValue().id
-							? record.data.getValue()
-							: r,
-					);
-				} else {
-					return [...prev, record.data.getValue()];
-				}
-			});
-		});
-
-		return () => sub.unsubscribe();
-	}, [collection]);
+	const records = useCollectionQuery(collection);
 
 	return (
 		<div>
@@ -113,9 +89,11 @@ function CollectionView<RecordType extends AnyRecordType>({
 			<ScrollArea>
 				<Table>
 					<TableHeader>
-						{columns.map(([label], index) => (
-							<TableHead key={index}>{label}</TableHead>
-						))}
+						<TableRow>
+							{columns.map(([label], index) => (
+								<TableHead key={index}>{label}</TableHead>
+							))}
+						</TableRow>
 					</TableHeader>
 					<TableBody>
 						{records.map((record, index) => (

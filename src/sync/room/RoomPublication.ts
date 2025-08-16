@@ -6,21 +6,21 @@ export default class RoomPublication {
 	readonly id: string;
 	readonly token: MembershipToken;
 	readonly roomCode: RoomCode;
-	readonly host: RoomHost<any>;
+	readonly host: RoomHost;
 	private subs: Subscription;
 
 	constructor(
 		id: string,
 		token: MembershipToken,
 		roomCode: RoomCode,
-		host: RoomHost<any>,
-		subs: Subscription,
+		host: RoomHost,
+		drop: Subscription,
 	) {
 		this.id = id;
 		this.token = token;
 		this.roomCode = roomCode;
 		this.host = host;
-		this.subs = subs;
+		this.subs = drop;
 	}
 
 	createShareUrl(): URL {

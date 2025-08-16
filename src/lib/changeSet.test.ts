@@ -64,6 +64,15 @@ describe('ChangeSet', () => {
 		expect(result).toEqual(expected);
 	});
 
+	it('extends arrays', () => {
+		const initial = [1, 2, 3];
+		const result = applyChangeset(initial, {
+			extend: [4, 5],
+		});
+		const expected = [1, 2, 3, 4, 5];
+		expect(result).toEqual(expected);
+	});
+
 	it('handles undefined changes', () => {
 		const initial = { a: 1, b: 2 };
 

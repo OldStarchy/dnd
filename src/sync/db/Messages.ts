@@ -1,4 +1,96 @@
+import type { AnyRecordType } from '@/db/RecordType';
 import z from 'zod';
+
+interface RequestResponse<
+	Request extends z.ZodType,
+	Response extends z.ZodType,
+> {
+	request: Request;
+	response: Response;
+}
+function RequestResponse<Request extends z.ZodType, Response extends z.ZodType>(
+	rr: RequestResponse<Request, Response>,
+): RequestResponse<Request, Response> {
+	return rr;
+}
+
+export const getRequestSchema = RequestResponse({
+	request: z.object({
+		action: z.literal('get'),
+		filter: z.unknown().optional(),
+	}),
+	response: z.object({
+		data: z.unknown().array(),
+	}),
+});
+
+export const getOneRequestSchema = RequestResponse({
+	request: z.object({
+		action: z.literal('getOne'),
+		filter: z.unknown(),
+	}),
+	response: z.object({
+		data: z.unknown().nullable(),
+	}),
+});
+
+export const createRequestSchema = RequestResponse({
+	request: z.object({
+		action: z.literal('create'),
+		data: z.unknown(),
+	}),
+	response: z.object({
+		data: z.unknown(),
+	}),
+});
+
+export const updateRequestSchema = RequestResponse({
+	request: z.object({
+		action: z.literal('update'),
+		id: z.string(),
+		revision: z.number(),
+		changeSet: z.any(),
+	}),
+	response: z.null(),
+});
+
+export const deleteRequestSchema = RequestResponse({
+	request: z.object({
+		action: z.literal('delete'),
+		id: z.string(),
+		revision: z.number(),
+	}),
+	response: z.null(),
+});
+
+export const collectionRequestSchema = z
+	.discriminatedUnion('action', [
+		getRequestSchema.request,
+		getOneRequestSchema.request,
+		createRequestSchema.request,
+		updateRequestSchema.request,
+		deleteRequestSchema.request,
+	])
+	.and(
+		z.object({
+			type: z.literal('db'),
+			collection: z.string(),
+		}),
+	);
+
+export const collectionResponseSchema = z.union([
+	getRequestSchema.response,
+	getOneRequestSchema.response,
+	createRequestSchema.response,
+	updateRequestSchema.response,
+	deleteRequestSchema.response,
+]);
+
+export const collectionNotificationSchema = z.object({
+	type: z.literal('db'),
+	collection: z.string(),
+	items: z.unknown().array(),
+});
 
 export function createCollectionRequestSchema<TRecord>(
 	name: string,
@@ -38,29 +130,34 @@ export function createCollectionRequestSchema<TRecord>(
 		);
 }
 
+export type GetOneResult<RecordType extends AnyRecordType> = {
+	data: RecordType['record'] | null;
+};
+
+export type GetResult<RecordType extends AnyRecordType> = {
+	data: RecordType['record'][];
+};
+
+export type CreateResult<RecordType extends AnyRecordType> = {
+	data: RecordType['record'];
+};
+
+export type SuccessResult = null;
+
 export function createCollectionResponseSchema<TRecord>(
-	name: string,
 	schema: z.ZodType<TRecord>,
 ) {
 	return z.union([
 		z.object({
-			type: z.literal('db'),
-			collection: z.literal(name),
-			action: z.literal('getOne'),
 			data: schema.nullable(),
 		}),
 		z.object({
-			type: z.literal('db'),
-			collection: z.literal(name),
-			action: z.literal('create'),
 			data: schema,
 		}),
 		z.object({
-			type: z.literal('db'),
-			collection: z.literal(name),
-			action: z.literal('get'),
 			data: z.array(schema),
 		}),
+		z.null(),
 	]);
 }
 

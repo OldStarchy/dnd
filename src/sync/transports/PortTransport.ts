@@ -1,11 +1,12 @@
-import { Subject } from 'rxjs';
-import type { Transport } from '../Transport';
+import { BehaviorSubject, Subject } from 'rxjs';
+import { TransportState, type ClosableTransport } from './Transport';
 
-export class PortTransport implements Transport<string> {
+export class PortTransport implements ClosableTransport<unknown, unknown> {
 	private port: MessagePort;
-	private open = true;
 
-	private _message$ = new Subject<string>();
+	readonly state$ = new BehaviorSubject<TransportState>(TransportState.OPEN);
+
+	private _message$ = new Subject<unknown>();
 	readonly message$ = this._message$.asObservable();
 	constructor(port: MessagePort) {
 		this.port = port;
@@ -15,27 +16,11 @@ export class PortTransport implements Transport<string> {
 	}
 
 	#handleMessage = (event: MessageEvent): void => {
-		if (typeof event.data !== 'string') {
-			console.warn('Received non-string message:', event.data);
-			return;
-		}
-		try {
-			this._message$.next(event.data);
-		} catch (error) {
-			console.error('Error in handleMessage:', error);
-		}
+		this._message$.next(event.data);
 	};
 
-	/**
-	 * MessagePort doesn't have a reliable way to check if it's open,
-	 * so we assume it's open once created until we call close.
-	 */
-	isOpen(): boolean {
-		return this.open;
-	}
-
-	send(data: string): Promise<void> {
-		if (!this.open) {
+	send(data: unknown): Promise<void> {
+		if (this.state$.value !== 'open') {
 			return Promise.reject(new Error('Transport is closed'));
 		}
 		this.port.postMessage(data);
@@ -43,20 +28,16 @@ export class PortTransport implements Transport<string> {
 	}
 
 	close(): void {
-		if (!this.open) {
+		if (this.state$.value === 'closed') {
 			return; // Already closed
 		}
 
-		this.open = false;
+		this.state$.next('closed');
 
 		if (this.port) {
 			this.port.removeEventListener('message', this.#handleMessage);
 			this.port.close();
 			this.port = null as unknown as MessagePort;
 		}
-	}
-
-	[Symbol.dispose](): void {
-		this.close();
 	}
 }

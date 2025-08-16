@@ -1,120 +1,61 @@
-import type { Transport, TransportHandler } from '../Transport';
+import { Subject } from 'rxjs';
+import type { ClosableTransport, TransportState } from './Transport';
 
-export type WebSocketData = string | ArrayBuffer | Blob;
+export type WebSocketData = Parameters<WebSocket['send']>[0];
 
-export class WebSocketTransport implements Transport<WebSocketData> {
-	private ws: WebSocket;
-	private handler: TransportHandler<WebSocketData>;
-	private closeHandler?: () => void;
-	private messageHandler: (message: WebSocketData) => void;
-
-	constructor(ws: WebSocket, handler: TransportHandler<WebSocketData>) {
-		this.ws = ws;
-		this.handler = handler;
-		this.ws.addEventListener('message', this.#handleMessage);
-		this.ws.addEventListener('open', this.#handleOpen);
-		this.ws.addEventListener('close', this.#handleClose);
-		this.ws.addEventListener('error', this.#handleError);
-
-		this.messageHandler = handler.handleMessage.bind(this);
-		this.closeHandler = handler.handleClose.bind(this);
-
-		// If the WebSocket is already open, handle it immediately
-		if (this.ws.readyState === WebSocket.OPEN) {
-			queueMicrotask(() => {
-				try {
-					handler.handleOpen.call(this);
-				} catch (error) {
-					console.error('Error in handleOpen:', error);
-				}
-			});
-		}
+export class WebSocketTransport
+	implements ClosableTransport<WebSocketData, WebSocketData>
+{
+	get state(): TransportState {
+		return this.ws.readyState === WebSocket.OPEN ? 'open' : 'closed';
 	}
 
-	#handleOpen = (): void => {
-		try {
-			this.handler.handleOpen.call(this);
-		} catch (error) {
-			console.error('Error in handleOpen:', error);
-		}
-	};
+	private ws: WebSocket;
+	private _message$ = new Subject<WebSocketData>();
+	readonly message$ = this._message$.asObservable();
 
-	#handleMessage = (event: MessageEvent): void => {
-		const data = event.data;
+	constructor(ws: WebSocket) {
+		this.ws = ws;
+		this.ws.addEventListener('message', this.#handleMessage);
+		this.ws.addEventListener('close', this.#handleClose);
+		this.ws.addEventListener('error', this.#handleError);
+	}
 
-		// WebSocket can receive string, ArrayBuffer, or Blob
-		if (
-			typeof data === 'string' ||
-			data instanceof ArrayBuffer ||
-			data instanceof Blob
-		) {
-			try {
-				this.messageHandler(data);
-			} catch (error) {
-				console.error('Error in handleMessage:', error);
-			}
-		} else {
-			console.warn(
-				'Received unsupported message type:',
-				typeof data,
-				data,
-			);
-		}
+	#handleMessage = (event: MessageEvent<WebSocketData>): void => {
+		this._message$.next(event.data);
 	};
 
 	#handleClose = (): void => {
-		if (this.closeHandler) {
-			try {
-				this.closeHandler.call(this);
-			} catch (error) {
-				console.error('Error in handleClose:', error);
-			}
-		}
+		this._message$.complete();
 	};
 
 	#handleError = (event: Event): void => {
-		console.error('WebSocket error:', event);
+		this._message$.error(event);
 	};
 
-	isOpen(): boolean {
-		return this.ws.readyState === WebSocket.OPEN;
-	}
-
 	send(data: WebSocketData): Promise<void> {
-		return new Promise((resolve, reject) => {
-			if (!this.isOpen()) {
-				reject(new Error('WebSocket is not open'));
-				return;
-			}
+		if (this.state !== 'open') {
+			return Promise.reject(new Error('WebSocket is not open'));
+		}
 
-			try {
-				this.ws.send(data);
-				resolve();
-			} catch (error) {
-				reject(error);
-			}
-		});
+		try {
+			this.ws.send(data);
+			return Promise.resolve();
+		} catch (error) {
+			return Promise.reject(error);
+		}
 	}
 
 	close(): void {
-		if (this.ws) {
-			this.ws.removeEventListener('message', this.#handleMessage);
-			this.ws.removeEventListener('open', this.#handleOpen);
-			this.ws.removeEventListener('close', this.#handleClose);
-			this.ws.removeEventListener('error', this.#handleError);
+		this.ws.removeEventListener('message', this.#handleMessage);
+		this.ws.removeEventListener('close', this.#handleClose);
+		this.ws.removeEventListener('error', this.#handleError);
 
-			if (
-				this.ws.readyState === WebSocket.OPEN ||
-				this.ws.readyState === WebSocket.CONNECTING
-			) {
-				this.ws.close();
-			}
+		if (
+			this.ws.readyState === WebSocket.OPEN ||
+			this.ws.readyState === WebSocket.CONNECTING
+		) {
+			this.ws.close();
 		}
-
-		this.closeHandler = undefined;
-	}
-
-	[Symbol.dispose](): void {
-		this.close();
 	}
 }

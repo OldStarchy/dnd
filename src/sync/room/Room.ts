@@ -1,61 +1,90 @@
 import { type Collection, type DocumentApi } from '@/db/Collection';
 import { LocalStorageCollection } from '@/db/LocalStorageCollection';
+import { RamCollection } from '@/db/RamCollection';
+import autoSubject from '@/decorators/autoSubject';
+import { traceAsync } from '@/decorators/trace';
 import Logger from '@/lib/log';
-import { creatureSchema, type Creature } from '@/type/Creature';
-import { Subscription } from 'rxjs';
+import { creatureSchema, type CreatureRecordType } from '@/type/Creature';
+import { BehaviorSubject } from 'rxjs';
 import { CollectionHost } from '../db/CollectionHost';
-import { memberSchema, type Member } from './Member';
+import {
+	filterMember,
+	memberSchema,
+	type MemberRecordType,
+} from './member/Record';
+import type RoomApi from './RoomApi';
 import type RoomHost from './RoomHost';
-import { RoomHostConnectionApiProvider } from './RoomHostConnection';
-import { roomMetaSchema, type RoomMeta } from './RoomMeta';
+import {
+	roomMetaSchema,
+	type RoomMeta,
+	type RoomMetaRecordType,
+} from './RoomMeta';
 import RoomPublication from './RoomPublication';
-import type { MembershipToken } from './types';
+import type { MembershipToken, RoomCode } from './types';
 
-export default class Room {
-	static async create(
-		meta: Omit<RoomMeta, 'id' | 'revision'>,
-	): Promise<Room> {
-		const metaColleciton = new LocalStorageCollection(
-			'rooms',
+export default class Room implements RoomApi {
+	private static rooms: Collection<RoomMetaRecordType>;
+	static {
+		this.rooms = new LocalStorageCollection<RoomMetaRecordType>(
+			'room',
 			() => true,
 			roomMetaSchema,
 		);
-
-		const metaDoc = await metaColleciton.create(meta);
-
-		return new Room(metaDoc);
-		// TODO:
 	}
 
-	readonly meta: DocumentApi<RoomMeta>;
-	readonly creatures: Collection<Creature, { id: string } | { name: string }>;
-	readonly members: Collection<Member, void>;
+	static async create(
+		meta: Omit<RoomMeta, 'id' | 'revision'>,
+	): Promise<Room> {
+		const metaDoc = await Room.rooms
+			.getOne()
+			.inspect((doc) => doc.update({ replace: meta }))
+			.unwrapOrElse(() => Room.rooms.create(meta));
 
-	get hosts(): ReadonlyMap<string, RoomPublication> {
-		return this._hosts;
+		return await Room.construct(metaDoc);
 	}
-	private readonly _hosts: Map<string, RoomPublication>;
 
-	private constructor(meta: DocumentApi<RoomMeta>) {
-		this.meta = meta;
+	constructor(
+		readonly me: DocumentApi<MemberRecordType>,
+		readonly meta: DocumentApi<RoomMetaRecordType>,
+		readonly creatures: Collection<CreatureRecordType>,
+		readonly members: Collection<MemberRecordType>,
+		hosts: ReadonlyMap<string, RoomPublication>,
+	) {
+		this.hosts = hosts;
+	}
 
-		this.creatures = new LocalStorageCollection(
+	@autoSubject()
+	private hosts: ReadonlyMap<string, RoomPublication>;
+	declare readonly hosts$: BehaviorSubject<
+		ReadonlyMap<string, RoomPublication>
+	>;
+
+	private static async construct(meta: DocumentApi<RoomMetaRecordType>) {
+		const creatures = new LocalStorageCollection<CreatureRecordType>(
 			'creature',
 			() => true,
 			creatureSchema,
 		);
 
-		this.members = new LocalStorageCollection(
+		const members = new RamCollection<MemberRecordType>(
 			'member',
-			() => true,
+			filterMember,
 			memberSchema,
 		);
 
-		this._hosts = new Map<string, RoomPublication>();
+		const me = await members.create({
+			name: 'Game Master',
+			identities: [],
+		});
+
+		const hosts = new Map<string, RoomPublication>();
+
+		return new Room(me, meta, creatures, members, hosts);
 	}
 
+	@traceAsync(Logger.INFO)
 	static async reconnect(
-		roomHost: RoomHost<any>,
+		roomHost: RoomHost,
 		token: MembershipToken,
 	): Promise<Room | null> {
 		const info = await (async () => {
@@ -70,66 +99,96 @@ export default class Room {
 		if (!info) {
 			return null;
 		}
-		const { id, gameMasterId: _, roomCode, members } = info;
+		const { roomCode } = info;
 
-		const metaCollection = new LocalStorageCollection(
-			'room',
-			() => true,
-			roomMetaSchema,
-		);
-		const meta = await metaCollection.getOne();
-		if (!meta) {
-			throw new Error('Room meta not found');
-		}
-		const room = new Room(meta);
-		room.connect(id, token, roomCode, roomHost);
+		const meta = await Room.rooms.getOne().unwrap('Room meta not found');
+		const room = await Room.construct(meta);
+		room.connect(token, roomCode, roomHost);
 
 		return room;
 	}
 
-	async publish(roomHost: RoomHost<any>): Promise<RoomPublication> {
+	@traceAsync(Logger.INFO)
+	async publish(roomHost: RoomHost): Promise<RoomPublication> {
 		Logger.info(`Publishing room to ${roomHost.host}`);
 
-		const { id, membershipToken, roomCode } = await roomHost.room.create();
+		const { membershipToken, roomCode } = await roomHost.room.create();
 		Logger.info(`Room created with Code: ${roomCode}, `);
 
-		return await this.connect(id, membershipToken, roomCode, roomHost);
+		return await this.connect(membershipToken, roomCode, roomHost);
 	}
 
 	private async connect(
-		id: string,
 		membershipToken: MembershipToken,
-		roomCode: string,
-		roomHost: RoomHost<any>,
+		roomCode: RoomCode,
+		roomHost: RoomHost,
 	): Promise<RoomPublication> {
 		const connection = await roomHost.room.connect(membershipToken);
 
-		const apiAdapter = new RoomHostConnectionApiProvider<any, any, any>(
-			connection,
-		);
+		for (const member of connection.getMembers()) {
+			await this.members
+				.getOne({ identity: member.id })
+				.unwrapOrElse(() =>
+					this.members.create({
+						name: 'Unnamed player',
+						identities: [{ host: roomHost.host, id: member.id }],
+					}),
+				);
+		}
 
-		const roomMetaHost = new CollectionHost(this.meta.collection);
-		const creaturesHost = new CollectionHost(this.creatures);
-		const membersHost = new CollectionHost(this.members);
+		this.me.update({
+			merge: {
+				identities: {
+					extend: [{ host: roomHost.host, id: connection.id }],
+				},
+			},
+		});
 
-		const providers = new Subscription();
-		providers.add(roomMetaHost.provide(apiAdapter));
-		providers.add(creaturesHost.provide(apiAdapter));
-		providers.add(membersHost.provide(apiAdapter));
+		const roomMetaHost = new CollectionHost({
+			room: Room.rooms,
+			creature: this.creatures,
+			member: this.members,
+		});
 
+		const drop = roomMetaHost.provide(connection);
 		const publication = new RoomPublication(
-			id,
+			connection.id,
 			membershipToken,
 			roomCode,
 			roomHost,
-			providers,
+			drop,
 		);
-		this._hosts.set(roomHost.host, publication);
+		this.hosts = new Map([
+			...this.hosts.entries(),
+			[roomHost.host, publication],
+		]);
+
+		connection.systemNotification$.subscribe((msg) => {
+			if (msg.type === 'room.members.joined') {
+				const { id } = msg.data;
+
+				this.members.getOne({ identity: id }).unwrapOrElse(() =>
+					this.members.create({
+						name: 'Unnamed player',
+						identities: [{ host: roomHost.host, id }],
+					}),
+				);
+			}
+		});
 
 		return publication;
 	}
 
 	createPortHost(port: MessagePort): void {
 		// TODO:
+	}
+
+	close(): Promise<void> {
+		this.meta.delete();
+		return Promise.all(
+			[...this.hosts.values()].map((h) => h.revoke()),
+		).then(() => {
+			this.hosts = new Map();
+		});
 	}
 }

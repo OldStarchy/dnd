@@ -1,6 +1,5 @@
 import { RamCollection } from '@/db/RamCollection';
 import z from 'zod';
-import { RemoteApi } from '../RemoteApi';
 import { PortTransport } from '../transports/PortTransport';
 import { CollectionHost } from './CollectionHost';
 import {
@@ -26,10 +25,7 @@ export const requestSchema = createCollectionRequestSchema(
 		revision: true,
 	}),
 );
-export const responseSchema = createCollectionResponseSchema(
-	'test',
-	typeSchema,
-);
+export const responseSchema = createCollectionResponseSchema(typeSchema);
 export const notificationSchema = createCollectionNotificationSchema(
 	'test',
 	typeSchema,

@@ -1,4 +1,4 @@
-import type { ClientHandler } from '@/sync/RemoteClient';
-import { createContext } from 'react';
+// import type { RemoteClient } from '@/sync/RemoteClient';
+// import { createContext } from 'react';
 
-export const ClientContext = createContext<Partial<ClientHandler> | null>(null);
+// export const ClientContext = createContext<RemoteClient | null>(null);

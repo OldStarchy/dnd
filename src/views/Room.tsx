@@ -1,121 +1,219 @@
 import { Button } from '@/components/ui/button';
-import {
-	Form,
-	FormControl,
-	FormField,
-	FormItem,
-	FormLabel,
-} from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { useBackendApi } from '@/hooks/useBackendApi';
-import { useSessionToken } from '@/hooks/useSessionToken';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { useCallback, useEffect, useState } from 'react';
-import { useForm } from 'react-hook-form';
-import { Link, useNavigate } from 'react-router';
-import { z } from 'zod';
-
-const createJoinFormSpec = z.object({
-	roomCode: z
-		.string()
-		.length(4)
-		.transform((val) => val?.toUpperCase())
-		.or(z.literal('')),
-});
-type CreateJoinFormSpec = z.infer<typeof createJoinFormSpec>;
+import { Separator } from '@/components/ui/separator';
+import useBehaviorSubject from '@/hooks/useBehaviorSubject';
+import useCollectionQuery from '@/hooks/useCollectionQuery';
+import Logger from '@/lib/log';
+import useRoomActionsContext from '@/sync/react/hooks/useRoomActionsContext';
+import useRoomContext from '@/sync/react/hooks/useRoomContext';
+import { useRoomHost } from '@/sync/react/hooks/useRoomHost';
+import RemoteRoom from '@/sync/room/RemoteRoom';
+import Room from '@/sync/room/Room';
+import type RoomApi from '@/sync/room/RoomApi';
+import { RoomCode } from '@/sync/room/types';
+import { useEffect, useRef, useState } from 'react';
+import { useNavigate } from 'react-router';
 
 function RoomView() {
-	const [connectionToken, setConnectionToken] = useSessionToken();
-	const [isGm, setIsGm] = useState<boolean | null>(null);
+	const room = useRoomContext();
+	const roomActions = useRoomActionsContext();
 
-	const backendApi = useBackendApi();
+	const roomHost = useRoomHost();
+
+	const newRoomNameRef = useRef<HTMLInputElement>(null);
+	const roomCodeRef = useRef<HTMLInputElement>(null);
+
 	const navigate = useNavigate();
 
+	const [error, setError] = useState('');
+
+	const handleError = (err: unknown) => {
+		Logger.error('RoomView Error:', err);
+		setError(() => `${err instanceof Error ? err.message : err}`);
+	};
+
+	const [name, setNameImpl] = useState('');
+
 	useEffect(() => {
-		if (connectionToken) {
-			backendApi.getRoom(connectionToken).then(
-				(result) => {
-					if (result.roomCode) {
-						setIsGm(result.isGm);
-					} else {
-						setConnectionToken(null);
-						setIsGm(null);
-					}
-				},
-				() => {
-					setConnectionToken(null);
-					setIsGm(null);
-				},
-			);
+		if (room) {
+			setNameImpl(room.me.data.getValue().name);
+		} else {
+			setNameImpl('');
 		}
-	}, [connectionToken, backendApi, setConnectionToken]);
+	}, [room]);
 
-	const form = useForm({
-		resolver: zodResolver(createJoinFormSpec),
-		defaultValues: {
-			roomCode: '',
-		},
-	});
+	useEffect(() => {
+		if (!room) return;
 
-	const handleSubmit = useCallback(
-		async (data: CreateJoinFormSpec) => {
-			if (data.roomCode) {
-				try {
-					const { token } = await backendApi.joinRoom(data.roomCode);
-					setConnectionToken(token);
-				} catch (error) {
-					console.error('Failed to join room:', error);
-					form.setError('roomCode', {
-						type: 'manual',
-						message: 'Failed to join room. Please check the code.',
-					});
-					return;
-				}
-			} else {
-				const { token, roomCode: _ } = await backendApi.createRoom();
-				setConnectionToken(token);
-			}
-			// Redirect to the room with the token
-			navigate('/popout');
-		},
-		[backendApi, setConnectionToken, form, navigate],
-	);
+		const sub = room.me.data.subscribe({
+			next: (data) => {
+				setNameImpl(data.name);
+			},
+		});
+
+		return () => sub.unsubscribe();
+	}, [room]);
+
+	const setName = async (name: string) => {
+		if (room) {
+			await room.me.update({ merge: { name: { replace: name } } });
+		}
+	};
 
 	return (
 		<div>
-			{connectionToken ? (
-				<div>
-					<h1>Welcome back!</h1>
-					<Link to={isGm ? '/' : '/popout'}>Reconnect to Room</Link>
-				</div>
+			<div className="text-red-600">{error}</div>
+			{room ? (
+				<>
+					{room instanceof Room ? (
+						<LocalRoomView room={room} handleError={handleError} />
+					) : room instanceof RemoteRoom ? (
+						<GenericRoomView
+							room={room}
+							handleError={handleError}
+						/>
+					) : null}
+
+					<Button onClick={() => roomActions.close()}>
+						Close Room
+					</Button>
+
+					<Input
+						type="text"
+						value={name}
+						onChange={(e) => setName(e.target.value)}
+						placeholder="Your Name"
+					/>
+				</>
 			) : (
-				<div>
-					<h1>Create or Join a Room</h1>
-					<Form {...form}>
-						<form onSubmit={form.handleSubmit(handleSubmit)}>
-							<FormField
-								control={form.control}
-								name="roomCode"
-								render={({ field }) => (
-									<FormItem>
-										<FormLabel>Room Code</FormLabel>
-										<FormControl>
-											<Input
-												type="text"
-												maxLength={4}
-												{...field}
-											/>
-										</FormControl>
-									</FormItem>
-								)}
-							/>
-							<Button type="submit">Join Room</Button>
-						</form>
-					</Form>
-				</div>
+				<>
+					<p>No Room Exists</p>
+					<Input
+						type="text"
+						ref={newRoomNameRef}
+						placeholder="Room Name"
+					/>
+					<Button
+						onClick={() =>
+							roomActions.create({
+								name:
+									newRoomNameRef.current!.value || 'My Room',
+							})
+						}
+					>
+						Create a room
+					</Button>
+					<Separator />
+					<Input
+						type="text"
+						ref={roomCodeRef}
+						placeholder="Room Code"
+					/>
+					<Button
+						onClick={() =>
+							roomActions.join(
+								roomHost,
+								RoomCode(roomCodeRef.current!.value),
+							)
+						}
+					>
+						Join Room
+					</Button>
+				</>
 			)}
 		</div>
 	);
 }
 
 export default RoomView;
+
+function LocalRoomView({
+	room,
+	handleError,
+}: {
+	room: Room;
+	handleError: (err: unknown) => void;
+}) {
+	const roomHost = useRoomHost();
+
+	const hosts = useBehaviorSubject(room.hosts$);
+
+	const members = useCollectionQuery(room.members);
+
+	return (
+		<>
+			<p>Local Room "{room.meta.data.getValue().name}"</p>
+			{hosts.size === 0 ? (
+				<>
+					<p>Not published</p>
+
+					<Button
+						onClick={() =>
+							room.publish(roomHost).catch(handleError)
+						}
+					>
+						Publish to {roomHost.host}
+					</Button>
+				</>
+			) : (
+				[...hosts.entries()].map(([host, publication]) => {
+					return (
+						<p key={host}>
+							Published to {host} with code {publication.roomCode}
+						</p>
+					);
+				})
+			)}
+
+			<GenericRoomView room={room} handleError={handleError} />
+		</>
+	);
+}
+
+function GenericRoomView({
+	room,
+	handleError,
+}: {
+	room: RoomApi;
+	handleError: (err: unknown) => void;
+}) {
+	const roomHost = useRoomHost();
+
+	const meta = useBehaviorSubject(room.meta.data);
+	const members = useCollectionQuery(room.members);
+
+	return (
+		<>
+			<p>Remote Room "{meta.name}"</p>
+
+			{members.length > 0 && (
+				<>
+					<h3>Members</h3>
+					<ul>
+						{members.map((member) => (
+							<li
+								key={member.id}
+								title={member.id}
+								className="pl-2"
+							>
+								{member.name}:{' '}
+								<span className="text-rose-300">
+									{member.id}
+								</span>
+								<ul>
+									{member.identities.map((id) => (
+										<li key={id.host} className="pl-2">
+											<span className="text-indigo-300">
+												{id.id}
+											</span>
+										</li>
+									))}
+								</ul>
+							</li>
+						))}
+					</ul>
+				</>
+			)}
+		</>
+	);
+}
