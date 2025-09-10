@@ -10,6 +10,7 @@ export const memberSchema = z.object({
 		.object({
 			host: z.string(),
 			id: z.string(),
+			online: z.boolean(),
 		})
 		.array(),
 });

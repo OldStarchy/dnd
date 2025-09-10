@@ -1,27 +1,17 @@
 import type { Subscription } from 'rxjs';
 import type RoomHost from './RoomHost';
+import type RoomHostConnection from './RoomHostConnection';
 import type { MembershipToken, RoomCode } from './types';
 
 export default class RoomPublication {
-	readonly id: string;
-	readonly token: MembershipToken;
-	readonly roomCode: RoomCode;
-	readonly host: RoomHost;
-	private subs: Subscription;
-
 	constructor(
-		id: string,
-		token: MembershipToken,
-		roomCode: RoomCode,
-		host: RoomHost,
-		drop: Subscription,
-	) {
-		this.id = id;
-		this.token = token;
-		this.roomCode = roomCode;
-		this.host = host;
-		this.subs = drop;
-	}
+		readonly id: string,
+		readonly token: MembershipToken,
+		readonly roomCode: RoomCode,
+		readonly host: RoomHost,
+		readonly connection: RoomHostConnection,
+		private teardown: Subscription,
+	) {}
 
 	createShareUrl(): URL {
 		const roomHost = this.host.host;
@@ -36,8 +26,11 @@ export default class RoomPublication {
 		return url;
 	}
 
-	async revoke(): Promise<void> {
-		// TODO: remove from this room._hosts
-		this.subs.unsubscribe();
+	// Friend function for Room
+	private async revoke(): Promise<void> {
+		this.connection.close();
+
+		await this.host.room.delete(this.token);
+		this.teardown.unsubscribe();
 	}
 }

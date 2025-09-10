@@ -10,7 +10,9 @@ import { useRoomHost } from '@/sync/react/hooks/useRoomHost';
 import RemoteRoom from '@/sync/room/RemoteRoom';
 import Room from '@/sync/room/Room';
 import type RoomApi from '@/sync/room/RoomApi';
+import RoomHost from '@/sync/room/RoomHost';
 import { RoomCode } from '@/sync/room/types';
+import { RefreshCcw } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
 
@@ -135,6 +137,7 @@ function LocalRoomView({
 	handleError: (err: unknown) => void;
 }) {
 	const roomHost = useRoomHost();
+	const [enteredRoomHost, setEnteredRoomHost] = useState(roomHost.host);
 
 	const hosts = useBehaviorSubject(room.hosts$);
 
@@ -143,27 +146,47 @@ function LocalRoomView({
 	return (
 		<>
 			<p>Local Room "{room.meta.data.getValue().name}"</p>
-			{hosts.size === 0 ? (
-				<>
-					<p>Not published</p>
-
-					<Button
-						onClick={() =>
-							room.publish(roomHost).catch(handleError)
-						}
-					>
-						Publish to {roomHost.host}
-					</Button>
-				</>
-			) : (
-				[...hosts.entries()].map(([host, publication]) => {
+			<ul className="ml-2">
+				{[...hosts.entries()].map(([host, publication]) => {
 					return (
-						<p key={host}>
+						<li key={host}>
 							Published to {host} with code {publication.roomCode}
-						</p>
+						</li>
 					);
-				})
-			)}
+				})}
+
+				<li>
+					<div className="flex gap-2">
+						<Input
+							type="text"
+							value={enteredRoomHost}
+							onChange={(e) => setEnteredRoomHost(e.target.value)}
+						/>
+						<Button
+							variant="outline"
+							onClick={() => setEnteredRoomHost(roomHost.host)}
+							disabled={enteredRoomHost === roomHost.host}
+						>
+							<RefreshCcw />
+						</Button>
+						<Button
+							onClick={() =>
+								room
+									.publish(RoomHost.get(enteredRoomHost))
+									.catch(handleError)
+							}
+							disabled={
+								enteredRoomHost.length === 0 ||
+								hosts.has(enteredRoomHost)
+							}
+						>
+							{hosts.has(enteredRoomHost)
+								? 'Already Published'
+								: 'Publish'}
+						</Button>
+					</div>
+				</li>
+			</ul>
 
 			<GenericRoomView room={room} handleError={handleError} />
 		</>
@@ -204,7 +227,10 @@ function GenericRoomView({
 									{member.identities.map((id) => (
 										<li key={id.host} className="pl-2">
 											<span className="text-indigo-300">
-												{id.id}
+												{id.id}{' '}
+												{id.online
+													? '(Online)'
+													: '(Offline)'}
 											</span>
 										</li>
 									))}

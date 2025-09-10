@@ -114,7 +114,8 @@ export default class ReconnectingWebSocket
 				// https://developer.mozilla.org/en-US/docs/Web/API/CloseEvent/code#value
 
 				// Normal Closure
-				if (event.code === 1000) {
+				// TODO: 1005 is a bug in the server, it should be 1000
+				if (event.code === 1000 || event.code === 1005) {
 					this.updateState(socket.readyState);
 					return;
 				}
@@ -145,6 +146,7 @@ export default class ReconnectingWebSocket
 	close() {
 		if (this.socket) {
 			this.disposeSocket(this.socket.socket);
+			this.updateState(WebSocket.CLOSED);
 		}
 	}
 }

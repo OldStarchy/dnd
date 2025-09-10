@@ -125,24 +125,36 @@ export default class Room implements RoomApi {
 	): Promise<RoomPublication> {
 		const connection = await roomHost.room.connect(membershipToken);
 
+		await this.me.update({
+			merge: {
+				identities: {
+					extend: [
+						{
+							host: roomHost.host,
+							id: connection.id,
+							online: true,
+						},
+					],
+				},
+			},
+		});
+
 		for (const member of connection.getMembers()) {
 			await this.members
 				.getOne({ identity: member.id })
 				.unwrapOrElse(() =>
 					this.members.create({
 						name: 'Unnamed player',
-						identities: [{ host: roomHost.host, id: member.id }],
+						identities: [
+							{
+								host: roomHost.host,
+								id: member.id,
+								online: false,
+							},
+						],
 					}),
 				);
 		}
-
-		this.me.update({
-			merge: {
-				identities: {
-					extend: [{ host: roomHost.host, id: connection.id }],
-				},
-			},
-		});
 
 		const roomMetaHost = new CollectionHost({
 			room: Room.rooms,
@@ -150,31 +162,66 @@ export default class Room implements RoomApi {
 			member: this.members,
 		});
 
-		const drop = roomMetaHost.provide(connection);
+		const teardown = roomMetaHost.provide(connection);
+
+		teardown.add(
+			connection.systemNotification$.subscribe((msg) => {
+				if (msg.type === 'room.members.joined') {
+					const { id } = msg.data;
+
+					this.members.getOne({ identity: id }).unwrapOrElse(() =>
+						this.members.create({
+							name: 'Unnamed player',
+							identities: [
+								{ host: roomHost.host, id, online: false },
+							],
+						}),
+					);
+				}
+
+				if (msg.type === 'room.members.left') {
+					const { id } = msg.data;
+
+					this.members
+						.getOne({ identity: id })
+						.map((doc) => doc.delete());
+				}
+
+				if (msg.type === 'room.members.presence') {
+					const { id, connected: online } = msg.data;
+
+					this.members.getOne({ identity: id }).map((doc) => {
+						return doc.update({
+							merge: {
+								identities: {
+									selected: [
+										{
+											filter: { id },
+											merge: {
+												online: { replace: online },
+											},
+										},
+									],
+								},
+							},
+						});
+					});
+				}
+			}),
+		);
+
 		const publication = new RoomPublication(
 			connection.id,
 			membershipToken,
 			roomCode,
 			roomHost,
-			drop,
+			connection,
+			teardown,
 		);
 		this.hosts = new Map([
 			...this.hosts.entries(),
 			[roomHost.host, publication],
 		]);
-
-		connection.systemNotification$.subscribe((msg) => {
-			if (msg.type === 'room.members.joined') {
-				const { id } = msg.data;
-
-				this.members.getOne({ identity: id }).unwrapOrElse(() =>
-					this.members.create({
-						name: 'Unnamed player',
-						identities: [{ host: roomHost.host, id }],
-					}),
-				);
-			}
-		});
 
 		return publication;
 	}
@@ -183,12 +230,12 @@ export default class Room implements RoomApi {
 		// TODO:
 	}
 
-	close(): Promise<void> {
+	async close(): Promise<void> {
 		this.meta.delete();
-		return Promise.all(
-			[...this.hosts.values()].map((h) => h.revoke()),
-		).then(() => {
-			this.hosts = new Map();
-		});
+
+		for (const pub of this.hosts.values()) {
+			await pub['revoke']();
+		}
+		this.hosts = new Map();
 	}
 }

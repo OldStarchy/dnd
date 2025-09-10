@@ -42,7 +42,12 @@ export default class RemoteRoom implements RoomApi {
 			.getOne()
 			.unwrap('Failed to retrieve room metadata for room');
 
-		return await RemoteRoom.construct(membershipToken, connection, meta);
+		return await RemoteRoom.construct(
+			roomHost,
+			membershipToken,
+			connection,
+			meta,
+		);
 	}
 
 	static async joinPort(port: MessagePort): Promise<RemoteRoom> {
@@ -50,6 +55,8 @@ export default class RemoteRoom implements RoomApi {
 	}
 
 	private constructor(
+		readonly roomHost: RoomHost,
+		readonly connection: RoomHostConnection,
 		readonly me: DocumentApi<MemberRecordType>,
 		readonly membershipToken: MembershipToken,
 		readonly meta: ReadonlyDocumentApi<RoomMetaRecordType>,
@@ -58,6 +65,7 @@ export default class RemoteRoom implements RoomApi {
 	) {}
 
 	private static async construct(
+		roomHost: RoomHost,
 		membershipToken: MembershipToken,
 		connection: RoomHostConnection,
 		meta: ReadonlyDocumentApi<RoomMetaRecordType>,
@@ -77,6 +85,19 @@ export default class RemoteRoom implements RoomApi {
 			.getOne({ identity: connection.id })
 			.unwrap('Failed to retrieve member information for self');
 
-		return new RemoteRoom(me, membershipToken, meta, creatures, members);
+		return new RemoteRoom(
+			roomHost,
+			connection,
+			me,
+			membershipToken,
+			meta,
+			creatures,
+			members,
+		);
+	}
+
+	async leave(): Promise<void> {
+		await this.connection.close();
+		await this.connection.host.room.leave(this.membershipToken);
 	}
 }

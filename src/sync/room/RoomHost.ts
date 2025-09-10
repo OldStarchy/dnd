@@ -25,9 +25,20 @@ const roomFound = z.object({
 });
 
 export default class RoomHost {
+	static registry = new Map<string, RoomHost>();
+
+	static get(host: string): RoomHost {
+		let existing = this.registry.get(host);
+		if (!existing) {
+			existing = new RoomHost(host);
+			this.registry.set(host, existing);
+		}
+		return existing;
+	}
+
 	readonly host: string;
 
-	constructor(host: string) {
+	private constructor(host: string) {
 		this.host = host;
 	}
 
@@ -84,6 +95,20 @@ class RoomResource {
 		}
 
 		return parsed.data;
+	}
+
+	async leave(membershipToken: MembershipToken): Promise<void> {
+		const response = await fetch(`${this.server.host}/room/leave`, {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/json',
+				Authorization: `Bearer ${membershipToken}`,
+			},
+		});
+
+		if (!response.ok) {
+			throw new Error(`Failed to leave room: ${response.statusText}`);
+		}
 	}
 
 	async get(

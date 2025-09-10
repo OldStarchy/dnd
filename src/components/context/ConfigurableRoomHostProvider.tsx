@@ -14,7 +14,7 @@ export function ConfigurableRoomHostProvider({
 
 	const api = useMemo(() => {
 		const host = serverUrl || `${window.location.origin}/api`;
-		return new RoomHost(host);
+		return RoomHost.get(host);
 	}, [serverUrl]);
 
 	return (
