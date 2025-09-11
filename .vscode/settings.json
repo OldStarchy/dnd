@@ -1,0 +1,16 @@
+{
+	"typescript.preferences.autoImportSpecifierExcludeRegexes": [
+		"^node:",
+		"vm"
+	],
+	"remote.portsAttributes": {
+		"3000": {
+			"label": "Application",
+			"onAutoForward": "ignore"
+		},
+		"5173": {
+			"label": "Vite",
+			"onAutoForward": "openBrowser"
+		}
+	}
+}
