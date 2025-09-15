@@ -26,7 +26,8 @@ export default class RoomPublication {
 		return url;
 	}
 
-	// Friend function for Room
+	// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+	// @ts-ignore Friend function for Room
 	private async revoke(): Promise<void> {
 		this.connection.close();
 

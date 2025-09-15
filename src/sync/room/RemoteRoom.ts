@@ -1,8 +1,13 @@
-import type {
-	Collection,
-	DocumentApi,
-	ReadonlyDocumentApi,
-} from '@/db/Collection';
+import type { DocumentApi, ReadonlyDocumentApi } from '@/db/Collection';
+import { creatureSchema, type CreatureRecordType } from '@/db/record/Creature';
+import {
+	encounterSchema,
+	type EncounterRecordType,
+} from '@/db/record/Encounter';
+import {
+	initiativeTableEntrySchema,
+	type InitiativeTableEntryRecord,
+} from '@/db/record/InitiativeTableEntry';
 import { traceAsync } from '@/decorators/trace';
 import Logger from '@/lib/log';
 import RemoteCollection from '@/sync/db/RemoteCollection';
@@ -12,7 +17,7 @@ import type RoomHost from '@/sync/room/RoomHost';
 import RoomHostConnection from '@/sync/room/RoomHostConnection';
 import { roomMetaSchema, type RoomMetaRecordType } from '@/sync/room/RoomMeta';
 import type { MembershipToken, RoomCode } from '@/sync/room/types';
-import { creatureSchema, type CreatureRecordType } from '@/type/Creature';
+import { BehaviorSubject } from 'rxjs';
 
 export default class RemoteRoom implements RoomApi {
 	@traceAsync(Logger.INFO)
@@ -50,9 +55,12 @@ export default class RemoteRoom implements RoomApi {
 		);
 	}
 
-	static async joinPort(port: MessagePort): Promise<RemoteRoom> {
+	static async joinPort(_port: MessagePort): Promise<RemoteRoom> {
 		// TODO:
+		throw new Error('Not implemented');
 	}
+
+	readonly code$ = new BehaviorSubject<RoomCode | null>(null);
 
 	private constructor(
 		readonly roomHost: RoomHost,
@@ -60,9 +68,10 @@ export default class RemoteRoom implements RoomApi {
 		readonly me: DocumentApi<MemberRecordType>,
 		readonly membershipToken: MembershipToken,
 		readonly meta: ReadonlyDocumentApi<RoomMetaRecordType>,
-		readonly creatures: Collection<CreatureRecordType>,
-		readonly members: Collection<MemberRecordType>,
-	) {}
+		readonly db: RoomApi['db'],
+	) {
+		this.code$.next(connection.roomCode);
+	}
 
 	private static async construct(
 		roomHost: RoomHost,
@@ -70,30 +79,40 @@ export default class RemoteRoom implements RoomApi {
 		connection: RoomHostConnection,
 		meta: ReadonlyDocumentApi<RoomMetaRecordType>,
 	) {
-		const creatures = new RemoteCollection<CreatureRecordType>(
+		const creature = new RemoteCollection<CreatureRecordType>(
 			connection,
 			'creature',
 			creatureSchema,
 		);
-		const members = new RemoteCollection<MemberRecordType>(
+		const member = new RemoteCollection<MemberRecordType>(
 			connection,
 			'member',
 			memberSchema,
 		);
 
-		const me = await members
+		const encounter = new RemoteCollection<EncounterRecordType>(
+			connection,
+			'encounter',
+			encounterSchema,
+		);
+
+		const initiativeTableEntry =
+			new RemoteCollection<InitiativeTableEntryRecord>(
+				connection,
+				'initiativeTableEntry',
+				initiativeTableEntrySchema,
+			);
+
+		const me = await member
 			.getOne({ identity: connection.id })
 			.unwrap('Failed to retrieve member information for self');
 
-		return new RemoteRoom(
-			roomHost,
-			connection,
-			me,
-			membershipToken,
-			meta,
-			creatures,
-			members,
-		);
+		return new RemoteRoom(roomHost, connection, me, membershipToken, meta, {
+			creature,
+			member,
+			encounter,
+			initiativeTableEntry,
+		});
 	}
 
 	async leave(): Promise<void> {

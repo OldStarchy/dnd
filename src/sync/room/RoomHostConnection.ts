@@ -20,7 +20,7 @@ import { type OutboundSystemMessage } from '../message/schema/OutboundSystemMess
 import type { ClosableTransport } from '../transports/Transport';
 import type RoomHost from './RoomHost';
 import Member from './member/Member';
-import type { MemberId } from './types';
+import type { MemberId, RoomCode } from './types';
 
 type MemberPresence = {
 	id: MemberId;
@@ -59,6 +59,7 @@ export default class RoomHostConnection {
 		readonly gameMasterId: MemberId,
 		currentMembers: MemberPresence[],
 		readonly host: RoomHost,
+		readonly roomCode: RoomCode,
 		private connection: ClosableTransport<
 			OutboundSystemMessage,
 			InboundSystemMessage
@@ -180,7 +181,8 @@ export default class RoomHostConnection {
 	}
 
 	@traceAsync(Logger.INFO)
-	// @ts-expect-error friend function for `Member`
+	// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+	// @ts-ignore
 	private request(
 		to: MemberId,
 		message: UserMessageOfType<'request'>,

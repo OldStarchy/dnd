@@ -1,6 +1,7 @@
 import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import z from 'zod';
 import { LocalStorageCollection } from './LocalStorageCollection';
+import { type DbRecord, type RecordType } from './RecordType';
 
 describe('Collection', () => {
 	let store: { [key: string]: string } = {};
@@ -102,7 +103,7 @@ describe('Collection', () => {
 		const fetchedItem = await collection.getOne({
 			id: createdItem.data.getValue().id,
 		});
-		expect(fetchedItem?.data.getValue()).toHaveProperty(
+		expect(fetchedItem.unwrapOrNull()?.data.getValue()).toHaveProperty(
 			'name',
 			'Updated Item',
 		);
@@ -128,7 +129,9 @@ describe('Collection', () => {
 
 	// TODO: need to use rxjs test stuff
 	it('updates an item with a new revision', async () => {
-		const collection = new LocalStorageCollection(
+		const collection = new LocalStorageCollection<
+			RecordType<DbRecord<{ name: string }>, never>
+		>(
 			'test',
 			() => true,
 			z.object({
@@ -150,7 +153,9 @@ describe('Collection', () => {
 	});
 
 	it('filters items', async () => {
-		const collection = new LocalStorageCollection(
+		const collection = new LocalStorageCollection<
+			RecordType<DbRecord<{ name: string }>, { name: string }>
+		>(
 			'test',
 			(item, filter?: { name: string }) =>
 				!filter || item.name === filter.name,

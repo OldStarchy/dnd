@@ -1,11 +1,20 @@
 import { type Collection, type DocumentApi } from '@/db/Collection';
 import { LocalStorageCollection } from '@/db/LocalStorageCollection';
 import { RamCollection } from '@/db/RamCollection';
+import { creatureSchema, type CreatureRecordType } from '@/db/record/Creature';
+import {
+	encounterFilter,
+	encounterSchema,
+	type EncounterRecordType,
+} from '@/db/record/Encounter';
+import {
+	initiativeTableEntrySchema,
+	type InitiativeTableEntryRecord,
+} from '@/db/record/InitiativeTableEntry';
 import autoSubject from '@/decorators/autoSubject';
 import { traceAsync } from '@/decorators/trace';
 import Logger from '@/lib/log';
-import { creatureSchema, type CreatureRecordType } from '@/type/Creature';
-import { BehaviorSubject } from 'rxjs';
+import { BehaviorSubject, map } from 'rxjs';
 import { CollectionHost } from '../db/CollectionHost';
 import {
 	filterMember,
@@ -43,14 +52,35 @@ export default class Room implements RoomApi {
 		return await Room.construct(metaDoc);
 	}
 
+	readonly db: RoomApi['db'];
+	readonly code$ = new BehaviorSubject<RoomCode | null>(null);
+
 	constructor(
 		readonly me: DocumentApi<MemberRecordType>,
 		readonly meta: DocumentApi<RoomMetaRecordType>,
-		readonly creatures: Collection<CreatureRecordType>,
-		readonly members: Collection<MemberRecordType>,
+		collections: {
+			creatures: Collection<CreatureRecordType>;
+			encounters: Collection<EncounterRecordType>;
+			initiativeTableEntries: Collection<InitiativeTableEntryRecord>;
+			members: Collection<MemberRecordType>;
+		},
 		hosts: ReadonlyMap<string, RoomPublication>,
 	) {
 		this.hosts = hosts;
+		this.db = {
+			creature: collections.creatures,
+			member: collections.members,
+			encounter: collections.encounters,
+			initiativeTableEntry: collections.initiativeTableEntries,
+		};
+		this.hosts$
+			.pipe(
+				map(
+					(hosts) =>
+						Array.from(hosts.values()).at(0)?.roomCode || null,
+				),
+			)
+			.subscribe(this.code$);
 	}
 
 	@autoSubject()
@@ -62,9 +92,22 @@ export default class Room implements RoomApi {
 	private static async construct(meta: DocumentApi<RoomMetaRecordType>) {
 		const creatures = new LocalStorageCollection<CreatureRecordType>(
 			'creature',
-			() => true,
+			() => false,
 			creatureSchema,
 		);
+
+		const encounters = new LocalStorageCollection<EncounterRecordType>(
+			'encounter',
+			encounterFilter,
+			encounterSchema,
+		);
+
+		const initiativeTableEntries =
+			new LocalStorageCollection<InitiativeTableEntryRecord>(
+				'initiativeTableEntry',
+				() => false,
+				initiativeTableEntrySchema,
+			);
 
 		const members = new RamCollection<MemberRecordType>(
 			'member',
@@ -79,7 +122,12 @@ export default class Room implements RoomApi {
 
 		const hosts = new Map<string, RoomPublication>();
 
-		return new Room(me, meta, creatures, members, hosts);
+		return new Room(
+			me,
+			meta,
+			{ creatures, members, encounters, initiativeTableEntries },
+			hosts,
+		);
 	}
 
 	@traceAsync(Logger.INFO)
@@ -140,10 +188,10 @@ export default class Room implements RoomApi {
 		});
 
 		for (const member of connection.getMembers()) {
-			await this.members
+			await this.db.member
 				.getOne({ identity: member.id })
 				.unwrapOrElse(() =>
-					this.members.create({
+					this.db.member.create({
 						name: 'Unnamed player',
 						identities: [
 							{
@@ -158,8 +206,7 @@ export default class Room implements RoomApi {
 
 		const roomMetaHost = new CollectionHost({
 			room: Room.rooms,
-			creature: this.creatures,
-			member: this.members,
+			...this.db,
 		});
 
 		const teardown = roomMetaHost.provide(connection);
@@ -169,8 +216,8 @@ export default class Room implements RoomApi {
 				if (msg.type === 'room.members.joined') {
 					const { id } = msg.data;
 
-					this.members.getOne({ identity: id }).unwrapOrElse(() =>
-						this.members.create({
+					this.db.member.getOne({ identity: id }).unwrapOrElse(() =>
+						this.db.member.create({
 							name: 'Unnamed player',
 							identities: [
 								{ host: roomHost.host, id, online: false },
@@ -182,7 +229,7 @@ export default class Room implements RoomApi {
 				if (msg.type === 'room.members.left') {
 					const { id } = msg.data;
 
-					this.members
+					this.db.member
 						.getOne({ identity: id })
 						.map((doc) => doc.delete());
 				}
@@ -190,7 +237,7 @@ export default class Room implements RoomApi {
 				if (msg.type === 'room.members.presence') {
 					const { id, connected: online } = msg.data;
 
-					this.members.getOne({ identity: id }).map((doc) => {
+					this.db.member.getOne({ identity: id }).map((doc) => {
 						return doc.update({
 							merge: {
 								identities: {
@@ -226,7 +273,7 @@ export default class Room implements RoomApi {
 		return publication;
 	}
 
-	createPortHost(port: MessagePort): void {
+	createPortHost(_port: MessagePort): void {
 		// TODO:
 	}
 

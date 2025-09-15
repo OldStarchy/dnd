@@ -1,4 +1,5 @@
-import { creatureSchema, type Creature } from '@/type/Creature';
+/*
+import { creatureSchema, type Creature } from '@/db/record/Creature';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useCallback, type ReactNode } from 'react';
 import { useForm } from 'react-hook-form';
@@ -346,3 +347,4 @@ function CreatureForm({
 }
 
 export default CreatureForm;
+*/

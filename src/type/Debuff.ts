@@ -9,8 +9,8 @@ export const debuffSpec = z.object({
 		.number()
 		.int()
 		.min(0, 'Duration must be a non-negative integer')
-		.optional()
-		.transform((val) => (val === 0 ? undefined : val)),
+		.transform((val) => (val === 0 ? undefined : val))
+		.optional(),
 });
 
 export type Debuff = z.infer<typeof debuffSpec>;

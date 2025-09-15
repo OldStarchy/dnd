@@ -22,3 +22,8 @@ export type RecordFilter<T extends AnyRecordType> = (
 	record: T['record'],
 	filter: T['filter'],
 ) => boolean;
+
+export type DbRecord<T extends object> = T & {
+	id: string;
+	revision: number;
+};

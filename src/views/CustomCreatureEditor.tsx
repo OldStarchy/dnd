@@ -1,3 +1,4 @@
+/*
 import CreatureForm, { type CreatureFormData } from '@/components/CreatureForm';
 import {
 	Accordion,
@@ -14,22 +15,22 @@ import { useCallback } from 'react';
 
 /**
  * Allows editing of player characters.
- */
+ *
 function CustomCreatureEditor() {
 	// TODO: useCreatureList(); for Players
 	const [creatures, setCreatures] = useLocalStorageCreatureList();
 
 	const addCreature = useCallback(
-		(character: CreatureFormData) => {
-			setCreatures((prev) => [
-				...prev,
-				{
-					...character,
-					id: crypto.randomUUID(),
-					images: (character.images?.filter(Boolean) ??
-						[]) as string[],
-				},
-			]);
+		(_character: CreatureFormData) => {
+			// setCreatures((prev) => [
+			// 	...prev,
+			// 	{
+			// 		...character,
+			// 		id: crypto.randomUUID(),
+			// 		images: (character.images?.filter(Boolean) ??
+			// 			[]) as string[],
+			// 	},
+			// ]);
 		},
 		[setCreatures],
 	);
@@ -159,3 +160,4 @@ function CustomCreatureEditor() {
 }
 
 export default CustomCreatureEditor;
+*/

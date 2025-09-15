@@ -1,8 +1,9 @@
+/*
 import InitiativeTable from '@/components/InitiativeTable/InitiativeTable';
 import { setCurrentTurnEntityId } from '@/store/reducers/initiativeSlice';
 import useRoomContext from '@/sync/react/hooks/useRoomContext';
 import { useEffect, useState } from 'react';
-import type { InitiativeTableEntry } from './InitiativeTable/InitiativeTableEntry';
+import type { InitiativeTableEntry } from '../db/record/InitiativeTableEntry';
 
 function PlayerViewPanel() {
 	const [initiativeTableEntries, setInitiativeTableEntries] = useState<
@@ -46,3 +47,4 @@ function PlayerViewPanel() {
 }
 
 export default PlayerViewPanel;
+*/

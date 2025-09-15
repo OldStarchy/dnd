@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 
 export default function useCollectionQuery<RecordType extends AnyRecordType>(
 	collection: Collection<RecordType>,
-	filter?: (item: RecordType['record']) => boolean,
+	filter?: RecordType['filter'],
 ): RecordType['record'][] {
 	const [results, setResults] = useState<RecordType['record'][]>([]);
 

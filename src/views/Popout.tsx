@@ -1,5 +1,4 @@
-import { MessagePortTransportProvider } from '@/components/context/MessagePortTransportProvider';
-import PlayerViewPanel from '@/components/player-view-panel';
+// import PlayerViewPanel from '@/components/player-view-panel';
 import { useSearchParams } from 'react-router';
 
 function PopoutView() {
@@ -7,9 +6,9 @@ function PopoutView() {
 
 	if (params.get('local') !== null) {
 		return (
-			<MessagePortTransportProvider>
-				<PlayerViewPanel />
-			</MessagePortTransportProvider>
+			// <RoomProvider port={port}>
+			<PlayerViewPanel />
+			// </RoomProvider>
 		);
 	} else {
 		return <PlayerViewPanel />;
@@ -17,3 +16,7 @@ function PopoutView() {
 }
 
 export default PopoutView;
+
+function PlayerViewPanel() {
+	return <div>Player View Panel (TODO)</div>;
+}

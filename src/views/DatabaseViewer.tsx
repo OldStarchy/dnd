@@ -1,4 +1,4 @@
-import CreatureForm from '@/components/CreatureForm';
+// import CreatureForm from '@/components/CreatureForm';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import {
@@ -11,6 +11,11 @@ import {
 } from '@/components/ui/table';
 import type { Collection } from '@/db/Collection';
 import { LocalStorageCollection } from '@/db/LocalStorageCollection';
+import {
+	type CreatureRecordType,
+	creatureSchema,
+	filterCreature,
+} from '@/db/record/Creature';
 import type { AnyRecordType } from '@/db/RecordType';
 import useCollectionQuery from '@/hooks/useCollectionQuery';
 import {
@@ -18,11 +23,6 @@ import {
 	type MemberRecordType,
 	memberSchema,
 } from '@/sync/room/member/Record';
-import {
-	type CreatureRecordType,
-	creatureSchema,
-	filterCreature,
-} from '@/type/Creature';
 
 const creatures = new LocalStorageCollection<CreatureRecordType>(
 	'creatures',
@@ -53,11 +53,11 @@ export default function DatabaseViewer() {
 			/>
 
 			<Separator className="my-4" />
-			<CreatureForm
+			{/* <CreatureForm
 				onSubmit={(record) => {
 					creatures.create(record);
 				}}
-			/>
+			/> */}
 			<Separator className="my-4" />
 
 			<CollectionView

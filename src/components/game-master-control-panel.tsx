@@ -5,33 +5,23 @@ import {
 	ResizablePanelGroup,
 } from '@/components/ui/resizable';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import type { DocumentApi } from '@/db/Collection';
+import type { EncounterRecordType } from '@/db/record/Encounter';
 import { dnd5eApi, dnd5eApiUrl } from '@/dnd5eApi';
 import { useShareCode } from '@/hooks/context/useShareCode';
-import useCustomCreatureList from '@/hooks/useCustomCreatureList';
+import useBehaviorSubject from '@/hooks/useBehaviorSubject';
+import useCollectionQuery from '@/hooks/useCollectionQuery';
 import useLocalStorage from '@/hooks/useLocalStorage';
 import useMonsterList from '@/hooks/useMonsterList';
-import { usePrimaryDispatch, usePrimarySelector } from '@/store/primary-store';
-import {
-	removeEntity,
-	setCurrentTurnEntityId,
-	setDefault,
-	setEntity,
-	swapEntities,
-} from '@/store/reducers/initiativeSlice';
-import {
-	getObfuscatedHealthText,
-	HealthObfuscation,
-	type Entity,
-} from '@/store/types/Entity';
-import type { Creature } from '@/type/Creature';
+import usePromiseLike from '@/hooks/usePromiseLike';
+import { HealthObfuscation, type Entity } from '@/store/types/Entity';
+import useRoomContext from '@/sync/react/hooks/useRoomContext';
+import type RoomApi from '@/sync/room/RoomApi';
 import { DropdownMenuTrigger } from '@radix-ui/react-dropdown-menu';
-import { ChevronDown, Plus, Trash } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import EntityPropertyPanel, {
-	type EntityPropertySchema,
-} from './entity-property-panel';
+import { ChevronDown, Plus } from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
+import { type EntityPropertySchema } from './entity-property-panel';
 import InitiativeTable from './InitiativeTable/InitiativeTable';
-import type { InitiativeTableEntry } from './InitiativeTable/InitiativeTableEntry';
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -48,38 +38,30 @@ function GameMasterControlPanel() {
 		v !== 'vertical' ? 'horizontal' : 'vertical',
 	);
 
-	const { entities, currentTurnEntityId } = usePrimarySelector(
-		(state) => state.initiative,
-	);
-	const dispatch = usePrimaryDispatch();
+	const room = useRoomContext();
+	if (!room) {
+		throw new Error('Room context is not available');
+	}
 
-	const { list, update } = useCustomCreatureList();
+	const entities = useCollectionQuery(room.db.initiativeTableEntry);
+	const encounter = usePromiseLike(
+		() => room.db.encounter.getOne().unwrap(),
+		[room],
+	);
+	const [_currentTurnEntityId, setCTEID] = useState<string | null>(null);
+
+	useEffect(() => {
+		if (encounter.ready) {
+			const sub = encounter.value.data.subscribe((encounter) => {
+				setCTEID(encounter.currentTurn ?? null);
+			});
+			return () => sub.unsubscribe();
+		}
+	});
+
 	const { monsters } = useMonsterList();
 
-	const [characters, setCreaturesState] = useState<Creature[]>([]);
-
-	useEffect(() => {
-		list().then((creatures) => {
-			setCreaturesState(creatures);
-		});
-	}, [list]);
-
-	useEffect(() => {
-		dispatch(
-			setDefault(
-				characters.map((creature) => ({
-					id: crypto.randomUUID(),
-					visible: false,
-					initiative: 0,
-					obfuscateHealth: HealthObfuscation.NO,
-					creature: {
-						type: 'unique',
-						id: creature.id,
-					},
-				})),
-			),
-		);
-	}, [dispatch, characters]);
+	const characters = useCollectionQuery(room.db.creature);
 
 	const [selectedEntityId, setSelectedEntityId] = useState<string | null>(
 		null,
@@ -90,7 +72,7 @@ function GameMasterControlPanel() {
 	);
 
 	const createNewEntity = useCallback(() => {
-		const newEntity: Entity = {
+		const _newEntity: Entity = {
 			id: crypto.randomUUID(),
 			visible: false,
 			initiative: 0,
@@ -106,49 +88,50 @@ function GameMasterControlPanel() {
 				},
 			},
 		};
-		dispatch(setEntity(newEntity));
-		setSelectedEntityId(newEntity.id);
-	}, [dispatch]);
 
-	const entitiesView: InitiativeTableEntry[] = useMemo(
-		() =>
-			entities
-				.filter((entity) => {
-					if (entity.creature.type === 'unique') {
-						const id = entity.creature.id;
-						return characters.some((c) => c.id === id);
-					}
-				})
-				.map((entity) => {
-					const creature = (() => {
-						if (entity.creature.type === 'unique') {
-							const id = entity.creature.id;
-							return characters.find((c) => c.id === id)!;
-						} else return entity.creature.data;
-					})();
-					const ety: InitiativeTableEntry = {
-						id: entity.id,
-						initiative: entity.initiative,
-						creature: entity.creature,
-						healthDisplay:
-							`${creature.hp}/${creature.maxHp}${creature.hitpointsRoll ? ` (${creature.hitpointsRoll})` : ''}` +
-							(entity.obfuscateHealth !== HealthObfuscation.NO
-								? ` (${getObfuscatedHealthText(
-										creature.hp,
-										creature.maxHp,
-										entity.obfuscateHealth,
-									)})`
-								: ''),
-					};
-					if (!entity.visible) {
-						ety.effect = 'invisible';
-					}
-					return ety;
-				}),
-		[entities, characters],
-	);
+		// dispatch(setEntity(newEntity));
+		// setSelectedEntityId(newEntity.id);
+	}, []);
 
-	const entityToEditPanelSchema = useCallback(
+	// const entitiesView: InitiativeTableEntry[] = useMemo(
+	// 	() =>
+	// 		entities
+	// 			.filter((entity) => {
+	// 				if (entity.creature.type === 'unique') {
+	// 					const id = entity.creature.id;
+	// 					return characters.some((c) => c.id === id);
+	// 				}
+	// 			})
+	// 			.map((entity) => {
+	// 				const creature = (() => {
+	// 					if (entity.creature.type === 'unique') {
+	// 						const id = entity.creature.id;
+	// 						return characters.find((c) => c.id === id)!;
+	// 					} else return entity.creature.data;
+	// 				})();
+	// 				const ety: InitiativeTableEntry = {
+	// 					id: entity.id,
+	// 					initiative: entity.initiative,
+	// 					creature: entity.creature,
+	// 					healthDisplay:
+	// 						`${creature.hp}/${creature.maxHp}${creature.hitpointsRoll ? ` (${creature.hitpointsRoll})` : ''}` +
+	// 						(entity.obfuscateHealth !== HealthObfuscation.NO
+	// 							? ` (${getObfuscatedHealthText(
+	// 									creature.hp,
+	// 									creature.maxHp,
+	// 									entity.obfuscateHealth,
+	// 								)})`
+	// 							: ''),
+	// 				};
+	// 				if (!entity.visible) {
+	// 					ety.effect = 'invisible';
+	// 				}
+	// 				return ety;
+	// 			}),
+	// 	[entities, characters],
+	// );
+
+	const _entityToEditPanelSchema = useCallback(
 		(entity: Entity): EntityPropertySchema => {
 			const creature = (() => {
 				if (entity.creature.type === 'unique') {
@@ -172,108 +155,53 @@ function GameMasterControlPanel() {
 		[characters],
 	);
 
-	const saveEntityPanelChanges = useCallback(
-		(id: string, data: EntityPropertySchema) => {
-			const entity = entities.find((e) => e.id === id);
-			if (!entity) return;
+	// const saveEntityPanelChanges = useCallback(
+	// 	(id: string, data: EntityPropertySchema) => {
+	// 		const entity = entities.find((e) => e.id === id);
+	// 		if (!entity) return;
 
-			if (entity.creature.type === 'unique') {
-				const id = entity.creature.id;
-				update(id, {
-					name: { value: data.name },
-					ac: { value: data.ac },
-					hp: { value: data.hp },
-					maxHp: { value: data.maxHp },
-					debuffs: { value: data.debuffs },
-					images: { value: data.images },
-				});
-				dispatch(setEntity({ ...entity, visible: data.visible }));
-			} else {
-				dispatch(
-					setEntity({
-						...entity,
-						creature: {
-							...entity.creature,
-							data: {
-								...entity.creature.data,
-								name: data.name || entity.creature.data.name,
-								ac: data.ac ?? entity.creature.data.ac,
-								hp: data.hp ?? entity.creature.data.hp,
-								maxHp: data.maxHp ?? entity.creature.data.maxHp,
-								debuffs: data.debuffs,
-								images:
-									(
-										data.images ??
-										entity.creature.data.images ??
-										[]
-									).filter((i) => i !== undefined) ?? [],
-							},
-						},
-						initiative: data.initiative ?? entity.initiative,
-						obfuscateHealth:
-							data.obfuscateHealth ?? entity.obfuscateHealth,
-						visible: data.visible ?? entity.visible,
-					}),
-				);
-			}
-		},
-		[entities, dispatch, update],
-	);
-
-	const advanceTurn = useCallback(() => {
-		const currentIndex = entities.findIndex(
-			(entity) => entity.id === currentTurnEntityId,
-		);
-		if (currentIndex === -1) return;
-		const currentEntity = entities[currentIndex];
-
-		const nextIndex = (currentIndex + 1) % entities.length;
-		const nextEntity = entities[nextIndex];
-
-		const creature = (() => {
-			if (currentEntity.creature.type === 'unique') {
-				const id = currentEntity.creature.id;
-				return characters.find((c) => c.id === id)!;
-			} else return currentEntity.creature.data;
-		})();
-		if (creature.debuffs?.some((debuff) => debuff.duration !== undefined)) {
-			const newDebuffs = creature.debuffs
-				.map((debuff) => {
-					if (debuff.duration !== undefined) {
-						return {
-							...debuff,
-							duration: debuff.duration - 1,
-						};
-					}
-					return debuff;
-				})
-				.filter(
-					(debuff) =>
-						debuff.duration === undefined || debuff.duration > 0,
-				);
-
-			if (currentEntity.creature.type === 'generic') {
-				dispatch(
-					setEntity({
-						...currentEntity,
-						creature: {
-							...currentEntity.creature,
-							data: {
-								...currentEntity.creature.data,
-								debuffs: newDebuffs,
-							},
-						},
-					}),
-				);
-			} else {
-				const id = currentEntity.creature.id;
-				update(id, {
-					debuffs: { value: newDebuffs },
-				});
-			}
-		}
-		dispatch(setCurrentTurnEntityId(nextEntity.id));
-	}, [entities, currentTurnEntityId, dispatch, characters, update]);
+	// 		if (entity.creature.type === 'unique') {
+	// 			const id = entity.creature.id;
+	// 			update(id, {
+	// 				name: { value: data.name },
+	// 				ac: { value: data.ac },
+	// 				hp: { value: data.hp },
+	// 				maxHp: { value: data.maxHp },
+	// 				debuffs: { value: data.debuffs },
+	// 				images: { value: data.images },
+	// 			});
+	// 			dispatch(setEntity({ ...entity, visible: data.visible }));
+	// 		} else {
+	// 			dispatch(
+	// 				setEntity({
+	// 					...entity,
+	// 					creature: {
+	// 						...entity.creature,
+	// 						data: {
+	// 							...entity.creature.data,
+	// 							name: data.name || entity.creature.data.name,
+	// 							ac: data.ac ?? entity.creature.data.ac,
+	// 							hp: data.hp ?? entity.creature.data.hp,
+	// 							maxHp: data.maxHp ?? entity.creature.data.maxHp,
+	// 							debuffs: data.debuffs,
+	// 							images:
+	// 								(
+	// 									data.images ??
+	// 									entity.creature.data.images ??
+	// 									[]
+	// 								).filter((i) => i !== undefined) ?? [],
+	// 						},
+	// 					},
+	// 					initiative: data.initiative ?? entity.initiative,
+	// 					obfuscateHealth:
+	// 						data.obfuscateHealth ?? entity.obfuscateHealth,
+	// 					visible: data.visible ?? entity.visible,
+	// 				}),
+	// 			);
+	// 		}
+	// 	},
+	// 	[entities, dispatch, update],
+	// );
 
 	return (
 		<ResizablePanelGroup
@@ -288,7 +216,8 @@ function GameMasterControlPanel() {
 						value={shareCodes?.roomCode ?? ''}
 						readOnly
 					/>
-					<InitiativeTable
+					<InitiativeTableWrapper />
+					{/* <InitiativeTable
 						fieldVisibility={{
 							initiative: true,
 							name: true,
@@ -323,7 +252,7 @@ function GameMasterControlPanel() {
 								<span className="sr-only">Edit entity</span>
 							</Button>
 						)}
-					/>
+					/> */}
 					<div className="sticky bottom-0 left-0 w-full flex justify-center p-4">
 						<div className="inline-flex items-stretch border rounded-md overflow-hidden divide-x divide-border bg-background shadow shadow-black">
 							<Button
@@ -355,26 +284,29 @@ function GameMasterControlPanel() {
 												<DropdownMenuItem
 													key={character.id}
 													onClick={() => {
-														const newEntity: Entity =
-															{
-																id: crypto.randomUUID(),
+														room.db.initiativeTableEntry
+															.create({
+																encounterId:
+																	encounter
+																		.value!
+																		.data
+																		.value
+																		.id,
 																creature: {
 																	type: 'unique',
 																	id: character.id,
 																},
-																visible: false,
-																initiative: 0,
-																obfuscateHealth:
+																healthDisplay:
 																	HealthObfuscation.NO,
-															};
-														dispatch(
-															setEntity(
-																newEntity,
-															),
-														);
-														setSelectedEntityId(
-															newEntity.id,
-														);
+																initiative: 0,
+															})
+															.then((record) => {
+																setSelectedEntityId(
+																	record.data
+																		.value
+																		.id,
+																);
+															});
 													}}
 												>
 													{character.name}
@@ -423,14 +355,18 @@ function GameMasterControlPanel() {
 																		)
 																	: (result.hit_points ??
 																		0);
-															const newEntity: Entity =
-																{
-																	id: crypto.randomUUID(),
-																	visible: false,
+															room.db.initiativeTableEntry
+																.create({
+																	encounterId:
+																		encounter
+																			.value!
+																			.data
+																			.value
+																			.id,
 																	initiative: 0,
 
-																	obfuscateHealth:
-																		HealthObfuscation.TEXT,
+																	healthDisplay:
+																		'dead',
 																	creature: {
 																		type: 'generic',
 																		data: {
@@ -463,15 +399,19 @@ function GameMasterControlPanel() {
 																				[],
 																		},
 																	},
-																};
-															dispatch(
-																setEntity(
-																	newEntity,
-																),
-															);
-															setSelectedEntityId(
-																newEntity.id,
-															);
+																})
+																.then(
+																	(
+																		newEntity,
+																	) => {
+																		setSelectedEntityId(
+																			newEntity
+																				.data
+																				.value
+																				.id,
+																		);
+																	},
+																);
 														})();
 													}}
 												>
@@ -495,7 +435,7 @@ function GameMasterControlPanel() {
 				<ScrollArea className="h-full">
 					{selectedEntity ? (
 						<div className="pl-4 pr-6 py-4">
-							<EntityPropertyPanel
+							{/* <EntityPropertyPanel
 								entity={entityToEditPanelSchema(selectedEntity)}
 								key={selectedEntity.id}
 								onChange={(entity) => {
@@ -504,7 +444,7 @@ function GameMasterControlPanel() {
 										entity,
 									);
 								}}
-							/>
+							/> */}
 						</div>
 					) : (
 						<div className="flex items-center justify-center w-full h-full">
@@ -544,3 +484,144 @@ function rollDice(str: string): number {
 	return total + modifier;
 }
 export default GameMasterControlPanel;
+
+function InitiativeTableWrapper() {
+	const room = useRoomContext();
+
+	const encounter = usePromiseLike(
+		() =>
+			room
+				? room.db.encounter.getOne().unwrapOrNull()
+				: Promise.resolve(null),
+		[room],
+	);
+
+	if (!room) {
+		return <div>No room</div>;
+	}
+
+	if (!encounter.ready) {
+		return <div>Loading encounter...</div>;
+	}
+
+	if (!encounter.value) {
+		return <div>No encounter found</div>;
+	}
+
+	return <EncounterView room={room} encounter={encounter.value} />;
+}
+
+function EncounterView({
+	room,
+	encounter,
+}: {
+	room: RoomApi;
+	encounter: DocumentApi<EncounterRecordType>;
+}) {
+	const entities = useCollectionQuery(room.db.initiativeTableEntry, {
+		encounterId: encounter.data.value.id,
+	});
+	const creatures = useCollectionQuery(room.db.creature);
+
+	const encounterData = useBehaviorSubject(encounter.data);
+
+	const [selectedEntityId, setSelectedEntityId] = useState<string | null>(
+		null,
+	);
+
+	const advanceTurn = useCallback(() => {
+		const currentIndex = entities.findIndex(
+			(entity) => entity.id === encounterData.currentTurn,
+		);
+
+		if (currentIndex === -1) return;
+
+		const currentEntity = entities[currentIndex];
+
+		const nextIndex = (currentIndex + 1) % entities.length;
+		const nextEntity = entities[nextIndex];
+
+		const creature = (() => {
+			if (currentEntity.creature.type === 'unique') {
+				const id = currentEntity.creature.id;
+				return creatures.find((c) => c.id === id)!;
+			} else return currentEntity.creature.data;
+		})();
+
+		if (creature.debuffs?.some((debuff) => debuff.duration !== undefined)) {
+			const newDebuffs = creature.debuffs
+				.map((debuff) => {
+					if (debuff.duration !== undefined) {
+						return {
+							...debuff,
+							duration: debuff.duration - 1,
+						};
+					}
+					return debuff;
+				})
+				.filter(
+					(debuff) =>
+						debuff.duration === undefined || debuff.duration > 0,
+				);
+
+			if (currentEntity.creature.type === 'generic') {
+				room.db.initiativeTableEntry
+					.getOne({ id: currentEntity.id })
+					.inspect((doc) =>
+						doc.update({
+							merge: {
+								creature: {
+									merge: {
+										data: {
+											merge: {
+												debuffs: {
+													replace: newDebuffs,
+												},
+											},
+										},
+									},
+								},
+							},
+						}),
+					);
+			} else {
+				room.db.creature
+					.getOne({ id: currentEntity.creature.id })
+					.inspect((doc) => {
+						doc.update({
+							merge: {
+								debuffs: { replace: newDebuffs },
+							},
+						});
+					});
+			}
+		}
+		encounter.update({
+			merge: { currentTurn: { replace: nextEntity.id } },
+		});
+	}, [room, entities, creatures, encounter, encounterData]);
+
+	return (
+		<InitiativeTable
+			entries={entities}
+			selectedEntityId={selectedEntityId}
+			onEntityClick={({ id }) => setSelectedEntityId(id)}
+			currentTurnEntityId={encounterData.currentTurn}
+			onToggleTurn={({ id }, pressed) => {
+				encounter.update({
+					merge: { currentTurn: { replace: pressed ? id : null } },
+				});
+			}}
+			fieldVisibility={{
+				initiative: true,
+				name: true,
+				race: true,
+				ac: true,
+				health: true,
+				debuffs: true,
+				description: true,
+			}}
+			onAdvanceTurnClick={advanceTurn}
+		/>
+	);
+}

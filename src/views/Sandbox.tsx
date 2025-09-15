@@ -1,11 +1,5 @@
-import CreatureForm from '@/components/CreatureForm';
-
 function Sandbox() {
-	return (
-		<>
-			<CreatureForm onSubmit={() => {}} />
-		</>
-	);
+	return <>This page intentionally left blank.</>;
 }
 
 export default Sandbox;

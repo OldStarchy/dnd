@@ -23,7 +23,7 @@ export type RemoteCollectionMessages<T> =
 	| DbResponseMessages<T>
 	| DbNotificationMessages<T>;
 
-export default class RemoteCollection<RecordType extends AnyRecordType>
+export default class RemoteCollection<RecordType extends AnyRecordType = never>
 	implements Collection<RecordType>
 {
 	private readonly connection: RoomHostConnection;
@@ -122,7 +122,9 @@ export default class RemoteCollection<RecordType extends AnyRecordType>
 		return new QueryResults(...data.map((item) => this.getNotifyOne(item)));
 	}
 
-	getOne(filter: RecordType['filter']): AsyncOption<DocumentApi<RecordType>> {
+	getOne(
+		filter?: RecordType['filter'],
+	): AsyncOption<DocumentApi<RecordType>> {
 		const cached = this.maybeGetOne(filter as unknown as string);
 
 		// TODO: Given that changes are pushed from the host, we probably don't

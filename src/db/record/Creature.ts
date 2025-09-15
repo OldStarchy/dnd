@@ -1,9 +1,12 @@
 import type { RecordFilter, RecordType } from '@/db/RecordType';
 import { z } from 'zod';
-import { debuffSpec } from './Debuff';
+import { debuffSpec } from '../../type/Debuff';
+
+declare const CreatureIdBrand: unique symbol;
+export type CreatureIdBrand = typeof CreatureIdBrand;
 
 export const creatureSchema = z.object({
-	id: z.string(),
+	id: z.string().brand<CreatureIdBrand>(),
 	revision: z.number(),
 
 	name: z.string().min(1, 'Name is required'),

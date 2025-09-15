@@ -14,7 +14,6 @@ import RoomHost from '@/sync/room/RoomHost';
 import { RoomCode } from '@/sync/room/types';
 import { RefreshCcw } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router';
 
 function RoomView() {
 	const room = useRoomContext();
@@ -24,8 +23,6 @@ function RoomView() {
 
 	const newRoomNameRef = useRef<HTMLInputElement>(null);
 	const roomCodeRef = useRef<HTMLInputElement>(null);
-
-	const navigate = useNavigate();
 
 	const [error, setError] = useState('');
 
@@ -70,10 +67,7 @@ function RoomView() {
 					{room instanceof Room ? (
 						<LocalRoomView room={room} handleError={handleError} />
 					) : room instanceof RemoteRoom ? (
-						<GenericRoomView
-							room={room}
-							handleError={handleError}
-						/>
+						<GenericRoomView room={room} />
 					) : null}
 
 					<Button onClick={() => roomActions.close()}>
@@ -141,8 +135,6 @@ function LocalRoomView({
 
 	const hosts = useBehaviorSubject(room.hosts$);
 
-	const members = useCollectionQuery(room.members);
-
 	return (
 		<>
 			<p>Local Room "{room.meta.data.getValue().name}"</p>
@@ -188,22 +180,14 @@ function LocalRoomView({
 				</li>
 			</ul>
 
-			<GenericRoomView room={room} handleError={handleError} />
+			<GenericRoomView room={room} />
 		</>
 	);
 }
 
-function GenericRoomView({
-	room,
-	handleError,
-}: {
-	room: RoomApi;
-	handleError: (err: unknown) => void;
-}) {
-	const roomHost = useRoomHost();
-
+function GenericRoomView({ room }: { room: RoomApi }) {
 	const meta = useBehaviorSubject(room.meta.data);
-	const members = useCollectionQuery(room.members);
+	const members = useCollectionQuery(room.db.member);
 
 	return (
 		<>

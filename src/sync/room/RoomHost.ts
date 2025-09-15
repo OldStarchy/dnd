@@ -173,6 +173,7 @@ class RoomResource {
 			gameMasterId,
 			members,
 			this.server,
+			info.roomCode,
 			connection,
 		);
 	}

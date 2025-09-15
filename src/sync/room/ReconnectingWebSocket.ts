@@ -5,7 +5,8 @@ import {
 	TransportState,
 	type ClosableTransport,
 } from '../transports/Transport';
-import type { WebSocketData } from '../transports/WebSocketTransport';
+
+export type WebSocketData = Parameters<WebSocket['send']>[0];
 
 export default class ReconnectingWebSocket
 	implements ClosableTransport<WebSocketData, WebSocketData>

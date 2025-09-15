@@ -1,5 +1,6 @@
 import type { Collection } from '@/db/Collection';
 import type { AnyRecordType } from '@/db/RecordType';
+import exhaustiveCheck from '@/lib/exhaustiveCheck';
 import { filter, Subscription } from 'rxjs';
 import type { InboundRequest } from '../message/inbound';
 import type { UserMessageOfType } from '../message/raw';
@@ -86,12 +87,9 @@ export class CollectionHost<
 						.map((doc) => doc.delete());
 
 					return null;
-
-				default: {
-					const _exhaustiveCheck: never = data;
-					throw new Error(`Unsupported action: ${data['action']}`);
-				}
 			}
+
+			exhaustiveCheck(data);
 		});
 	}
 }

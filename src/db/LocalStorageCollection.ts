@@ -3,7 +3,7 @@ import { LocalCollection } from './LocalCollection';
 import type { AnyRecordType, RecordFilter } from './RecordType';
 
 export class LocalStorageCollection<
-	in out RecordType extends AnyRecordType,
+	const in out RecordType extends AnyRecordType,
 > extends LocalCollection<RecordType> {
 	private readonly storageKey: string;
 	constructor(

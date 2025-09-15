@@ -27,7 +27,7 @@ export const getRequestSchema = RequestResponse({
 export const getOneRequestSchema = RequestResponse({
 	request: z.object({
 		action: z.literal('getOne'),
-		filter: z.unknown(),
+		filter: z.unknown().optional(),
 	}),
 	response: z.object({
 		data: z.unknown().nullable(),

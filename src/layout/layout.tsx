@@ -19,8 +19,11 @@ import {
 	SidebarProvider,
 	SidebarTrigger,
 } from '@/components/ui/sidebar';
+import useBehaviorSubject from '@/hooks/useBehaviorSubject';
 import useLocalStorage from '@/hooks/useLocalStorage';
 import { cn } from '@/lib/utils';
+import useRoomContext from '@/sync/react/hooks/useRoomContext';
+import type RoomApi from '@/sync/room/RoomApi';
 import {
 	BugPlay,
 	ChevronUp,
@@ -47,6 +50,8 @@ declare global {
 }
 
 function Layout() {
+	const room = useRoomContext();
+
 	const [splitDirection, setSplitDirection] = useLocalStorage(
 		'layoutDirection',
 		(v) => (v !== 'vertical' ? 'horizontal' : 'vertical'),
@@ -64,6 +69,8 @@ function Layout() {
 				<AppSidebar />
 				<div className="flex flex-col flex-grow items-stretch justify-center min-h-screen bg-background p-4 gap-4">
 					<header className="flex items-center justify-between space-x-2">
+						{room && <RoomHeader room={room} />}
+
 						<SidebarTrigger className="ml-auto" />
 						<Button
 							variant="outline"
@@ -101,6 +108,22 @@ function Layout() {
 }
 
 export default Layout;
+
+function RoomHeader({ room }: { room: RoomApi }) {
+	const roomCode = useBehaviorSubject(room.code$);
+	return (
+		<>
+			<h1 className="text-2xl font-bold">
+				{room.meta.data.getValue().name || 'Unnamed Room'}
+			</h1>
+			{roomCode && (
+				<span className="text-sm italic text-muted-foreground">
+					Code: {roomCode}
+				</span>
+			)}
+		</>
+	);
+}
 
 export function AppSidebar() {
 	const [settingsOpen, setSettingsOpen] = useState(false);

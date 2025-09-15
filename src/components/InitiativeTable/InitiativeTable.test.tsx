@@ -1,21 +1,30 @@
 import '@/index.css';
 import { describe, expect, it, vi } from 'vitest';
 import { render } from 'vitest-browser-react';
+import type { InitiativeTableEntry } from '../../db/record/InitiativeTableEntry';
 import { ThemeProvider } from '../theme-provider';
 import InitiativeTable from './InitiativeTable';
-import type { InitiativeTableEntry } from './InitiativeTableEntry';
 
 describe('InitiativeTable', () => {
 	it('shows the charactres info', async () => {
 		const creature: InitiativeTableEntry = {
-			id: '1',
-			name: 'Goblin',
-			race: 'Goblin',
+			id: '1' as InitiativeTableEntry['id'],
+			encounterId: 'enc1' as InitiativeTableEntry['encounterId'],
+			revision: 0,
 			initiative: 15,
 			healthDisplay: 'Healthy',
-			debuffs: [],
 			effect: undefined,
-			description: undefined,
+			creature: {
+				type: 'generic',
+				data: {
+					name: 'Goblin',
+					race: 'Goblin',
+					hp: 7,
+					maxHp: 7,
+					debuffs: [],
+					description: undefined,
+				},
+			},
 		};
 
 		const screen = render(
@@ -31,24 +40,42 @@ describe('InitiativeTable', () => {
 
 	it('triggers onSwap when an entity is dragged and dropped', async () => {
 		const creature1: InitiativeTableEntry = {
-			id: '1',
-			name: 'Goblin',
-			race: 'Goblin',
+			id: '1' as InitiativeTableEntry['id'],
+			revision: 0,
+			encounterId: 'enc1' as InitiativeTableEntry['encounterId'],
 			initiative: 15,
 			healthDisplay: 'Healthy',
-			debuffs: [],
 			effect: undefined,
-			description: undefined,
+			creature: {
+				type: 'generic',
+				data: {
+					name: 'Goblin',
+					race: 'Goblin',
+					debuffs: [],
+					description: undefined,
+					hp: 12,
+					maxHp: 12,
+				},
+			},
 		};
 		const creature2: InitiativeTableEntry = {
-			id: '2',
-			name: 'Orc',
-			race: 'Orc',
+			id: '2' as InitiativeTableEntry['id'],
+			revision: 0,
+			encounterId: 'enc1' as InitiativeTableEntry['encounterId'],
 			initiative: 10,
 			healthDisplay: 'Wounded',
-			debuffs: [],
 			effect: undefined,
-			description: undefined,
+			creature: {
+				type: 'generic',
+				data: {
+					name: 'Orc',
+					race: 'Orc',
+					debuffs: [],
+					description: undefined,
+					hp: 12,
+					maxHp: 12,
+				},
+			},
 		};
 
 		const onSwapMock = vi.fn();
@@ -72,14 +99,23 @@ describe('InitiativeTable', () => {
 
 	it('shows actions for entities', async () => {
 		const creature: InitiativeTableEntry = {
-			id: '1',
-			name: 'Goblin',
-			race: 'Goblin',
+			id: '1' as InitiativeTableEntry['id'],
+			revision: 0,
+			encounterId: 'enc1' as InitiativeTableEntry['encounterId'],
 			initiative: 15,
 			healthDisplay: 'Healthy',
-			debuffs: [],
 			effect: undefined,
-			description: undefined,
+			creature: {
+				type: 'generic',
+				data: {
+					name: 'Goblin',
+					race: 'Goblin',
+					debuffs: [],
+					description: undefined,
+					hp: 12,
+					maxHp: 12,
+				},
+			},
 		};
 
 		const screen = render(

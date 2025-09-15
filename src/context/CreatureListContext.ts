@@ -1,5 +1,5 @@
+import type { Creature } from '@/db/record/Creature';
 import type { Merge } from '@/lib/changeSet';
-import type { Creature } from '@/type/Creature';
 import { createContext } from 'react';
 
 export const CreatureListContext = createContext<{

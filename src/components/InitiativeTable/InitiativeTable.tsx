@@ -1,4 +1,5 @@
 import { Fragment, useCallback, useRef, type ReactNode } from 'react';
+import type { InitiativeTableEntry } from '../../db/record/InitiativeTableEntry';
 import { Button } from '../ui/button';
 import {
 	Table,
@@ -9,7 +10,6 @@ import {
 	TableHeader,
 	TableRow,
 } from '../ui/table';
-import type { InitiativeTableEntry } from './InitiativeTableEntry';
 import InitiativeTableRow from './InitiativeTableRow';
 
 const defaultFieldVisibility = {
@@ -34,7 +34,7 @@ export default function InitiativeTable({
 	onEntityClick,
 	onToggleTurn,
 	onAdvanceTurnClick,
-	fieldVisibility: vis,
+	fieldVisibility: vis = defaultFieldVisibility,
 }: {
 	entries: InitiativeTableEntry[];
 	currentTurnEntityId?: string | null;
@@ -45,7 +45,7 @@ export default function InitiativeTable({
 	onEntityClick?: (entity: InitiativeTableEntry) => void;
 	onToggleTurn?: (entity: InitiativeTableEntry, pressed: boolean) => void;
 	onAdvanceTurnClick?: () => void;
-	fieldVisibility: FieldVisibility;
+	fieldVisibility?: FieldVisibility;
 }) {
 	const draggable = Boolean(onSwapEntities) || undefined;
 	const dragFromIndex = useRef<number | null>(null);

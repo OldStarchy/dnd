@@ -1,6 +1,6 @@
+import { type Creature } from '@/db/record/Creature';
 import useCustomCreatureList from '@/hooks/useCustomCreatureList';
 import { cn } from '@/lib/utils';
-import { type Creature } from '@/type/Creature';
 import { ArrowRight, ChevronLeft } from 'lucide-react';
 import {
 	useEffect,
@@ -8,6 +8,7 @@ import {
 	type ComponentPropsWithoutRef,
 	type ReactNode,
 } from 'react';
+import type { InitiativeTableEntry } from '../../db/record/InitiativeTableEntry';
 import Debuff from '../Debuff';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Button } from '../ui/button';
@@ -27,7 +28,6 @@ import { Dialog, DialogContent, DialogHeader } from '../ui/dialog';
 import { TableBody, TableCell, TableRow } from '../ui/table';
 import { Toggle } from '../ui/toggle';
 import type { FieldVisibility } from './InitiativeTable';
-import type { InitiativeTableEntry } from './InitiativeTableEntry';
 
 export default function InitiativeTableRow({
 	entry,
@@ -52,7 +52,7 @@ export default function InitiativeTableRow({
 
 	const [creatureInfo, setCreatureInfo] = useState<Omit<
 		Creature,
-		'id'
+		'id' | 'revision'
 	> | null>(null);
 
 	useEffect(() => {
