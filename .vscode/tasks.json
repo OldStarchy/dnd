@@ -21,6 +21,14 @@
 			"runOptions": {
 				"runOn": "folderOpen"
 			}
+		},
+		{
+			"type": "npm",
+			"script": "type-check/watch",
+			"group": "build",
+			"problemMatcher": ["$tsc-watch"],
+			"label": "npm: type-check/watch",
+			"detail": "tsc --project tsconfig.app.json --noEmit --watch"
 		}
 	]
 }

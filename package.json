@@ -10,6 +10,7 @@
     "preview": "vite preview",
     "test": "vitest",
     "coverage": "vitest run --coverage",
+    "type-check/watch": "tsc --project tsconfig.app.json --noEmit --watch",
     "bundle-swagger": "cd dnd5eapi && npm ci && npm run bundle-swagger",
     "generate-swagger": "openapi-typescript ./dnd5eapi/dist/openapi.json -o ./src/generated/dnd5eapi.d.ts",
     "generate": "yarn bundle-swagger && yarn generate-swagger"
