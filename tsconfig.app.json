@@ -17,7 +17,8 @@
 
 		/* Linting */
 		"strict": true,
-		"noUnusedLocals": true,
+		// TODO: change this to true after https://github.com/microsoft/TypeScript/pull/62323
+		"noUnusedLocals": false,
 		"noUnusedParameters": true,
 		"erasableSyntaxOnly": false,
 		"noFallthroughCasesInSwitch": true,
