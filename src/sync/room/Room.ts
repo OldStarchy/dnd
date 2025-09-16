@@ -13,6 +13,7 @@ import {
 } from '@/db/record/InitiativeTableEntry';
 import autoSubject from '@/decorators/autoSubject';
 import { traceAsync } from '@/decorators/trace';
+import { setJsonStorage } from '@/hooks/useJsonStorage';
 import Logger from '@/lib/log';
 import { BehaviorSubject, map } from 'rxjs';
 import { CollectionHost } from '../db/CollectionHost';
@@ -49,7 +50,9 @@ export default class Room implements RoomApi {
 			.inspect((doc) => doc.update({ replace: meta }))
 			.unwrapOrElse(() => Room.rooms.create(meta));
 
-		return await Room.construct(metaDoc);
+		const room = await Room.construct(metaDoc);
+
+		return room;
 	}
 
 	readonly db: RoomApi['db'];
@@ -180,7 +183,6 @@ export default class Room implements RoomApi {
 						{
 							host: roomHost.host,
 							id: connection.id,
-							online: true,
 						},
 					],
 				},
@@ -197,7 +199,6 @@ export default class Room implements RoomApi {
 							{
 								host: roomHost.host,
 								id: member.id,
-								online: false,
 							},
 						],
 					}),
@@ -219,9 +220,7 @@ export default class Room implements RoomApi {
 					this.db.member.getOne({ identity: id }).unwrapOrElse(() =>
 						this.db.member.create({
 							name: 'Unnamed player',
-							identities: [
-								{ host: roomHost.host, id, online: false },
-							],
+							identities: [{ host: roomHost.host, id }],
 						}),
 					);
 				}
@@ -232,27 +231,6 @@ export default class Room implements RoomApi {
 					this.db.member
 						.getOne({ identity: id })
 						.map((doc) => doc.delete());
-				}
-
-				if (msg.type === 'room.members.presence') {
-					const { id, connected: online } = msg.data;
-
-					this.db.member.getOne({ identity: id }).map((doc) => {
-						return doc.update({
-							merge: {
-								identities: {
-									selected: [
-										{
-											filter: { id },
-											merge: {
-												online: { replace: online },
-											},
-										},
-									],
-								},
-							},
-						});
-					});
 				}
 			}),
 		);
@@ -270,6 +248,17 @@ export default class Room implements RoomApi {
 			[roomHost.host, publication],
 		]);
 
+		setJsonStorage('roomSession', {
+			lastRoom: {
+				type: 'hosted',
+				host: roomHost.host,
+				membershipToken,
+				code: roomCode,
+				name: this.meta.data.value.name,
+				roomId: this.meta.data.value.id,
+			},
+		});
+
 		return publication;
 	}
 
@@ -284,5 +273,16 @@ export default class Room implements RoomApi {
 			await pub['revoke']();
 		}
 		this.hosts = new Map();
+	}
+
+	get presence$() {
+		// TODO: This is just assuming a single host which is fine because only
+		// one host is supported right now but its still not good to do this.
+		const firstHost = this.hosts.entries().take(1).toArray()[0]?.[1];
+
+		return (
+			firstHost?.connection.presence$ ??
+			new BehaviorSubject(new Map<string, boolean>())
+		);
 	}
 }

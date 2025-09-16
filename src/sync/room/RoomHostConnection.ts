@@ -38,16 +38,18 @@ export default class RoomHostConnection {
 	}>;
 	readonly request$: Observable<InboundRequest>;
 	readonly notification$: Observable<InboundNotification>;
-	private presence$: Observable<
-		InboundSystemMessageOfType<'room.members.presence'>
-	>;
+	#presence$: Observable<InboundSystemMessageOfType<'room.members.presence'>>;
+
+	readonly presence$ = new BehaviorSubject<ReadonlyMap<MemberId, boolean>>(
+		new Map(),
+	);
 
 	get gm() {
 		return this.members.get(this.gameMasterId)!;
 	}
 
 	getMember(id: MemberId) {
-		return this.members.get(id);
+		return this.members.get(id) ?? null;
 	}
 
 	getMembers(): Iterable<Member> {
@@ -71,6 +73,9 @@ export default class RoomHostConnection {
 		this.gameMasterId = gameMasterId;
 		this.host = host;
 		this.members = new Map();
+		this.presence$.next(
+			new Map(currentMembers.map((m) => [m.id, m.online])),
+		);
 
 		this.systemNotification$ = connection.message$;
 		connection.state$.subscribe(() => this.trySend());
@@ -129,7 +134,7 @@ export default class RoomHostConnection {
 			}),
 		);
 
-		this.presence$ = this.systemNotification$.pipe(
+		this.#presence$ = this.systemNotification$.pipe(
 			filterMap((notification) =>
 				notification.type === 'room.members.presence'
 					? notification.data
@@ -151,18 +156,40 @@ export default class RoomHostConnection {
 						notification.data.id,
 						this.createMember(notification.data.id, false),
 					);
+					this.presence$.next(
+						new Map([
+							...this.presence$.value.entries(),
+							[notification.data.id, false],
+						]),
+					);
 					return;
 				}
 				case 'room.members.left':
 					this.members.delete(notification.data.id);
+					this.presence$.next(
+						new Map(
+							[...this.presence$.value.entries()].filter(
+								([id]) => id !== notification.data.id,
+							),
+						),
+					);
 					return;
+				case 'room.members.presence': {
+					const { id, connected: online } = notification.data;
+					this.presence$.next(
+						new Map([
+							...this.presence$.value.entries(),
+							[id, online],
+						]),
+					);
+				}
 			}
 		});
 	}
 
 	private createMember(id: MemberId, online: boolean) {
 		const online$ = new BehaviorSubject(online);
-		this.presence$
+		this.#presence$
 			.pipe(filterMap((presence) => (presence.id === id ? online : Skip)))
 			.subscribe(online$);
 

@@ -1,6 +1,7 @@
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
+import useRoomSession from '@/hooks/room/useRoomSession';
 import useBehaviorSubject from '@/hooks/useBehaviorSubject';
 import useCollectionQuery from '@/hooks/useCollectionQuery';
 import Logger from '@/lib/log';
@@ -15,7 +16,127 @@ import { RoomCode } from '@/sync/room/types';
 import { RefreshCcw } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
-function RoomView() {
+/**
+ * This page allows creating, publishing, or joining a room, as well as managing
+ * room metadata and members when the room is published.
+ */
+function RoomConfigurator() {
+	const room = useRoomContext();
+	const roomActions = useRoomActionsContext();
+	const [roomSession, setRoomSession] = useRoomSession();
+	const roomHost = useRoomHost();
+
+	const [joinRoomCode, setJoinRoomCode] = useState('');
+
+	if (!room) {
+		return (
+			<div>
+				You're not currently in a room.
+				{roomSession.lastRoom !== null &&
+					(roomSession.lastRoom.type === 'hosted' ? (
+						<div>
+							<p>
+								You have an existing session token for a room
+								you hosted.
+							</p>
+							<p>
+								Previously hosted "{roomSession.lastRoom.name}"
+								at {roomSession.lastRoom.host} with code{' '}
+								<code>{roomSession.lastRoom.code}</code>
+							</p>
+							<Button
+								onClick={() =>
+									roomActions
+										.reconnect(
+											roomHost,
+											roomSession.lastRoom!
+												.membershipToken,
+										)
+										.catch((e) => {
+											setRoomSession({
+												lastRoom: null,
+											});
+											Logger.error(
+												'Failed to reconnect to room:',
+												e,
+											);
+										})
+								}
+							>
+								Rehost
+							</Button>
+						</div>
+					) : (
+						<div>
+							<p>
+								You have an existing session token from a
+								session you joined that might still be valid,
+								you can try reconnecting.
+							</p>
+							<p>
+								Previously Joined "{roomSession.lastRoom.name}"
+								at {roomSession.lastRoom.host} with code{' '}
+								<code>{roomSession.lastRoom.code}</code>
+							</p>
+							<Button
+								onClick={() =>
+									roomActions
+										.rejoin(
+											roomHost,
+											roomSession.lastRoom!
+												.membershipToken,
+										)
+										.catch((e) => {
+											setRoomSession({
+												lastRoom: null,
+											});
+											Logger.error(
+												'Failed to rejoin room:',
+												e,
+											);
+										})
+								}
+							>
+								Rejoin
+							</Button>
+						</div>
+					))}
+				<div>
+					<Button
+						onClick={() => roomActions.create({ name: 'My Room' })}
+					>
+						Create Room
+					</Button>
+					<p>
+						you can publish it so others can join in the next step
+					</p>
+				</div>
+				<div>
+					<Input
+						type="text"
+						placeholder="Room Code"
+						value={joinRoomCode}
+						onChange={(e) => setJoinRoomCode(e.target.value)}
+					/>
+					<Button
+						onClick={() =>
+							roomActions.join(roomHost, RoomCode(joinRoomCode))
+						}
+					>
+						Join Room
+					</Button>
+					<p>
+						if you have a room code, enter it above to join an
+						existing room
+					</p>
+				</div>
+			</div>
+		);
+	}
+
+	return <RoomConfiguratorInner />;
+}
+function RoomConfiguratorInner() {
 	const room = useRoomContext();
 	const roomActions = useRoomActionsContext();
 
@@ -61,6 +182,7 @@ function RoomView() {
 
 	return (
 		<div>
+			<h2>Room Configuration</h2>
 			<div className="text-red-600">{error}</div>
 			{room ? (
 				<>
@@ -70,8 +192,8 @@ function RoomView() {
 						<GenericRoomView room={room} />
 					) : null}
 
-					<Button onClick={() => roomActions.close()}>
-						Close Room
+					<Button type="button" onClick={() => roomActions.close()}>
+						Leave/Close Room
 					</Button>
 
 					<Input
@@ -90,6 +212,7 @@ function RoomView() {
 						placeholder="Room Name"
 					/>
 					<Button
+						type="button"
 						onClick={() =>
 							roomActions.create({
 								name:
@@ -106,6 +229,7 @@ function RoomView() {
 						placeholder="Room Code"
 					/>
 					<Button
+						type="button"
 						onClick={() =>
 							roomActions.join(
 								roomHost,
@@ -121,7 +245,7 @@ function RoomView() {
 	);
 }
 
-export default RoomView;
+export default RoomConfigurator;
 
 function LocalRoomView({
 	room,
@@ -188,6 +312,7 @@ function LocalRoomView({
 function GenericRoomView({ room }: { room: RoomApi }) {
 	const meta = useBehaviorSubject(room.meta.data);
 	const members = useCollectionQuery(room.db.member);
+	const presense = useBehaviorSubject(room.presence$);
 
 	return (
 		<>
@@ -212,7 +337,7 @@ function GenericRoomView({ room }: { room: RoomApi }) {
 										<li key={id.host} className="pl-2">
 											<span className="text-indigo-300">
 												{id.id}{' '}
-												{id.online
+												{presense.get(id.id)
 													? '(Online)'
 													: '(Offline)'}
 											</span>

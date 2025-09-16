@@ -9,6 +9,7 @@ import {
 	type InitiativeTableEntryRecord,
 } from '@/db/record/InitiativeTableEntry';
 import { traceAsync } from '@/decorators/trace';
+import { setJsonStorage } from '@/hooks/useJsonStorage';
 import Logger from '@/lib/log';
 import RemoteCollection from '@/sync/db/RemoteCollection';
 import { memberSchema, type MemberRecordType } from '@/sync/room/member/Record';
@@ -29,7 +30,19 @@ export default class RemoteRoom implements RoomApi {
 
 		const membershipToken = result.membershipToken as MembershipToken;
 
-		return await this.reconnect(roomHost, membershipToken);
+		const room = await this.reconnect(roomHost, membershipToken);
+
+		setJsonStorage('roomSession', {
+			lastRoom: {
+				type: 'joined',
+				host: roomHost.host,
+				membershipToken,
+				code: roomCode,
+				name: room.meta.data.value.name,
+			},
+		});
+
+		return room;
 	}
 
 	@traceAsync(Logger.INFO)
@@ -47,12 +60,24 @@ export default class RemoteRoom implements RoomApi {
 			.getOne()
 			.unwrap('Failed to retrieve room metadata for room');
 
-		return await RemoteRoom.construct(
+		const room = await RemoteRoom.construct(
 			roomHost,
 			membershipToken,
 			connection,
 			meta,
 		);
+
+		setJsonStorage('roomSession', {
+			lastRoom: {
+				type: 'joined',
+				host: roomHost.host,
+				membershipToken,
+				code: room.code$.value!,
+				name: meta.data.value.name,
+			},
+		});
+
+		return room;
 	}
 
 	static async joinPort(_port: MessagePort): Promise<RemoteRoom> {
@@ -116,7 +141,14 @@ export default class RemoteRoom implements RoomApi {
 	}
 
 	async leave(): Promise<void> {
+		setJsonStorage('roomSession', {
+			lastRoom: null,
+		});
 		await this.connection.close();
 		await this.connection.host.room.leave(this.membershipToken);
+	}
+
+	get presence$() {
+		return this.connection.presence$;
 	}
 }

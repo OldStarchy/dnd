@@ -20,7 +20,7 @@ import { ConfigurableRoomHostProvider } from './components/context/ConfigurableR
 import RoomContextProvider from './sync/react/components/RoomActionsContextProvider';
 import DatabaseViewer from './views/DatabaseViewer';
 import Launch from './views/Launch';
-import RoomView from './views/Room';
+import RoomConfigurator from './views/Room';
 
 Logger.default.addWriter(Logger.INFO, consoleWriter);
 
@@ -46,7 +46,7 @@ const routes: RouteObject[] = [
 			},
 			{
 				path: '/room',
-				Component: RoomView,
+				Component: RoomConfigurator,
 			},
 			// {
 			// 	path: '/characters',

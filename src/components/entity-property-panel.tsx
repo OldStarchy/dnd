@@ -1,37 +1,6 @@
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { HealthObfuscation } from '@/store/types/Entity';
-import { Debuff, debuffSpec } from '@/type/Debuff';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { ChevronDown, Plus } from 'lucide-react';
-import { useFieldArray, useForm } from 'react-hook-form';
-import { Fragment } from 'react/jsx-runtime';
+import { debuffSpec } from '@/type/Debuff';
 import { z } from 'zod';
-import {
-	DropdownMenu,
-	DropdownMenuContent,
-	DropdownMenuGroup,
-	DropdownMenuItem,
-	DropdownMenuLabel,
-	DropdownMenuTrigger,
-} from './ui/dropdown-menu';
-import {
-	Form,
-	FormControl,
-	FormField,
-	FormItem,
-	FormLabel,
-	FormMessage,
-} from './ui/form';
-import { Label } from './ui/label';
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from './ui/select';
-import { Switch } from './ui/switch';
 
 const colors = [
 	{ className: 'bg-red-500', value: 'bg-red-500', label: 'Red' },
@@ -90,6 +59,9 @@ function EntityPropertyPanel({
 	entity: EntityPropertySchema;
 	onChange: (entity: EntityPropertySchema) => void;
 }) {
+	console.log(entity, onChange);
+	return <div> NYI </div>;
+	/*
 	const form = useForm<EntityPropertySchema>({
 		resolver: zodResolver(entityPropertySpec),
 		defaultValues: entity,
@@ -520,6 +492,7 @@ function EntityPropertyPanel({
 			</Form>
 		</div>
 	);
+	*/
 }
 
 export default EntityPropertyPanel;

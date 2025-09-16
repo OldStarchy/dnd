@@ -9,7 +9,7 @@ import type { InitiativeTableEntryRecord } from '@/db/record/InitiativeTableEntr
 import type { BehaviorSubject } from 'rxjs';
 import type { MemberRecordType } from './member/Record';
 import type { RoomMetaRecordType } from './RoomMeta';
-import type { RoomCode } from './types';
+import type { MemberId, RoomCode } from './types';
 
 export default interface RoomApi {
 	readonly me: DocumentApi<MemberRecordType>;
@@ -23,4 +23,6 @@ export default interface RoomApi {
 		readonly encounter: Collection<EncounterRecordType>;
 		readonly initiativeTableEntry: Collection<InitiativeTableEntryRecord>;
 	};
+
+	readonly presence$: BehaviorSubject<ReadonlyMap<MemberId, boolean>>;
 }

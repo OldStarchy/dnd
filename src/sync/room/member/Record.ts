@@ -9,8 +9,7 @@ export const memberSchema = z.object({
 	identities: z
 		.object({
 			host: z.string(),
-			id: z.string(),
-			online: z.boolean(),
+			id: z.string().brand<'MemberId'>(),
 		})
 		.array(),
 });

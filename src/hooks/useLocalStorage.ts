@@ -1,3 +1,4 @@
+import { LOCAL_STORAGE_NAMESPACE } from '@/const';
 import {
 	useCallback,
 	useEffect,
@@ -11,9 +12,21 @@ declare global {
 	interface LocalStorageKeys {}
 }
 
+/**
+ * Stores a string value in local storage.
+ *
+ * The key will automatically be prefixed with {@link LOCAL_STORAGE_NAMESPACE}.
+ */
 function useLocalStorage<TKey extends keyof LocalStorageKeys>(
 	key: TKey,
 ): [string | null, Dispatch<SetStateAction<string | null>>];
+
+/**
+ * Converts values to string before storing them in local storage and parses
+ * them with the provided readTransformer when reading them back.
+ *
+ * The key will automatically be prefixed with {@link LOCAL_STORAGE_NAMESPACE}.
+ */
 function useLocalStorage<
 	TKey extends keyof LocalStorageKeys,
 	TValue extends string | null,
@@ -21,6 +34,13 @@ function useLocalStorage<
 	key: TKey,
 	readTransformer: (stored: string | null) => TValue,
 ): [TValue, Dispatch<SetStateAction<string | null>>];
+
+/**
+ * Allows storing arbitrary types in local storage by using the provided
+ * read and write transformers to convert the values to and from strings.
+ *
+ * The key will automatically be prefixed with {@link LOCAL_STORAGE_NAMESPACE}.
+ */
 function useLocalStorage<TKey extends keyof LocalStorageKeys, TValue>(
 	key: TKey,
 	readTransformer: (stored: string | null) => TValue,
@@ -33,6 +53,8 @@ function useLocalStorage<T>(
 	writeTransformer: (value: T | string | null) => string | null = (v) =>
 		v as string | null,
 ): [T | string | null, Dispatch<SetStateAction<T | string | null>>] {
+	key = LOCAL_STORAGE_NAMESPACE + ':' + key;
+
 	const [value, setValue] = useState<T | string | null>(
 		readTransformer
 			? readTransformer(localStorage.getItem(key))
@@ -102,3 +124,40 @@ function useLocalStorage<T>(
 }
 
 export default useLocalStorage;
+
+export function getLocalStorage<T>(
+	key: string,
+	readTransformer?: (stored: string | null) => T,
+): T {
+	key = LOCAL_STORAGE_NAMESPACE + ':' + key;
+	const stored = localStorage.getItem(key);
+	return readTransformer ? readTransformer(stored) : (stored as T);
+}
+
+export function setLocalStorage<T>(
+	key: string,
+	value: T,
+	writeTransformer: (value: T) => string | null,
+): void {
+	key = LOCAL_STORAGE_NAMESPACE + ':' + key;
+
+	const oldValue = localStorage.getItem(key);
+	const newValue = writeTransformer(value);
+
+	if (newValue === null) {
+		localStorage.removeItem(key);
+	} else {
+		if (oldValue === newValue) {
+			return;
+		}
+		localStorage.setItem(key, newValue);
+	}
+
+	window.dispatchEvent(
+		new StorageEvent('storage', {
+			key,
+			newValue,
+			oldValue,
+		}),
+	);
+}
