@@ -3,7 +3,7 @@ import '@/index.css';
 import Layout from '@/layout/layout';
 import Logger, { consoleWriter } from '@/lib/log';
 import { primaryStore } from '@/store/primary-store';
-import Home from '@/views/Encounter';
+import Encounter from '@/views/Encounter';
 import Monsters from '@/views/Monsters';
 import PopoutView from '@/views/Popout';
 import Sandbox from '@/views/Sandbox';
@@ -19,6 +19,7 @@ import {
 import { ConfigurableRoomHostProvider } from './components/context/ConfigurableRoomHostProvider';
 import RoomContextProvider from './sync/react/components/RoomActionsContextProvider';
 import DatabaseViewer from './views/DatabaseViewer';
+import Launch from './views/Launch';
 import RoomView from './views/Room';
 
 Logger.default.addWriter(Logger.INFO, consoleWriter);
@@ -37,7 +38,11 @@ const routes: RouteObject[] = [
 		children: [
 			{
 				index: true,
-				Component: Home,
+				Component: Launch,
+			},
+			{
+				path: '/encounter',
+				Component: Encounter,
 			},
 			{
 				path: '/room',
