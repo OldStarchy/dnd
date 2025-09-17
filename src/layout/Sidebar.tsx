@@ -16,6 +16,7 @@ import {
 	SidebarMenuButton,
 	SidebarMenuItem,
 } from '@/components/ui/sidebar';
+import { PAGES } from '@/const';
 import {
 	BugPlay,
 	ChevronUp,
@@ -43,9 +44,9 @@ export default function AppSidebar() {
 			label: 'Room',
 			children: [
 				{
-					label: 'Create/Join Room',
+					label: PAGES.ROOM_MANAGEMENT.title,
 					icon: <Users2 />,
-					to: '/room',
+					to: PAGES.ROOM_MANAGEMENT.url,
 				},
 			],
 		},
@@ -59,9 +60,9 @@ export default function AppSidebar() {
 					to: '/',
 				},
 				{
-					label: 'Game Master View',
+					label: PAGES.ENCOUNTER.title,
 					icon: <Crown />,
-					to: '/encounter',
+					to: PAGES.ENCOUNTER.url,
 				},
 				{
 					label: 'Player View',
@@ -74,9 +75,9 @@ export default function AppSidebar() {
 			label: 'Character Presets',
 			children: [
 				{
-					label: 'Custom Heroes & Creatures',
+					label: PAGES.CREATURE_EDITOR.title,
 					icon: <Users2 />,
-					to: '/characters',
+					to: PAGES.CREATURE_EDITOR.url,
 				},
 				{
 					label: '5e Monsters',
