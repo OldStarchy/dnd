@@ -38,5 +38,5 @@ declare global {
  * This is used to restore sessions on page reloads.
  */
 export default function useRoomSession() {
-	return useJsonStorage('roomSession', { lastRoom: null }, roomSessionSchema);
+	return useJsonStorage('roomSession', {}, roomSessionSchema);
 }

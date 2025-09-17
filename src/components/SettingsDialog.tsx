@@ -9,7 +9,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { useServerConfig } from '@/hooks/useServerConfig';
+import { useLocalConfig } from '@/hooks/useLocalConfig';
 import { useEffect, useState } from 'react';
 
 interface SettingsDialogProps {
@@ -18,7 +18,7 @@ interface SettingsDialogProps {
 }
 
 export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
-	const [serverUrl, setServerUrl] = useServerConfig();
+	const [serverUrl, setServerUrl] = useLocalConfig();
 	const [tempServerUrl, setTempServerUrl] = useState(serverUrl);
 
 	useEffect(() => {

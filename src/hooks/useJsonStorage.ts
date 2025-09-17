@@ -1,7 +1,8 @@
 import { LOCAL_STORAGE_NAMESPACE } from '@/const';
+import Logger from '@/lib/log';
 import { Err, Ok, type Result } from '@/lib/Result';
-import type { Dispatch, SetStateAction } from 'react';
-import type z from 'zod';
+import type { Dispatch } from 'react';
+import z from 'zod';
 import useLocalStorage, {
 	getLocalStorage,
 	setLocalStorage,
@@ -11,18 +12,26 @@ function writeTransformer<T>(): (value: T) => string {
 	return (value: T) => JSON.stringify(value);
 }
 
-function readTransformer<T>(
-	defaultValue: T,
-	schema: z.ZodType<T>,
-): (stored: string | null) => Result<T, z.ZodError<T>> {
+function readTransformer<Schema extends z.ZodType>(
+	defaultValue: z.input<Schema>,
+	schema: Schema,
+): (
+	stored: string | null,
+) => Result<
+	z.output<Schema>,
+	{ error: z.ZodError<z.output<Schema>>; defaultValue: z.output<Schema> }
+> {
 	return (stored: string | null) => {
-		if (stored === null) return Ok(defaultValue);
+		if (stored === null) return Ok(schema.parse(defaultValue));
 
 		const data = JSON.parse(stored) as unknown;
 
 		const parsed = schema.safeParse(data);
 		if (!parsed.success) {
-			return Err(parsed.error);
+			return Err({
+				error: parsed.error,
+				defaultValue: schema.parse(defaultValue),
+			});
 		}
 
 		return Ok(parsed.data);
@@ -37,56 +46,49 @@ function readTransformer<T>(
  *
  * The key will automatically be prefixed with {@link LOCAL_STORAGE_NAMESPACE}.
  */
-function useJsonStorage<TKey extends keyof LocalStorageKeys, TValue>(
-	key: TKey,
-	defaultValue: TValue,
-	schema: z.ZodType<TValue>,
-) {
+function useJsonStorage<
+	TKey extends keyof LocalStorageKeys,
+	Schema extends z.ZodType<LocalStorageKeys[TKey]>,
+>(key: TKey, defaultValue: z.input<Schema>, schema: Schema) {
 	const read = readTransformer(defaultValue, schema);
-	const write = writeTransformer<TValue>();
+	const write = writeTransformer<z.output<Schema>>();
 
-	return useLocalStorage<TKey, TValue>(
+	return useLocalStorage<TKey, z.output<Schema>>(
 		key,
 		(stored) => {
-			return read(stored)
-				.inspectErr((err) => {
-					console.error(
-						'Failed to parse localStorage key',
-						key,
-						'with value',
-						stored,
-						'error:',
-						err,
-					);
-				})
-				.unwrapOr(defaultValue);
+			return read(stored).unwrapOrElse(({ error, defaultValue }) => {
+				Logger.warn(
+					`Failed to parse localStorage key '${key}' with value. Used default.`,
+					{ input: stored, errors: z.treeifyError(error).errors },
+				);
+				return defaultValue;
+			});
 		},
 		write,
-	) as [TValue, Dispatch<SetStateAction<TValue>>];
+	) as [
+		z.output<Schema>,
+		Dispatch<
+			z.input<Schema> | ((prev: z.output<Schema>) => z.input<Schema>)
+		>,
+	];
 }
 
 export default useJsonStorage;
 
-export function getJsonStorage<TKey extends keyof LocalStorageKeys, TValue>(
-	key: TKey,
-	defaultValue: TValue,
-	schema: z.ZodType<TValue>,
-): TValue {
+export function getJsonStorage<
+	TKey extends keyof LocalStorageKeys,
+	Schema extends z.ZodType<LocalStorageKeys[TKey]>,
+>(key: TKey, defaultValue: z.input<Schema>, schema: Schema): z.output<Schema> {
 	const read = readTransformer(defaultValue, schema);
 
 	return getLocalStorage(key, (stored) => {
-		return read(stored)
-			.inspectErr((err) => {
-				console.error(
-					'Failed to parse localStorage key',
-					key,
-					'with value',
-					stored,
-					'error:',
-					err,
-				);
-			})
-			.unwrapOr(defaultValue);
+		return read(stored).unwrapOrElse(({ error, defaultValue }) => {
+			Logger.warn(
+				`Failed to parse localStorage key '${key}' with value. Used default.`,
+				{ input: stored, errors: z.treeifyError(error).errors },
+			);
+			return defaultValue;
+		});
 	});
 }
 

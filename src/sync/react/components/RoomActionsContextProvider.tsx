@@ -1,8 +1,18 @@
+import useRoomSession from '@/hooks/room/useRoomSession';
+import { useLocalConfig } from '@/hooks/useLocalConfig';
 import { RoomActionsContext } from '@/sync/react/context/RoomActionsContext';
 import RemoteRoom from '@/sync/room/RemoteRoom';
 import Room from '@/sync/room/Room';
 import type RoomApi from '@/sync/room/RoomApi';
-import { useCallback, useState, type ReactNode } from 'react';
+import RoomHost from '@/sync/room/RoomHost';
+import {
+	useCallback,
+	useContext,
+	useEffect,
+	useRef,
+	useState,
+	type ReactNode,
+} from 'react';
 import { filter, take } from 'rxjs';
 import { RoomContext } from '../context/RoomContext';
 
@@ -64,7 +74,46 @@ export default function RoomActionsContextProvider({
 
 	return (
 		<Provider value={{ create, reconnect, join, rejoin, close }}>
-			<RoomProvider value={room}>{children}</RoomProvider>
+			<RoomProvider value={room}>
+				<ReloadRoomOnLoad />
+				{children}
+			</RoomProvider>
 		</Provider>
 	);
+}
+
+function ReloadRoomOnLoad() {
+	const roomActions = useContext(RoomActionsContext);
+	const room = useContext(RoomContext);
+	const [session] = useRoomSession();
+	const [localConfig] = useLocalConfig();
+
+	const once = useRef(false);
+
+	useEffect(() => {
+		if (once.current) return;
+		once.current = true;
+
+		if (!localConfig.reconnectOnPageLoad) return;
+		if (!roomActions) return;
+		if (room) return;
+		if (session.lastRoom === null) return;
+
+		const lastRoom = session.lastRoom;
+		(async () => {
+			if (lastRoom.type === 'hosted') {
+				await roomActions.reconnect(
+					RoomHost.get(lastRoom.host),
+					lastRoom.membershipToken,
+				);
+			} else if (lastRoom.type === 'joined') {
+				await roomActions.rejoin(
+					RoomHost.get(lastRoom.host),
+					lastRoom.membershipToken,
+				);
+			}
+		})();
+	}, [roomActions, room, session.lastRoom, localConfig.reconnectOnPageLoad]);
+
+	return null;
 }

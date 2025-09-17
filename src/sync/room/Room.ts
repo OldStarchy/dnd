@@ -138,18 +138,8 @@ export default class Room implements RoomApi {
 		roomHost: RoomHost,
 		token: MembershipToken,
 	): Promise<Room | null> {
-		const info = await (async () => {
-			try {
-				return await roomHost.room.get(token);
-			} catch (error) {
-				Logger.warn('Failed to reconnect to room:', error);
-				return null;
-			}
-		})();
+		const info = await roomHost.room.get(token);
 
-		if (!info) {
-			return null;
-		}
 		const { roomCode } = info;
 
 		const meta = await Room.rooms.getOne().unwrap('Room meta not found');
@@ -267,6 +257,9 @@ export default class Room implements RoomApi {
 	}
 
 	async close(): Promise<void> {
+		setJsonStorage('roomSession', {
+			lastRoom: null,
+		});
 		this.meta.delete();
 
 		for (const pub of this.hosts.values()) {

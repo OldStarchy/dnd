@@ -56,11 +56,11 @@ export class Result<T, E> {
 		return null;
 	}
 
-	unwrapOrElse(_fn: () => T): T {
+	unwrapOrElse(_fn: (err: E) => T): T {
 		if (this.#type === OK) {
 			return this.#value!;
 		}
-		return _fn();
+		return _fn(this.#error!);
 	}
 
 	unwrapOr(defaultValue: T): T {

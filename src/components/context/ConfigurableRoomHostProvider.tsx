@@ -1,4 +1,4 @@
-import { useServerConfig } from '@/hooks/useServerConfig';
+import { useLocalConfig } from '@/hooks/useLocalConfig';
 import { RoomHostContext } from '@/sync/react/context/RoomHostContext';
 import RoomHost from '@/sync/room/RoomHost';
 import { useMemo, type ReactNode } from 'react';
@@ -10,7 +10,7 @@ interface ConfigurableBackendApiProviderProps {
 export function ConfigurableRoomHostProvider({
 	children,
 }: ConfigurableBackendApiProviderProps) {
-	const [serverUrl] = useServerConfig();
+	const [serverUrl] = useLocalConfig();
 
 	const api = useMemo(() => {
 		const host = serverUrl || `${window.location.origin}/api`;
