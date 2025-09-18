@@ -54,7 +54,7 @@ export class CollectionHost<
 			switch (data.action) {
 				case 'get':
 					return {
-						data: (await collection.get(data.action)).toRaw(),
+						data: (await collection.get(data.filter)).toRaw(),
 					};
 
 				case 'getOne':
