@@ -2,8 +2,9 @@ import { Button } from '@/components/ui/button';
 import useBehaviorSubject from '@/hooks/useBehaviorSubject';
 import useRoomActionsContext from '@/sync/react/hooks/useRoomActionsContext';
 import useRoomContext from '@/sync/react/hooks/useRoomContext';
+import Room from '@/sync/room/Room';
 import type RoomApi from '@/sync/room/RoomApi';
-import { Copy, Settings } from 'lucide-react';
+import { Copy, Crown, Settings } from 'lucide-react';
 import { Link } from 'react-router';
 
 export default function RoomWidget() {
@@ -32,7 +33,12 @@ function RoomWidgetInner({ room }: { room: RoomApi }) {
 
 	return (
 		<>
-			<span className="font-bold">
+			<span className="font-bold flex gap-2 items-center">
+				{room instanceof Room ? (
+					<Crown className="inline h-4 w-4" />
+				) : (
+					''
+				)}
 				{room.meta.data.getValue().name || 'Unnamed Room'}
 			</span>
 			<Link to="/room" title="Room Settings">
