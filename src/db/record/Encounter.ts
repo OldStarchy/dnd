@@ -24,6 +24,8 @@ export const encounterFilter: RecordFilter<EncounterRecordType> = (
 	record,
 	filter,
 ) => {
+	if (!filter) return true;
+
 	if (filter.id && record.id !== filter.id) return false;
 
 	if (

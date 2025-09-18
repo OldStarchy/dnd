@@ -1,8 +1,9 @@
 import { type Creature } from '@/db/record/Creature';
-import useCustomCreatureList from '@/hooks/useCustomCreatureList';
 import { cn } from '@/lib/utils';
+import useRoomContext from '@/sync/react/hooks/useRoomContext';
 import { ArrowRight, ChevronLeft } from 'lucide-react';
 import {
+	useCallback,
 	useEffect,
 	useState,
 	type ComponentPropsWithoutRef,
@@ -46,9 +47,16 @@ export default function InitiativeTableRow({
 	fieldVisibility: FieldVisibility;
 } & ComponentPropsWithoutRef<typeof TableRow>) {
 	const [dialogIsOpen, setDialogIsOpen] = useState(false);
-	//TODO: pull creature information from a provider, and use either a local
-	// storage provider for gm or a sync provider for players
-	const { get } = useCustomCreatureList();
+
+	const room = useRoomContext();
+	if (!room) throw new Error('Room required for initiative table');
+
+	const getCreature = useCallback(
+		(id: Creature['id']) => {
+			return room.db.creature.getOne({ id }).unwrapOrNull();
+		},
+		[room],
+	);
 
 	const [creatureInfo, setCreatureInfo] = useState<Omit<
 		Creature,
@@ -59,9 +67,9 @@ export default function InitiativeTableRow({
 		(async () => {
 			if (entry.creature.type === 'unique') {
 				const id = entry.creature.id;
-				const creature = await get(id);
+				const creature = await getCreature(id);
 				if (creature) {
-					setCreatureInfo(creature);
+					setCreatureInfo(creature.data.value);
 				} else {
 					console.error(`Creature with id ${id} not found.`);
 				}
@@ -69,7 +77,7 @@ export default function InitiativeTableRow({
 				setCreatureInfo(entry.creature.data);
 			}
 		})();
-	}, [entry.creature, get]);
+	}, [entry.creature, getCreature]);
 
 	if (!creatureInfo) {
 		return (

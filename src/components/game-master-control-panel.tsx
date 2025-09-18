@@ -8,18 +8,15 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import type { DocumentApi } from '@/db/Collection';
 import type { EncounterRecordType } from '@/db/record/Encounter';
 import { dnd5eApi, dnd5eApiUrl } from '@/dnd5eApi';
-import { useShareCode } from '@/hooks/context/useShareCode';
 import useBehaviorSubject from '@/hooks/useBehaviorSubject';
 import useCollectionQuery from '@/hooks/useCollectionQuery';
 import useLocalStorage from '@/hooks/useLocalStorage';
 import useMonsterList from '@/hooks/useMonsterList';
-import usePromiseLike from '@/hooks/usePromiseLike';
 import { HealthObfuscation, type Entity } from '@/store/types/Entity';
-import useRoomContext from '@/sync/react/hooks/useRoomContext';
 import type RoomApi from '@/sync/room/RoomApi';
 import { DropdownMenuTrigger } from '@radix-ui/react-dropdown-menu';
 import { ChevronDown, Plus } from 'lucide-react';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { type EntityPropertySchema } from './entity-property-panel';
 import InitiativeTable from './InitiativeTable/InitiativeTable';
 import {
@@ -32,32 +29,20 @@ import {
 } from './ui/dropdown-menu';
 import { Input } from './ui/input';
 
-function GameMasterControlPanel() {
-	const shareCodes = useShareCode();
+function GameMasterControlPanel({
+	room,
+	encounter,
+}: {
+	room: RoomApi;
+	encounter: DocumentApi<EncounterRecordType>;
+}) {
 	const [splitDirection] = useLocalStorage('layoutDirection', (v) =>
 		v !== 'vertical' ? 'horizontal' : 'vertical',
 	);
 
-	const room = useRoomContext();
-	if (!room) {
-		throw new Error('Room context is not available');
-	}
-
 	const entities = useCollectionQuery(room.db.initiativeTableEntry);
-	const encounter = usePromiseLike(
-		() => room.db.encounter.getOne().unwrap(),
-		[room],
-	);
-	const [_currentTurnEntityId, setCTEID] = useState<string | null>(null);
-
-	useEffect(() => {
-		if (encounter.ready) {
-			const sub = encounter.value.data.subscribe((encounter) => {
-				setCTEID(encounter.currentTurn ?? null);
-			});
-			return () => sub.unsubscribe();
-		}
-	});
+	const encounterData = useBehaviorSubject(encounter.data);
+	const shareCode = useBehaviorSubject(room.code$);
 
 	const { monsters } = useMonsterList();
 
@@ -211,12 +196,8 @@ function GameMasterControlPanel() {
 			<ResizablePanel defaultSize={50}>
 				<ScrollArea className="h-full">
 					<Button onClick={() => alert('NYI')}>Open in Popout</Button>
-					<Input
-						type="text"
-						value={shareCodes?.roomCode ?? ''}
-						readOnly
-					/>
-					<InitiativeTableWrapper />
+					<Input type="text" value={shareCode ?? ''} readOnly />
+					<EncounterView room={room} encounter={encounter} />
 					{/* <InitiativeTable
 						fieldVisibility={{
 							initiative: true,
@@ -287,11 +268,7 @@ function GameMasterControlPanel() {
 														room.db.initiativeTableEntry
 															.create({
 																encounterId:
-																	encounter
-																		.value!
-																		.data
-																		.value
-																		.id,
+																	encounterData.id,
 																creature: {
 																	type: 'unique',
 																	id: character.id,
@@ -358,11 +335,7 @@ function GameMasterControlPanel() {
 															room.db.initiativeTableEntry
 																.create({
 																	encounterId:
-																		encounter
-																			.value!
-																			.data
-																			.value
-																			.id,
+																		encounterData.id,
 																	initiative: 0,
 
 																	healthDisplay:
@@ -485,31 +458,23 @@ function rollDice(str: string): number {
 }
 export default GameMasterControlPanel;
 
-function InitiativeTableWrapper() {
-	const room = useRoomContext();
+// function InitiativeTableWrapper() {
+// 	const room = useRoomContext();
 
-	const encounter = usePromiseLike(
-		() =>
-			room
-				? room.db.encounter.getOne().unwrapOrNull()
-				: Promise.resolve(null),
-		[room],
-	);
+// 	if (!room) {
+// 		return <div>No room</div>;
+// 	}
 
-	if (!room) {
-		return <div>No room</div>;
-	}
+// 	if (!encounter.ready) {
+// 		return <div>Loading encounter...</div>;
+// 	}
 
-	if (!encounter.ready) {
-		return <div>Loading encounter...</div>;
-	}
+// 	if (!encounter.value) {
+// 		return <div>No encounter found</div>;
+// 	}
 
-	if (!encounter.value) {
-		return <div>No encounter found</div>;
-	}
-
-	return <EncounterView room={room} encounter={encounter.value} />;
-}
+// 	return <EncounterView room={room} encounter={encounter.value} />;
+// }
 
 function EncounterView({
 	room,
@@ -518,9 +483,16 @@ function EncounterView({
 	room: RoomApi;
 	encounter: DocumentApi<EncounterRecordType>;
 }) {
-	const entities = useCollectionQuery(room.db.initiativeTableEntry, {
-		encounterId: encounter.data.value.id,
-	});
+	const encounterFilter = useMemo(
+		() => ({
+			encounterId: encounter.data.value.id,
+		}),
+		[encounter],
+	);
+	const entities = useCollectionQuery(
+		room.db.initiativeTableEntry,
+		encounterFilter,
+	);
 	const creatures = useCollectionQuery(room.db.creature);
 
 	const encounterData = useBehaviorSubject(encounter.data);

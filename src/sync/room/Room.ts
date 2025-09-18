@@ -3,13 +3,18 @@ import '@/lib/OptionResultInterop';
 import { type Collection, type DocumentApi } from '@/db/Collection';
 import { LocalStorageCollection } from '@/db/LocalStorageCollection';
 import { RamCollection } from '@/db/RamCollection';
-import { creatureSchema, type CreatureRecordType } from '@/db/record/Creature';
+import {
+	creatureSchema,
+	filterCreature,
+	type CreatureRecordType,
+} from '@/db/record/Creature';
 import {
 	encounterFilter,
 	encounterSchema,
 	type EncounterRecordType,
 } from '@/db/record/Encounter';
 import {
+	initiativeTableEntryFilter,
 	initiativeTableEntrySchema,
 	type InitiativeTableEntryRecord,
 } from '@/db/record/InitiativeTableEntry';
@@ -39,7 +44,10 @@ export default class Room implements RoomApi {
 	static {
 		this.rooms = new LocalStorageCollection<RoomMetaRecordType>(
 			'room',
-			() => true,
+			(_record, filter) => {
+				if (filter !== undefined) throw new Error('NYI');
+				return true;
+			},
 			roomMetaSchema,
 		);
 	}
@@ -108,7 +116,7 @@ export default class Room implements RoomApi {
 	private static async construct(meta: DocumentApi<RoomMetaRecordType>) {
 		const creatures = new LocalStorageCollection<CreatureRecordType>(
 			'creature',
-			() => false,
+			filterCreature,
 			creatureSchema,
 		);
 
@@ -121,7 +129,7 @@ export default class Room implements RoomApi {
 		const initiativeTableEntries =
 			new LocalStorageCollection<InitiativeTableEntryRecord>(
 				'initiativeTableEntry',
-				() => false,
+				initiativeTableEntryFilter,
 				initiativeTableEntrySchema,
 			);
 

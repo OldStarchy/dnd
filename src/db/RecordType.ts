@@ -20,7 +20,7 @@ export type AnyRecordType = RecordType<{ id: string; revision: number }, any>;
 
 export type RecordFilter<T extends AnyRecordType> = (
 	record: T['record'],
-	filter: T['filter'],
+	filter?: T['filter'],
 ) => boolean;
 
 export type DbRecord<T extends object> = T & {
