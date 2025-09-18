@@ -32,13 +32,13 @@ export default function RoomActionsContextProvider({
 
 	const reconnect = useCallback(
 		(...args: Parameters<typeof Room.reconnect>) => {
-			return Room.reconnect(...args).then(setRoom);
+			return Room.reconnect(...args).map(setRoom);
 		},
 		[],
 	);
 
 	const join = useCallback((...args: Parameters<typeof RemoteRoom.join>) => {
-		return RemoteRoom.join(...args).then((room) => {
+		return RemoteRoom.join(...args).map((room) => {
 			setRoom(room);
 			room.connection.state$
 				.pipe(
@@ -51,7 +51,7 @@ export default function RoomActionsContextProvider({
 
 	const rejoin = useCallback(
 		(...args: Parameters<typeof RemoteRoom.reconnect>) => {
-			return RemoteRoom.reconnect(...args).then((room) => {
+			return RemoteRoom.reconnect(...args).map((room) => {
 				setRoom(room);
 				room.connection.state$
 					.pipe(

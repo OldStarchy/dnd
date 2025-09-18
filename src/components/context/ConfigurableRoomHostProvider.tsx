@@ -10,12 +10,12 @@ interface ConfigurableBackendApiProviderProps {
 export function ConfigurableRoomHostProvider({
 	children,
 }: ConfigurableBackendApiProviderProps) {
-	const [serverUrl] = useLocalConfig();
+	const [localConfig] = useLocalConfig();
 
 	const api = useMemo(() => {
-		const host = serverUrl || `${window.location.origin}/api`;
+		const host = localConfig.hostUrl || `${window.location.origin}/api`;
 		return RoomHost.get(host);
-	}, [serverUrl]);
+	}, [localConfig.hostUrl]);
 
 	return (
 		<RoomHostContext.Provider value={api}>

@@ -1,6 +1,14 @@
+import type { AsyncResult } from './AsyncResult';
 import { None, Option, Some } from './Option';
+import optionResultInteropMissing from './optionResultInteropMissing';
 
 export class AsyncOption<T> implements PromiseLike<Option<T>> {
+	declare okOr: <T, E>(this: AsyncOption<T>, err: E) => AsyncResult<T, E>;
+
+	static {
+		this.prototype.okOr = optionResultInteropMissing;
+	}
+
 	constructor(private readonly value: PromiseLike<Option<T>>) {}
 
 	static of<T>(value: PromiseLike<T | null | undefined>): AsyncOption<T> {

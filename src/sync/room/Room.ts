@@ -1,3 +1,5 @@
+import '@/lib/OptionResultInterop';
+
 import { type Collection, type DocumentApi } from '@/db/Collection';
 import { LocalStorageCollection } from '@/db/LocalStorageCollection';
 import { RamCollection } from '@/db/RamCollection';
@@ -15,7 +17,7 @@ import autoSubject from '@/decorators/autoSubject';
 import { traceAsync } from '@/decorators/trace';
 import { setJsonStorage } from '@/hooks/useJsonStorage';
 import Logger from '@/lib/log';
-import { BehaviorSubject, map } from 'rxjs';
+import { BehaviorSubject, map, of, switchMap } from 'rxjs';
 import { CollectionHost } from '../db/CollectionHost';
 import {
 	filterMember,
@@ -30,7 +32,7 @@ import {
 	type RoomMetaRecordType,
 } from './RoomMeta';
 import RoomPublication from './RoomPublication';
-import type { MembershipToken, RoomCode } from './types';
+import type { MemberId, MembershipToken, RoomCode } from './types';
 
 export default class Room implements RoomApi {
 	private static rooms: Collection<RoomMetaRecordType>;
@@ -84,6 +86,17 @@ export default class Room implements RoomApi {
 				),
 			)
 			.subscribe(this.code$);
+
+		this.hosts$
+			.pipe(
+				map(
+					(hosts) =>
+						Array.from(hosts.values()).at(0)?.connection
+							.presence$ || null,
+				),
+				switchMap((value) => value ?? of(new Map())),
+			)
+			.subscribe(this.presence$);
 	}
 
 	@autoSubject()
@@ -134,29 +147,29 @@ export default class Room implements RoomApi {
 	}
 
 	@traceAsync(Logger.INFO)
-	static async reconnect(
-		roomHost: RoomHost,
-		token: MembershipToken,
-	): Promise<Room | null> {
-		const info = await roomHost.room.get(token);
+	static reconnect(roomHost: RoomHost, token: MembershipToken) {
+		return roomHost.room.get(token).andTry<Room, string>(async (info) => {
+			const { roomCode } = info;
 
-		const { roomCode } = info;
+			const meta = await Room.rooms
+				.getOne()
+				.okOr('Room meta not found')
+				.unwrap();
 
-		const meta = await Room.rooms.getOne().unwrap('Room meta not found');
-		const room = await Room.construct(meta);
-		room.connect(token, roomCode, roomHost);
+			const room = await Room.construct(meta);
+			await room.connect(token, roomCode, roomHost);
 
-		return room;
+			return room;
+		});
 	}
 
 	@traceAsync(Logger.INFO)
-	async publish(roomHost: RoomHost): Promise<RoomPublication> {
-		Logger.info(`Publishing room to ${roomHost.host}`);
-
-		const { membershipToken, roomCode } = await roomHost.room.create();
-		Logger.info(`Room created with Code: ${roomCode}, `);
-
-		return await this.connect(membershipToken, roomCode, roomHost);
+	publish(roomHost: RoomHost) {
+		return roomHost.room
+			.create()
+			.map(({ membershipToken, roomCode }) =>
+				this.connect(membershipToken, roomCode, roomHost),
+			);
 	}
 
 	private async connect(
@@ -164,7 +177,9 @@ export default class Room implements RoomApi {
 		roomCode: RoomCode,
 		roomHost: RoomHost,
 	): Promise<RoomPublication> {
-		const connection = await roomHost.room.connect(membershipToken);
+		const connection = await roomHost.room
+			.connect(membershipToken)
+			.unwrap();
 
 		await this.me.update({
 			merge: {
@@ -268,14 +283,7 @@ export default class Room implements RoomApi {
 		this.hosts = new Map();
 	}
 
-	get presence$() {
-		// TODO: This is just assuming a single host which is fine because only
-		// one host is supported right now but its still not good to do this.
-		const firstHost = this.hosts.entries().take(1).toArray()[0]?.[1];
-
-		return (
-			firstHost?.connection.presence$ ??
-			new BehaviorSubject(new Map<string, boolean>())
-		);
-	}
+	readonly presence$ = new BehaviorSubject<ReadonlyMap<MemberId, boolean>>(
+		new Map(),
+	);
 }

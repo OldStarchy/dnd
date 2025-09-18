@@ -1,3 +1,5 @@
+import { AsyncResult } from '@/lib/AsyncResult';
+import { Result } from '@/lib/Result';
 import { z } from 'zod';
 import { inboundSystemMessageSchema } from '../message/schema/InboundSystemMessage';
 import { ClosableJsonTransport } from '../transports/JsonTransport';
@@ -45,136 +47,96 @@ export default class RoomHost {
 	readonly room = new RoomResource(this);
 }
 
+const fetchResult = AsyncResult.wrapFn(fetch)<DOMException | TypeError>;
+
 class RoomResource {
 	private server: RoomHost;
 	constructor(host: RoomHost) {
 		this.server = host;
 	}
-	async create(): Promise<z.infer<typeof roomCreated>> {
-		const response = await fetch(`${this.server.host}/room`, {
+
+	create() {
+		return fetchResult(`${this.server.host}/room`, {
 			method: 'POST',
 			headers: {
 				'Content-Type': 'application/json',
 			},
-			body: JSON.stringify({}),
-		});
-
-		if (!response.ok) {
-			throw new Error(`Failed to create room: ${response.statusText}`);
-		}
-
-		const data = await response.json();
-		const parsed = roomCreated.safeParse(data);
-		if (!parsed.success) {
-			throw new Error(`Invalid response format: ${parsed.error.message}`);
-		}
-
-		return parsed.data;
+		})
+			.andThen(Result.responseOk)
+			.andTry<unknown, SyntaxError>((response) => response.json())
+			.andThen((data) => Result.zodParse(roomCreated, data));
 	}
 
-	async join(roomCode: string): Promise<z.infer<typeof roomJoined>> {
-		const response = await fetch(
-			`${this.server.host}/room/${roomCode}/join`,
-			{
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json',
-				},
-				body: JSON.stringify({}),
+	join(roomCode: string) {
+		return fetchResult(`${this.server.host}/room/${roomCode}/join`, {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/json',
 			},
-		);
-
-		if (!response.ok) {
-			throw new Error(`Failed to join room: ${response.statusText}`);
-		}
-
-		const data = await response.json();
-		const parsed = roomJoined.safeParse(data);
-		if (!parsed.success) {
-			throw new Error(`Invalid response format: ${parsed.error.message}`);
-		}
-
-		return parsed.data;
+		})
+			.andThen(Result.responseOk)
+			.andTry<unknown, SyntaxError>((response) => response.json())
+			.andThen((data) => Result.zodParse(roomJoined, data));
 	}
 
-	async leave(membershipToken: MembershipToken): Promise<void> {
-		const response = await fetch(`${this.server.host}/room/leave`, {
+	leave(membershipToken: MembershipToken) {
+		return fetchResult(`${this.server.host}/room/leave`, {
 			method: 'POST',
 			headers: {
 				'Content-Type': 'application/json',
 				Authorization: `Bearer ${membershipToken}`,
 			},
-		});
-
-		if (!response.ok) {
-			throw new Error(`Failed to leave room: ${response.statusText}`);
-		}
+		})
+			.andThen(Result.responseOk)
+			.map<void>(() => undefined);
 	}
 
-	async get(
-		membershipToken: MembershipToken,
-	): Promise<z.infer<typeof roomFound>> {
-		const response = await fetch(`${this.server.host}/room`, {
+	get(membershipToken: MembershipToken) {
+		return fetchResult(`${this.server.host}/room`, {
 			method: 'GET',
 			headers: {
 				'Content-Type': 'application/json',
 				Authorization: `Bearer ${membershipToken}`,
 			},
-		});
-
-		if (!response.ok) {
-			throw new Error(`Failed to check token: ${response.statusText}`);
-		}
-
-		const data = await response.json();
-		const parsed = roomFound.safeParse(data);
-		if (!parsed.success) {
-			throw new Error(`Invalid response format: ${parsed.error.message}`);
-		}
-
-		return parsed.data;
+		})
+			.andThen(Result.responseOk)
+			.andTry<unknown, SyntaxError>((response) => response.json())
+			.andThen((data) => Result.zodParse(roomFound, data));
 	}
 
-	async delete(membershipToken: MembershipToken): Promise<void> {
-		const response = await fetch(`${this.server.host}/room`, {
+	delete(membershipToken: MembershipToken) {
+		return fetchResult(`${this.server.host}/room`, {
 			method: 'DELETE',
 			headers: {
 				'Content-Type': 'application/json',
 				Authorization: `Bearer ${membershipToken}`,
 			},
-		});
-
-		if (!response.ok) {
-			throw new Error(`Failed to delete room: ${response.statusText}`);
-		}
+		})
+			.andThen(Result.responseOk)
+			.map<void>(() => undefined);
 	}
 
-	async connect(
-		membershipToken: MembershipToken,
-	): Promise<RoomHostConnection> {
-		const info = await this.get(membershipToken);
-		if (!info.id) {
-			throw new Error('Room not found or invalid membership token');
-		}
+	connect(membershipToken: MembershipToken) {
+		return this.get(membershipToken).map(
+			({ id, gameMasterId, members, roomCode }) => {
+				const ws = new ReconnectingWebSocket(
+					`${this.server.host.replace(/^http/, 'ws')}/room/ws/${membershipToken}`,
+				);
 
-		const { id, gameMasterId, members } = info;
+				const connection = new ClosableJsonTransport(
+					ws,
+					inboundSystemMessageSchema,
+				);
 
-		const ws = new ReconnectingWebSocket(
-			`${this.server.host.replace(/^http/, 'ws')}/room/ws/${membershipToken}`,
-		);
-
-		const connection = new ClosableJsonTransport(
-			ws,
-			inboundSystemMessageSchema,
-		);
-
-		return new RoomHostConnection(
-			id,
-			gameMasterId,
-			members,
-			this.server,
-			info.roomCode,
-			connection,
+				return new RoomHostConnection(
+					id,
+					gameMasterId,
+					members,
+					this.server,
+					roomCode,
+					connection,
+				);
+			},
 		);
 	}
 }

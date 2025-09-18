@@ -1,5 +1,6 @@
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import useRoomSession from '@/hooks/room/useRoomSession';
 import useBehaviorSubject from '@/hooks/useBehaviorSubject';
@@ -13,8 +14,10 @@ import Room from '@/sync/room/Room';
 import type RoomApi from '@/sync/room/RoomApi';
 import RoomHost from '@/sync/room/RoomHost';
 import { RoomCode } from '@/sync/room/types';
-import { RefreshCcw } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { getReasonPhrase, StatusCodes } from 'http-status-codes';
+import { AlertTriangle, RefreshCcw } from 'lucide-react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import z from 'zod';
 
 /**
  * This page allows creating, publishing, or joining a room, as well as managing
@@ -28,9 +31,33 @@ function RoomConfigurator() {
 
 	const [joinRoomCode, setJoinRoomCode] = useState('');
 
+	const [error, setError] = useState<string | null>(null);
+
+	const mounted = useRef(false);
+	useEffect(() => {
+		if (mounted.current) return;
+		mounted.current = true;
+
+		return () => {
+			mounted.current = false;
+		};
+	}, []);
+
+	const displayError = useCallback((err: string) => {
+		Logger.error('RoomView Error:', err);
+		if (!mounted.current) return;
+
+		setError(err);
+	}, []);
+
 	if (!room) {
 		return (
 			<div>
+				{error && (
+					<Label>
+						<AlertTriangle /> {error}
+					</Label>
+				)}
 				You're not currently in a room.
 				{roomSession.lastRoom !== null &&
 					(roomSession.lastRoom.type === 'hosted' ? (
@@ -52,15 +79,41 @@ function RoomConfigurator() {
 											roomSession.lastRoom!
 												.membershipToken,
 										)
-										.catch((e) => {
-											setRoomSession({
-												lastRoom: null,
-											});
+										.inspectErr((err) =>
 											Logger.error(
-												'Failed to reconnect to room:',
-												e,
-											);
+												'Reconnect failed',
+												err,
+											),
+										)
+										.mapErr((error) => {
+											if (
+												error instanceof TypeError ||
+												error instanceof DOMException
+											) {
+												return 'Error communicating with the server.';
+											}
+
+											if (
+												error === StatusCodes.NOT_FOUND
+											) {
+												return 'The room no longer exists.';
+											}
+
+											if (
+												error instanceof SyntaxError ||
+												error instanceof z.ZodError
+											) {
+												return 'The server returned an invalid response.';
+											}
+
+											if (typeof error === 'number') {
+												return getReasonPhrase(error);
+											}
+
+											return error;
 										})
+										.inspectErr(displayError)
+										.unwrap()
 								}
 							>
 								Rehost
@@ -86,15 +139,35 @@ function RoomConfigurator() {
 											roomSession.lastRoom!
 												.membershipToken,
 										)
-										.catch((e) => {
-											setRoomSession({
-												lastRoom: null,
-											});
-											Logger.error(
-												'Failed to rejoin room:',
-												e,
-											);
+										.mapErr((error) => {
+											if (
+												error instanceof TypeError ||
+												error instanceof DOMException
+											) {
+												return 'Error communicating with the server.';
+											}
+
+											if (
+												error === StatusCodes.NOT_FOUND
+											) {
+												return 'The room no longer exists.';
+											}
+
+											if (
+												error instanceof SyntaxError ||
+												error instanceof z.ZodError
+											) {
+												return 'The server returned an invalid response.';
+											}
+
+											if (typeof error === 'number') {
+												return getReasonPhrase(error);
+											}
+
+											return error;
 										})
+										.inspectErr(displayError)
+										.unwrap()
 								}
 							>
 								Rejoin
@@ -120,7 +193,38 @@ function RoomConfigurator() {
 					/>
 					<Button
 						onClick={() =>
-							roomActions.join(roomHost, RoomCode(joinRoomCode))
+							roomActions
+								.join(roomHost, RoomCode(joinRoomCode))
+								.inspectErr((error) =>
+									Logger.error('Join failed', error),
+								)
+								.mapErr((error) => {
+									if (
+										error instanceof TypeError ||
+										error instanceof DOMException
+									) {
+										return 'Error communicating with the server';
+									}
+
+									if (error === StatusCodes.NOT_FOUND) {
+										return 'The room code you entered was not found.';
+									}
+
+									if (
+										error instanceof SyntaxError ||
+										error instanceof z.ZodError
+									) {
+										return 'The server returned an invalid response.';
+									}
+
+									if (typeof error === 'number') {
+										return getReasonPhrase(error);
+									}
+
+									return error;
+								})
+								.inspectErr(displayError)
+								.unwrap()
 						}
 					>
 						Join Room
@@ -134,9 +238,13 @@ function RoomConfigurator() {
 		);
 	}
 
-	return <RoomConfiguratorInner />;
+	return <RoomConfiguratorInner handleError={displayError} />;
 }
-function RoomConfiguratorInner() {
+function RoomConfiguratorInner({
+	handleError,
+}: {
+	handleError: (err: string) => void;
+}) {
 	const room = useRoomContext();
 	const roomActions = useRoomActionsContext();
 
@@ -146,11 +254,6 @@ function RoomConfiguratorInner() {
 	const roomCodeRef = useRef<HTMLInputElement>(null);
 
 	const [error, setError] = useState('');
-
-	const handleError = (err: unknown) => {
-		Logger.error('RoomView Error:', err);
-		setError(() => `${err instanceof Error ? err.message : err}`);
-	};
 
 	const [name, setNameImpl] = useState('');
 
@@ -252,7 +355,7 @@ function LocalRoomView({
 	handleError,
 }: {
 	room: Room;
-	handleError: (err: unknown) => void;
+	handleError: (err: string) => void;
 }) {
 	const roomHost = useRoomHost();
 	const [enteredRoomHost, setEnteredRoomHost] = useState(roomHost.host);
@@ -289,7 +392,32 @@ function LocalRoomView({
 							onClick={() =>
 								room
 									.publish(RoomHost.get(enteredRoomHost))
-									.catch(handleError)
+									.inspectErr((error) =>
+										Logger.error('Publish failed', error),
+									)
+									.mapErr((error) => {
+										if (
+											error instanceof TypeError ||
+											error instanceof DOMException
+										) {
+											return 'Error communicating with the server';
+										}
+
+										if (
+											error instanceof SyntaxError ||
+											error instanceof z.ZodError
+										) {
+											return 'The server returned an invalid response.';
+										}
+
+										if (typeof error === 'number') {
+											return getReasonPhrase(error);
+										}
+
+										return error;
+									})
+									.inspectErr(handleError)
+									.unwrap()
 							}
 							disabled={
 								enteredRoomHost.length === 0 ||

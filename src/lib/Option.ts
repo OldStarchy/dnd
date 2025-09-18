@@ -1,18 +1,29 @@
+import optionResultInteropMissing from './optionResultInteropMissing';
+import type { Result } from './Result';
+
 namespace OptionImpl {
-	interface OptionApi<T> {
-		isSome(): this is Some<T>;
-		isNone(): this is None;
-		map<U>(fn: (value: T) => U): Option<U>;
-		inspect(fn: (value: T) => void): this;
-		unwrapOrNull(): T | null;
-		unwrapOrElse(fn: () => T): T;
-		unwrap(message?: string): T;
+	export abstract class OptionApi<T> {
+		declare okOr: <T, E>(this: Option<T>, err: E) => Result<T, E>;
+
+		static {
+			this.prototype.okOr = optionResultInteropMissing;
+		}
+
+		abstract isSome(): this is Some<T>;
+		abstract isNone(): this is None;
+		abstract map<U>(fn: (value: T) => U): Option<U>;
+		abstract inspect(fn: (value: T) => void): this;
+		abstract unwrapOrNull(): T | null;
+		abstract unwrapOrElse(fn: () => T): T;
+		abstract unwrap(message?: string): T;
 	}
 
-	export class None implements OptionApi<never> {
+	export class None extends OptionApi<never> {
 		static instance = new None();
 
-		private constructor() {}
+		private constructor() {
+			super();
+		}
 
 		isSome<T>(): this is Some<T> {
 			return false;
@@ -47,9 +58,10 @@ namespace OptionImpl {
 		}
 	}
 
-	export class Some<T> implements OptionApi<T> {
+	export class Some<T> extends OptionApi<T> {
 		#value: T;
 		constructor(value: T) {
+			super();
 			this.#value = value;
 		}
 
@@ -87,6 +99,8 @@ namespace OptionImpl {
 export type Option<T> = OptionImpl.Some<T> | OptionImpl.None;
 
 export namespace Option {
+	export const prototype = OptionImpl.OptionApi.prototype;
+
 	export function of<T>(value: T | null | undefined): Option<T> {
 		if (value === null || value === undefined) {
 			return None();

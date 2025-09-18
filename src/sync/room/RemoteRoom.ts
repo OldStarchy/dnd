@@ -22,62 +22,51 @@ import { BehaviorSubject } from 'rxjs';
 
 export default class RemoteRoom implements RoomApi {
 	@traceAsync(Logger.INFO)
-	static async join(
-		roomHost: RoomHost,
-		roomCode: RoomCode,
-	): Promise<RemoteRoom> {
-		const result = await roomHost.room.join(roomCode);
-
-		const membershipToken = result.membershipToken as MembershipToken;
-
-		const room = await this.reconnect(roomHost, membershipToken);
-
-		setJsonStorage('roomSession', {
-			lastRoom: {
-				type: 'joined',
-				host: roomHost.host,
-				membershipToken,
-				code: roomCode,
-				name: room.meta.data.value.name,
-			},
-		});
-
-		return room;
+	static join(roomHost: RoomHost, roomCode: RoomCode) {
+		return roomHost.room
+			.join(roomCode)
+			.andThen(async ({ membershipToken }) =>
+				this.reconnect(roomHost, membershipToken),
+			);
 	}
 
 	@traceAsync(Logger.INFO)
-	static async reconnect(
-		roomHost: RoomHost,
-		membershipToken: MembershipToken,
-	): Promise<RemoteRoom> {
-		const connection = await roomHost.room.connect(membershipToken);
+	static reconnect(roomHost: RoomHost, membershipToken: MembershipToken) {
+		return roomHost.room
+			.connect(membershipToken)
+			.andTry<RemoteRoom, string>(async (connection) => {
+				const meta = await new RemoteCollection<RoomMetaRecordType>(
+					connection,
+					'room',
+					roomMetaSchema,
+				)
+					.getOne()
+					.unwrap('Failed to retrieve room metadata for room');
 
-		const meta = await new RemoteCollection<RoomMetaRecordType>(
-			connection,
-			'room',
-			roomMetaSchema,
-		)
-			.getOne()
-			.unwrap('Failed to retrieve room metadata for room');
+				const room = await RemoteRoom.construct(
+					roomHost,
+					membershipToken,
+					connection,
+					meta,
+				);
 
-		const room = await RemoteRoom.construct(
-			roomHost,
-			membershipToken,
-			connection,
-			meta,
-		);
+				setJsonStorage('roomSession', {
+					lastRoom: {
+						type: 'joined',
+						host: roomHost.host,
+						membershipToken,
+						code: room.code$.value!,
+						name: meta.data.value.name,
+					},
+				});
 
-		setJsonStorage('roomSession', {
-			lastRoom: {
-				type: 'joined',
-				host: roomHost.host,
-				membershipToken,
-				code: room.code$.value!,
-				name: meta.data.value.name,
-			},
-		});
-
-		return room;
+				return room;
+			})
+			.inspectErr((_) => {
+				setJsonStorage('roomSession', {
+					lastRoom: null,
+				});
+			});
 	}
 
 	static async joinPort(_port: MessagePort): Promise<RemoteRoom> {

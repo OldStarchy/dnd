@@ -18,22 +18,22 @@ interface SettingsDialogProps {
 }
 
 export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
-	const [serverUrl, setServerUrl] = useLocalConfig();
-	const [tempServerUrl, setTempServerUrl] = useState(serverUrl);
+	const [localConfig, setLocalConfig] = useLocalConfig();
+	const [tempServerUrl, setTempServerUrl] = useState(localConfig.hostUrl);
 
 	useEffect(() => {
 		if (!open) {
-			setTempServerUrl(serverUrl);
+			setTempServerUrl(localConfig.hostUrl);
 		}
-	}, [open, serverUrl]);
+	}, [open, localConfig]);
 
 	const handleSave = () => {
-		setServerUrl(tempServerUrl);
+		setLocalConfig((cfg) => ({ ...cfg, hostUrl: tempServerUrl }));
 		onOpenChange(false);
 	};
 
 	const handleCancel = () => {
-		setTempServerUrl(serverUrl);
+		setTempServerUrl(localConfig.hostUrl);
 		onOpenChange(false);
 	};
 
