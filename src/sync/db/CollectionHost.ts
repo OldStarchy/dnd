@@ -2,10 +2,18 @@ import type { Collection } from '@/db/Collection';
 import type { AnyRecordType } from '@/db/RecordType';
 import exhaustiveCheck from '@/lib/exhaustiveCheck';
 import { filter, Subscription } from 'rxjs';
+import type z from 'zod';
 import type { InboundRequest } from '../message/inbound';
 import type { UserMessageOfType } from '../message/raw';
 import type RoomHostConnection from '../room/RoomHostConnection';
 import { DbChangeNotification } from './message/notification';
+import type {
+	createRequestSchema,
+	deleteRequestSchema,
+	getOneRequestSchema,
+	getRequestSchema,
+	updateRequestSchema,
+} from './Messages';
 
 export class CollectionHost<
 	const RecordMap extends {
@@ -53,43 +61,76 @@ export class CollectionHost<
 
 			switch (data.action) {
 				case 'get':
-					return {
-						data: (await collection.get(data.filter)).toRaw(),
-					};
+					return this.#handleGet(collection, data);
 
 				case 'getOne':
-					return {
-						data: await collection
-							.getOne(data.filter)
-							.map((doc) => doc.data.getValue())
-							.unwrapOrNull(),
-					};
+					return this.#handleGetOne(collection, data);
 
 				case 'create':
-					return {
-						data: (
-							await collection
-								// eslint-disable-next-line @typescript-eslint/no-explicit-any
-								.create(data.data as any)
-						).data.getValue(),
-					};
+					return this.#handleCreate(collection, data);
 
 				case 'update':
-					await collection
-						.getOne({ id: data.id })
-						.map((doc) => doc.update(data.changeSet));
-
-					return null;
+					return this.#handleUpdate(collection, data);
 
 				case 'delete':
-					await collection
-						.getOne({ id: data.id })
-						.map((doc) => doc.delete());
-
-					return null;
+					return this.#handleDelete(collection, data);
 			}
 
 			exhaustiveCheck(data);
 		});
+	}
+
+	async #handleGet(
+		collection: Collection<RecordMap[string]>,
+		data: z.infer<typeof getRequestSchema.request>,
+	): Promise<z.infer<typeof getRequestSchema.response>> {
+		return {
+			data: (await collection.get(data.filter)).toRaw(),
+		};
+	}
+
+	async #handleGetOne(
+		collection: Collection<RecordMap[string]>,
+		data: z.infer<typeof getOneRequestSchema.request>,
+	): Promise<z.infer<typeof getOneRequestSchema.response>> {
+		return {
+			data: await collection
+				.getOne(data.filter)
+				.map((doc) => doc.data.getValue())
+				.unwrapOrNull(),
+		};
+	}
+
+	async #handleCreate(
+		collection: Collection<RecordMap[string]>,
+		data: z.infer<typeof createRequestSchema.request>,
+	): Promise<z.infer<typeof createRequestSchema.response>> {
+		return {
+			data: (
+				await collection
+					// eslint-disable-next-line @typescript-eslint/no-explicit-any
+					.create(data.data as any)
+			).data.getValue(),
+		};
+	}
+
+	async #handleUpdate(
+		collection: Collection<RecordMap[string]>,
+		data: z.infer<typeof updateRequestSchema.request>,
+	): Promise<z.infer<typeof updateRequestSchema.response>> {
+		await collection
+			.getOne({ id: data.id })
+			.map((doc) => doc.update(data.changeSet));
+
+		return null;
+	}
+
+	async #handleDelete(
+		collection: Collection<RecordMap[string]>,
+		data: z.infer<typeof deleteRequestSchema.request>,
+	): Promise<z.infer<typeof deleteRequestSchema.response>> {
+		await collection.getOne({ id: data.id }).map((doc) => doc.delete());
+
+		return null;
 	}
 }
