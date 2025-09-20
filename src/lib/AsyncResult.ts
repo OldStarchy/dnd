@@ -1,6 +1,6 @@
 import type { AsyncOption } from './AsyncOption';
 import optionResultInteropMissing from './optionResultInteropMissing';
-import { Err, Ok, Result } from './Result';
+import { Err, Ok, Result, UnknownError } from './Result';
 
 export class AsyncResult<T, E> implements PromiseLike<Result<T, E>> {
 	declare ok: <T>(this: AsyncResult<T, unknown>) => AsyncOption<T>;
@@ -22,34 +22,51 @@ export class AsyncResult<T, E> implements PromiseLike<Result<T, E>> {
 		);
 	}
 
-	mapErr<U>(fn: (error: E) => U | PromiseLike<U>): AsyncResult<T, U> {
+	mapErr<F>(fn: (error: E) => F | PromiseLike<F>): AsyncResult<T, F> {
 		return new AsyncResult(
 			this.then(async (v) => {
 				if (v.isOk()) {
-					return v as Result<T, unknown> as Result<T, U>;
+					return v as Result<T, unknown> as Result<T, F>;
 				}
 				return Err(await fn(v.unwrapErr()));
 			}),
 		);
 	}
 
-	andThen<U, E2>(
-		fn: (value: T) => PromiseLike<Result<U, E2>> | Result<U, E2>,
-	): AsyncResult<U, E | E2> {
+	andThen<U, F>(
+		fn: (value: T) => PromiseLike<Result<U, F>> | Result<U, F>,
+	): AsyncResult<U, E | F> {
 		return new AsyncResult(
 			this.then(async (v) => {
 				if (v.isOk()) {
 					return await fn(v.unwrap());
 				}
-				return v as Result<unknown, E> as Result<U, E | E2>;
+				return v as Result<unknown, E> as Result<U, E | F>;
 			}),
 		);
 	}
 
-	andTry<U, E2 = unknown>(
+	andTry<U>(
 		fn: (value: T) => PromiseLike<U>,
-	): AsyncResult<U, E | E2> {
-		return this.andThen((v) => AsyncResult.try<U, E2>(() => fn(v)));
+	): AsyncResult<U, E | UnknownError> {
+		return this.andThen((v) => AsyncResult.try(() => fn(v)));
+	}
+
+	orElse<U, F>(
+		fn: (error: E) => PromiseLike<Result<U, F>> | Result<U, F>,
+	): AsyncResult<T | U, F> {
+		return new AsyncResult(
+			this.then(async (v) => {
+				if (v.isErr()) {
+					return await fn(v.unwrapErr());
+				}
+				return v as Result<T, unknown> as Result<T | U, F>;
+			}),
+		);
+	}
+
+	orTry(fn: (error: E) => PromiseLike<T>): AsyncResult<T, E | UnknownError> {
+		return this.orElse((e) => AsyncResult.try(() => fn(e)));
 	}
 
 	inspect(fn: (value: T) => Promise<void> | void): AsyncResult<T, E> {
@@ -78,8 +95,10 @@ export class AsyncResult<T, E> implements PromiseLike<Result<T, E>> {
 		return this.then((v) => v.unwrapOrNull());
 	}
 
-	unwrapOrElse(fn: () => PromiseLike<T> | T): PromiseLike<T> {
-		return this.then((v) => (v.isOk() ? v.unwrap() : fn()));
+	unwrapOrElse<U = T>(
+		fn: (err: E) => PromiseLike<U> | U,
+	): PromiseLike<T | U> {
+		return this.then((v) => v.unwrapOrElse(fn));
 	}
 
 	unwrap(message?: string): PromiseLike<T> {
@@ -106,15 +125,15 @@ export class AsyncResult<T, E> implements PromiseLike<Result<T, E>> {
 	/**
 	 * Usage of this is discouraged in favor of the strongly typed {@link wrap}.
 	 */
-	static try<T, E>(fn: () => PromiseLike<T>): AsyncResult<T, E> {
+	static try<T>(fn: () => PromiseLike<T>): AsyncResult<T, UnknownError> {
 		return AsyncResult.of(fn());
 	}
 
 	/**
 	 * Usage of this is discouraged in favor of the strongly typed {@link wrap}.
 	 */
-	static of<T, E>(value: PromiseLike<T>): AsyncResult<T, E> {
-		return new AsyncResult(value.then(Ok, Err));
+	static of<T>(value: PromiseLike<T>): AsyncResult<T, UnknownError> {
+		return new AsyncResult(value.then(Ok, (e) => Err(new UnknownError(e))));
 	}
 
 	static wrap<T, E>(fn: () => PromiseLike<Result<T, E>>): AsyncResult<T, E> {
@@ -124,10 +143,18 @@ export class AsyncResult<T, E> implements PromiseLike<Result<T, E>> {
 	static wrapFn<
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		Fn extends (this: void, ...args: any[]) => PromiseLike<any>,
+		E,
 	>(
 		fn: Fn,
-	): <E>(...args: Parameters<Fn>) => AsyncResult<Awaited<ReturnType<Fn>>, E> {
-		return <E>(...args: Parameters<Fn>) =>
-			AsyncResult.try<Awaited<ReturnType<Fn>>, E>(() => fn(...args));
+		mapError: (e: unknown) => E,
+	): (...args: Parameters<Fn>) => AsyncResult<Awaited<ReturnType<Fn>>, E> {
+		return (...args: Parameters<Fn>) =>
+			AsyncResult.wrap<Awaited<ReturnType<Fn>>, E>(async () => {
+				try {
+					return Ok(await fn(...args));
+				} catch (e: unknown) {
+					return Err(mapError(e));
+				}
+			});
 	}
 }

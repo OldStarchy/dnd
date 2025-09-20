@@ -8,6 +8,14 @@ const ERR = Symbol('Result.ERR');
 type OK = typeof OK;
 type ERR = typeof ERR;
 
+export class UnknownError extends Error {
+	constructor(readonly inner: unknown) {
+		super();
+	}
+}
+
+export type IntoResultFn<In, Out, Err> = (value: In) => Result<Out, Err>;
+
 export class Result<T, E> {
 	declare ok: <T>(this: Result<T, unknown>) => Option<T>;
 
@@ -38,26 +46,57 @@ export class Result<T, E> {
 	}
 
 	map<U>(fn: (value: T) => U): Result<U, E> {
-		switch (this.#type) {
-			case OK:
-				return new Result<U, E>(OK, fn(this.#value as T), undefined);
-			case ERR:
-				return new Result<U, E>(ERR, undefined, this.#error);
+		if (this.#type === OK) {
+			return new Result<U, E>(OK, fn(this.#value as T), undefined);
 		}
+
+		return this as Result<unknown, E> as Result<U, E>;
+	}
+
+	mapErr<F>(fn: (error: E) => F): Result<T, F> {
+		if (this.#type === OK) {
+			return this as Result<T, unknown> as Result<T, F>;
+		}
+
+		return new Result<T, F>(ERR, undefined, fn(this.#error as E));
 	}
 
 	and<U>(res: Result<U, E>): Result<U, E> {
 		if (this.#type === OK) {
 			return res;
 		}
+
 		return this as Result<unknown, E> as Result<U, E>;
 	}
 
-	andThen<U, E2>(fn: (value: T) => Result<U, E2>): Result<U, E | E2> {
+	andThen<U, F>(fn: (value: T) => Result<U, F>): Result<U, E | F> {
 		if (this.#type === OK) {
 			return fn(this.#value!);
 		}
-		return this as Result<unknown, E> as Result<U, E | E2>;
+		return this as Result<unknown, E> as Result<U, E | F>;
+	}
+
+	andTry<U, F = unknown>(fn: (value: T) => U): Result<U, E | F> {
+		return this.andThen((v) => Result.try<U, F>(() => fn(v)));
+	}
+
+	or<F>(res: Result<T, F>): Result<T, F> {
+		if (this.#type === OK) {
+			return this as Result<T, unknown> as Result<T, F>;
+		}
+
+		return res;
+	}
+
+	orElse<U, F>(fn: (error: E) => Result<U, F>): Result<T | U, F> {
+		if (this.#type === OK) {
+			return this as Result<T, unknown> as Result<T | U, F>;
+		}
+		return fn(this.#error!);
+	}
+
+	orTry<U, F = unknown>(fn: (error: E) => U): Result<T | U, E | F> {
+		return this.orElse((e) => Result.try<T | U, F>(() => fn(e)));
 	}
 
 	inspect(fn: (value: T) => void): this {
@@ -81,11 +120,11 @@ export class Result<T, E> {
 		return null;
 	}
 
-	unwrapOrElse(_fn: (err: E) => T): T {
+	unwrapOrElse<U = T>(fn: (err: E) => U): T | U {
 		if (this.#type === OK) {
 			return this.#value!;
 		}
-		return _fn(this.#error!);
+		return fn(this.#error!);
 	}
 
 	unwrapOr(defaultValue: T): T {
@@ -175,14 +214,6 @@ export class Result<T, E> {
 			return Result.Err(result.error);
 		}
 	}
-
-	static responseOk(response: Response): Result<Response, number> {
-		if (response.ok) {
-			return Result.Ok(response);
-		} else {
-			return Result.Err(response.status);
-		}
-	}
 }
 
 export function Ok<T, E = never>(value: T): Result<T, E> {
@@ -205,6 +236,7 @@ export namespace Result {
 						R extends (...args: any[]) => infer R
 						? InferOk<R>
 						: never;
+
 	export type InferErr<R> =
 		R extends Result<unknown, infer E>
 			? E
@@ -215,5 +247,17 @@ export namespace Result {
 					: // eslint-disable-next-line @typescript-eslint/no-explicit-any
 						R extends (...args: any[]) => infer R
 						? InferErr<R>
+						: never;
+
+	export type Infer<R> =
+		R extends Result<unknown, unknown>
+			? R
+			: R extends AsyncResult<infer T, infer E>
+				? Result<T, E>
+				: R extends PromiseLike<infer R>
+					? Infer<R>
+					: // eslint-disable-next-line @typescript-eslint/no-explicit-any
+						R extends (...args: any[]) => infer R
+						? Infer<R>
 						: never;
 }

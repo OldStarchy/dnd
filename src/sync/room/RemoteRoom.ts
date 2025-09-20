@@ -34,33 +34,35 @@ export default class RemoteRoom implements RoomApi {
 	static reconnect(roomHost: RoomHost, membershipToken: MembershipToken) {
 		return roomHost.room
 			.connect(membershipToken)
-			.andTry<RemoteRoom, string>(async (connection) => {
-				const meta = await new RemoteCollection<RoomMetaRecordType>(
+			.andThen(async (connection) => {
+				return await new RemoteCollection<RoomMetaRecordType>(
 					connection,
 					'room',
 					roomMetaSchema,
 				)
 					.getOne()
-					.unwrap('Failed to retrieve room metadata for room');
+					.okOr('missing_room_meta' as const)
+					.andTry(async (meta) => {
+						const room = await RemoteRoom.construct(
+							roomHost,
+							membershipToken,
+							connection,
+							meta,
+						);
 
-				const room = await RemoteRoom.construct(
-					roomHost,
-					membershipToken,
-					connection,
-					meta,
-				);
+						setJsonStorage('roomSession', {
+							lastRoom: {
+								type: 'joined',
+								host: roomHost.host,
+								membershipToken,
+								code: room.code$.value!,
+								name: meta.data.value.name,
+							},
+						});
 
-				setJsonStorage('roomSession', {
-					lastRoom: {
-						type: 'joined',
-						host: roomHost.host,
-						membershipToken,
-						code: room.code$.value!,
-						name: meta.data.value.name,
-					},
-				});
-
-				return room;
+						return room;
+					})
+					.inspectErr((_err) => connection.close());
 			})
 			.inspectErr((_) => {
 				setJsonStorage('roomSession', {

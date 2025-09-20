@@ -22,6 +22,7 @@ import autoSubject from '@/decorators/autoSubject';
 import { traceAsync } from '@/decorators/trace';
 import { setJsonStorage } from '@/hooks/useJsonStorage';
 import Logger from '@/lib/log';
+import { Err, Ok } from '@/lib/Result';
 import { BehaviorSubject, map, of, switchMap } from 'rxjs';
 import { CollectionHost } from '../db/CollectionHost';
 import {
@@ -156,19 +157,29 @@ export default class Room implements RoomApi {
 
 	@traceAsync(Logger.INFO)
 	static reconnect(roomHost: RoomHost, token: MembershipToken) {
-		return roomHost.room.get(token).andTry<Room, string>(async (info) => {
-			const { roomCode } = info;
+		return roomHost.room
+			.get(token)
+			.inspectErr((error) => {
+				if (error === 'not_found' || error === 'invalid_token') {
+					setJsonStorage('roomSession', {
+						lastRoom: null,
+					});
+				}
+			})
+			.andThen(async (info) => {
+				const { roomCode } = info;
 
-			const meta = await Room.rooms
-				.getOne()
-				.okOr('Room meta not found')
-				.unwrap();
+				const meta = await Room.rooms.getOne();
 
-			const room = await Room.construct(meta);
-			await room.connect(token, roomCode, roomHost);
+				if (meta.isNone()) {
+					return Err('missing_room_meta' as const);
+				}
 
-			return room;
-		});
+				const room = await Room.construct(meta.unwrap());
+				await room.connect(token, roomCode, roomHost);
+
+				return Ok(room);
+			});
 	}
 
 	@traceAsync(Logger.INFO)

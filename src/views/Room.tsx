@@ -14,10 +14,8 @@ import Room from '@/sync/room/Room';
 import type RoomApi from '@/sync/room/RoomApi';
 import RoomHost from '@/sync/room/RoomHost';
 import { RoomCode } from '@/sync/room/types';
-import { getReasonPhrase, StatusCodes } from 'http-status-codes';
 import { AlertTriangle, RefreshCcw } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import z from 'zod';
 
 /**
  * This page allows creating, publishing, or joining a room, as well as managing
@@ -86,34 +84,19 @@ function RoomConfigurator() {
 											),
 										)
 										.mapErr((error) => {
-											if (
-												error instanceof TypeError ||
-												error instanceof DOMException
-											) {
-												return 'Error communicating with the server.';
-											}
+											switch (error) {
+												case 'invalid_token':
+												case 'not_found':
+													return 'The session on the room server no longer exists. You can still rehost the same room, but the room code will change and you will need to reassign roles.';
 
-											if (
-												error === StatusCodes.NOT_FOUND
-											) {
-												return 'The room no longer exists.';
-											}
+												case 'missing_room_meta':
+													return 'The room you hosted no longer exists. Create a new room to host.';
 
-											if (
-												error instanceof SyntaxError ||
-												error instanceof z.ZodError
-											) {
-												return 'The server returned an invalid response.';
+												default:
+													return error.message;
 											}
-
-											if (typeof error === 'number') {
-												return getReasonPhrase(error);
-											}
-
-											return error;
 										})
-										.inspectErr(displayError)
-										.unwrap()
+										.unwrapOrElse(displayError)
 								}
 							>
 								Rehost
@@ -139,35 +122,23 @@ function RoomConfigurator() {
 											roomSession.lastRoom!
 												.membershipToken,
 										)
+										.inspectErr((err) =>
+											Logger.error('Rejoin failed', err),
+										)
 										.mapErr((error) => {
-											if (
-												error instanceof TypeError ||
-												error instanceof DOMException
-											) {
-												return 'Error communicating with the server.';
-											}
+											switch (error) {
+												case 'invalid_token':
+												case 'not_found':
+													return 'The room no longer exists.';
 
-											if (
-												error === StatusCodes.NOT_FOUND
-											) {
-												return 'The room no longer exists.';
-											}
+												case 'missing_room_meta':
+													return 'The host did not provide room metadata.';
 
-											if (
-												error instanceof SyntaxError ||
-												error instanceof z.ZodError
-											) {
-												return 'The server returned an invalid response.';
+												default:
+													return error.message;
 											}
-
-											if (typeof error === 'number') {
-												return getReasonPhrase(error);
-											}
-
-											return error;
 										})
-										.inspectErr(displayError)
-										.unwrap()
+										.unwrapOrElse(displayError)
 								}
 							>
 								Rejoin
@@ -199,32 +170,19 @@ function RoomConfigurator() {
 									Logger.error('Join failed', error),
 								)
 								.mapErr((error) => {
-									if (
-										error instanceof TypeError ||
-										error instanceof DOMException
-									) {
-										return 'Error communicating with the server';
-									}
+									switch (error) {
+										case 'invalid_token':
+										case 'not_found':
+											return 'The room code you entered was not found.';
 
-									if (error === StatusCodes.NOT_FOUND) {
-										return 'The room code you entered was not found.';
-									}
+										case 'missing_room_meta':
+											return 'The host did not provide room metadata.';
 
-									if (
-										error instanceof SyntaxError ||
-										error instanceof z.ZodError
-									) {
-										return 'The server returned an invalid response.';
+										default:
+											return error.message;
 									}
-
-									if (typeof error === 'number') {
-										return getReasonPhrase(error);
-									}
-
-									return error;
 								})
-								.inspectErr(displayError)
-								.unwrap()
+								.unwrapOrElse(displayError)
 						}
 					>
 						Join Room
@@ -392,32 +350,13 @@ function LocalRoomView({
 							onClick={() =>
 								room
 									.publish(RoomHost.get(enteredRoomHost))
-									.inspectErr((error) =>
-										Logger.error('Publish failed', error),
-									)
-									.mapErr((error) => {
-										if (
-											error instanceof TypeError ||
-											error instanceof DOMException
-										) {
-											return 'Error communicating with the server';
-										}
-
-										if (
-											error instanceof SyntaxError ||
-											error instanceof z.ZodError
-										) {
-											return 'The server returned an invalid response.';
-										}
-
-										if (typeof error === 'number') {
-											return getReasonPhrase(error);
-										}
-
-										return error;
+									.inspectErr((err) => {
+										Logger.error('Publish failed', err);
 									})
-									.inspectErr(handleError)
-									.unwrap()
+									.mapErr((err) => {
+										return err.message;
+									})
+									.unwrapOrElse(handleError)
 							}
 							disabled={
 								enteredRoomHost.length === 0 ||
