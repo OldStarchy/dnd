@@ -7,7 +7,7 @@ interface ConfigurableBackendApiProviderProps {
 	children: ReactNode;
 }
 
-export function ConfigurableRoomHostProvider({
+export function RoomHostContextProvider({
 	children,
 }: ConfigurableBackendApiProviderProps) {
 	const [localConfig] = useLocalConfig();

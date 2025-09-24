@@ -17,7 +17,7 @@ import type RoomApi from '@/sync/room/RoomApi';
 import { DropdownMenuTrigger } from '@radix-ui/react-dropdown-menu';
 import { ChevronDown, Plus } from 'lucide-react';
 import { useCallback, useMemo, useState } from 'react';
-import { type EntityPropertySchema } from './entity-property-panel';
+import { type EntityPropertySchema } from './forms/EntityPropertyPanel';
 import InitiativeTable from './InitiativeTable/InitiativeTable';
 import {
 	DropdownMenu,

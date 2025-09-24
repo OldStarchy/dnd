@@ -1,6 +1,18 @@
 import { HealthObfuscation } from '@/store/types/Entity';
 import { debuffSpec } from '@/type/Debuff';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useFieldArray, useForm } from 'react-hook-form';
 import { z } from 'zod';
+import {
+	Form,
+	FormControl,
+	FormField,
+	FormItem,
+	FormLabel,
+	FormMessage,
+} from '../ui/form';
+import { Input } from '../ui/input';
+import { Switch } from '../ui/switch';
 
 const colors = [
 	{ className: 'bg-red-500', value: 'bg-red-500', label: 'Red' },
@@ -50,6 +62,7 @@ const entityPropertySpec = z.object({
 	obfuscateHealth: z.nativeEnum(HealthObfuscation),
 	debuffs: z.array(debuffSpec),
 });
+
 export type EntityPropertySchema = z.infer<typeof entityPropertySpec>;
 
 function EntityPropertyPanel({
@@ -59,9 +72,6 @@ function EntityPropertyPanel({
 	entity: EntityPropertySchema;
 	onChange: (entity: EntityPropertySchema) => void;
 }) {
-	console.log(entity, onChange);
-	return <div> NYI </div>;
-	/*
 	const form = useForm<EntityPropertySchema>({
 		resolver: zodResolver(entityPropertySpec),
 		defaultValues: entity,
@@ -492,7 +502,6 @@ function EntityPropertyPanel({
 			</Form>
 		</div>
 	);
-	*/
 }
 
 export default EntityPropertyPanel;
