@@ -6,10 +6,12 @@ import type z from 'zod';
 import type { InboundRequest } from '../message/inbound';
 import type { UserMessageOfType } from '../message/raw';
 import type RoomHostConnection from '../room/RoomHostConnection';
-import { DbChangeNotification } from './message/notification';
+import type { MemberId } from '../room/types';
 import type {
+	closeGet$RequestSchema,
 	createRequestSchema,
 	deleteRequestSchema,
+	get$RequestSchema,
 	getOneRequestSchema,
 	getRequestSchema,
 	updateRequestSchema,
@@ -30,38 +32,45 @@ export class CollectionHost<
 	provide(connection: RoomHostConnection): Subscription {
 		const subscription = new Subscription();
 
-		Object.entries(this.sources)
-			.map(([name, collection]: [string, Collection<AnyRecordType>]) => {
-				return collection.change$.subscribe((doc) => {
-					connection.broadcast(
-						new DbChangeNotification(name, [doc.data.getValue()]),
-					);
-				});
-			})
-			.forEach((sub) => subscription.add(sub));
-
-		const sub2 = connection.request$
-			.pipe(filter((request) => request.data.type === 'db'))
-			.subscribe((request) => {
-				this.handleRequest(request);
-			});
-		subscription.add(sub2);
+		subscription.add(
+			connection.request$
+				.pipe(filter((request) => request.data.type === 'db'))
+				.subscribe((request) => {
+					this.handleRequest(request, connection, subscription);
+				}),
+		);
 
 		return subscription;
 	}
 
-	async handleRequest(
+	handleRequest(
 		request: InboundRequest<UserMessageOfType<'request'> & { type: 'db' }>,
+		connection: RoomHostConnection,
+		subscription: Subscription,
 	) {
-		const data = request.data;
-		const collection = this.sources[data.collection];
-
 		request.respond(async (): Promise<UserMessageOfType<'response'>> => {
+			const { data } = request;
+
+			switch (data.action) {
+				case 'closeGet$':
+					return this.#handleCloseGet$(data);
+			}
+
+			const collection = this.sources[data.collection];
 			if (!collection) throw 'Collection not found';
 
 			switch (data.action) {
 				case 'get':
 					return this.#handleGet(collection, data);
+
+				case 'get$':
+					return this.#handleGet$(
+						collection,
+						data,
+						connection,
+						request.senderId,
+						subscription,
+					);
 
 				case 'getOne':
 					return this.#handleGetOne(collection, data);
@@ -87,6 +96,55 @@ export class CollectionHost<
 		return {
 			data: (await collection.get(data.filter)).toRaw(),
 		};
+	}
+
+	#subscriptions = new Map<string, Subscription>();
+	async #handleGet$(
+		collection: Collection<RecordMap[string]>,
+		data: z.infer<typeof get$RequestSchema.request>,
+		connection: RoomHostConnection,
+		subscriberId: MemberId,
+		provideSubscription: Subscription,
+	): Promise<z.infer<typeof get$RequestSchema.response>> {
+		const member = connection.getMember(subscriberId);
+
+		if (member === null)
+			throw new Error(
+				'A subscription to a database was made but the member went missing before it could start.',
+			);
+
+		const id = crypto.randomUUID();
+		const subscription = collection.get$(data.filter).subscribe((items) => {
+			const raw = items.values().map((item) => item.data.value);
+
+			if (member.online$.closed) {
+				subscription.unsubscribe();
+				return;
+			}
+
+			member.notify({
+				type: 'db',
+				subscriptionId: id,
+				items: raw.toArray(),
+			});
+		});
+
+		this.#subscriptions.set(id, subscription);
+		subscription.add(() => this.#subscriptions.delete(id));
+
+		provideSubscription.add(subscription);
+
+		return {
+			subscriptionId: id,
+		};
+	}
+
+	async #handleCloseGet$(
+		data: z.infer<typeof closeGet$RequestSchema.request>,
+	): Promise<z.infer<typeof closeGet$RequestSchema.response>> {
+		this.#subscriptions.get(data.subscriptionId)?.unsubscribe();
+
+		return null;
 	}
 
 	async #handleGetOne(

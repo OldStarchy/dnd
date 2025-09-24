@@ -1,55 +1,71 @@
 import {
+	useCallback,
 	useEffect,
-	useMemo,
 	useRef,
 	useState,
 	type DependencyList,
 } from 'react';
 
-export default function usePromiseLike<T>(
-	getter: PromiseLike<T>,
-	deps?: DependencyList,
-):
+type PendingResult<T> =
+	| {
+			ready: false;
+			value?: never;
+			error?: unknown;
+	  }
 	| {
 			ready: true;
 			value: T;
-	  }
-	| {
-			ready: false;
-			value: undefined;
-	  } {
-	const memoGetter = useMemo(() => getter, deps);
+			error?: never;
+	  };
 
-	const working = useRef(false);
-	const [state, setState] = useState<{
-		ready: boolean;
-		value: T | undefined;
-	}>({ ready: false, value: undefined });
+export default function usePromiseLike<T>(
+	promiseFactory: (signal: AbortSignal) => PromiseLike<T>,
+	deps?: DependencyList,
+): PendingResult<T> {
+	const promiseRef = useRef<PromiseLike<T> | null>(null);
+
+	const [state, setState] = useState<PendingResult<T>>({
+		ready: false,
+		value: undefined,
+	});
+
+	const setResult = useCallback((value: T) => {
+		setState({ ready: true, value });
+	}, []);
+
+	const setError = useCallback((error: unknown) => {
+		setState({ ready: false, error });
+	}, []);
+
+	const clearResult = useCallback(() => {
+		setState({ ready: false });
+	}, []);
 
 	useEffect(() => {
-		let cancelled = false;
-		if (working.current) return;
-		working.current = true;
+		const controller = new AbortController();
+		const signal = controller.signal;
 
-		setState({ ready: false, value: undefined });
-		memoGetter().then((value) => {
-			if (!cancelled) {
-				setState({ ready: true, value });
-			}
-		});
+		promiseRef.current = promiseFactory(signal);
+
+		promiseRef.current.then(
+			(v) => {
+				if (!signal.aborted) {
+					setResult(v);
+				}
+			},
+			(e) => {
+				if (!signal.aborted) {
+					setError(e);
+				}
+			},
+		);
+
 		return () => {
-			cancelled = true;
-			working.current = false;
+			controller.abort();
+			clearResult();
 		};
-	}, [memoGetter]);
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, deps);
 
-	return state as
-		| {
-				ready: true;
-				value: T;
-		  }
-		| {
-				ready: false;
-				value: undefined;
-		  };
+	return state;
 }

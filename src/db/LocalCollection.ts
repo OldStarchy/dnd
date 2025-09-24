@@ -1,18 +1,23 @@
 import { AsyncOption } from '@/lib/AsyncOption';
 import { type ChangeSet, applyChangeset } from '@/lib/changeSet';
-import { BehaviorSubject, Subject } from 'rxjs';
+import { BehaviorSubject, Observable, Subject } from 'rxjs';
 import type { ZodType as ZodSchema } from 'zod';
 import type { Collection, DocumentApi } from './Collection';
 import { QueryResults } from './QueryResults';
 import type { AnyRecordType } from './RecordType';
 
-export abstract class LocalCollection<in out RecordType extends AnyRecordType>
+export abstract class LocalCollection<RecordType extends AnyRecordType>
 	implements Collection<RecordType>
 {
-	private _change$ = new Subject<DocumentApi<RecordType>>();
-	readonly change$ = this._change$.asObservable();
+	#change$ = new Subject<
+		| { type: 'create' | 'update'; document: DocumentApi<RecordType> }
+		| { type: 'delete'; id: RecordType['record']['id'] }
+	>();
 
-	private readonly records: Map<string, WeakRef<DocumentApiImpl<RecordType>>>;
+	private readonly documentCache: Map<
+		string,
+		WeakRef<InstanceType<typeof LocalCollection.DocumentApi<RecordType>>>
+	>;
 
 	constructor(
 		readonly name: string,
@@ -22,7 +27,12 @@ export abstract class LocalCollection<in out RecordType extends AnyRecordType>
 		) => boolean,
 		protected readonly schema: ZodSchema<RecordType['record']>,
 	) {
-		this.records = new Map<string, WeakRef<DocumentApiImpl<RecordType>>>();
+		this.documentCache = new Map<
+			string,
+			WeakRef<
+				InstanceType<typeof LocalCollection.DocumentApi<RecordType>>
+			>
+		>();
 	}
 
 	private generateId(): string {
@@ -33,27 +43,22 @@ export abstract class LocalCollection<in out RecordType extends AnyRecordType>
 
 	protected abstract setRaw(items: RecordType['record'][]): void;
 
-	getNotifyOne(data: RecordType['record']): DocumentApi<RecordType> {
+	private wrap(data: RecordType['record']): DocumentApi<RecordType> {
 		const id = data.id;
 
-		const existing = this.records.get(id)?.deref();
+		const existing = this.documentCache.get(id)?.deref();
 
 		if (!existing) {
-			const newDoc = new DocumentApiImpl<RecordType>(
+			const newDoc = new LocalCollection.DocumentApi<RecordType>(
 				new BehaviorSubject(data),
 				this,
-				{ __set: this.__set, __delete: this.__delete },
-				this.schema,
 			);
-			this.records.set(id, new WeakRef(newDoc));
-			this._change$.next(newDoc);
+			this.documentCache.set(id, new WeakRef(newDoc));
 			return newDoc;
+		} else {
+			existing.data.next(data);
 		}
 
-		if (existing.data.getValue().revision !== data.revision) {
-			existing.data.next(data);
-			this._change$.next(existing);
-		}
 		return existing;
 	}
 
@@ -66,8 +71,85 @@ export abstract class LocalCollection<in out RecordType extends AnyRecordType>
 				.filter((item: RecordType['record']) =>
 					this.filterFn(item, filter),
 				)
-				.map((item: RecordType['record']) => this.getNotifyOne(item)),
+				.map((item: RecordType['record']) => this.wrap(item)),
 		);
+	}
+
+	get$(
+		filter?: RecordType['filter'],
+	): Observable<ReadonlySet<DocumentApi<RecordType>>> {
+		return new Observable((subscriber) => {
+			(async () => {
+				let results = new Set(await this.get(filter));
+				subscriber.next(results);
+
+				subscriber.add(
+					this.#change$.subscribe((change) => {
+						switch (change.type) {
+							case 'create':
+								if (
+									this.filterFn(
+										change.document.data.value,
+										filter,
+									)
+								) {
+									results = new Set([
+										...results,
+										change.document,
+									]);
+									subscriber.next(results);
+								}
+								break;
+
+							case 'update':
+								{
+									const exists = results.has(change.document);
+									const matches = this.filterFn(
+										change.document.data.value,
+										filter,
+									);
+
+									if (exists && !matches) {
+										results = new Set(
+											[...results].filter(
+												(doc) =>
+													doc !== change.document,
+											),
+										);
+										subscriber.next(results);
+									} else if (!exists && matches) {
+										results = new Set([
+											...results,
+											change.document,
+										]);
+										subscriber.next(results);
+									}
+								}
+								break;
+
+							case 'delete':
+								{
+									const existing = results
+										.values()
+										.find(
+											(doc) =>
+												doc.data.value.id === change.id,
+										);
+									if (existing) {
+										results = new Set(
+											[...results].filter(
+												(doc) => doc !== existing,
+											),
+										);
+										subscriber.next(results);
+									}
+								}
+								break;
+						}
+					}),
+				);
+			})();
+		});
 	}
 
 	getOne(
@@ -94,42 +176,12 @@ export abstract class LocalCollection<in out RecordType extends AnyRecordType>
 		items.push(data);
 		this.setRaw(items);
 
-		return this.getNotifyOne(data);
+		const document = this.wrap(data);
+		this.#change$.next({ type: 'create', document });
+		return document;
 	}
 
-	private __set = (item: RecordType['record']): void => {
-		const records = this.getRaw();
-
-		const existingIndex = records.findIndex((i) => i.id === item.id);
-		if (existingIndex !== -1) {
-			const existing = records[existingIndex];
-
-			if (existing.revision !== item.revision) {
-				throw new Error(
-					`Cannot set item with id ${item.id} expected revision ${item.revision} but current revision is ${existing.revision}`,
-				);
-			}
-
-			item = {
-				...item,
-				revision: existing.revision + 1,
-			};
-
-			records[existingIndex] = item;
-		} else {
-			records.push(item);
-		}
-
-		this.setRaw(records);
-
-		const existing = this.records.get(item.id)?.deref();
-		if (existing) {
-			existing.data.next(item);
-			this._change$.next(existing);
-		}
-	};
-
-	private __delete = (id: string): void => {
+	async delete(id: RecordType['record']['id']): Promise<void> {
 		const records = this.getRaw();
 		if (!records.some((item) => item.id === id)) {
 			return;
@@ -137,58 +189,70 @@ export abstract class LocalCollection<in out RecordType extends AnyRecordType>
 		const newRecords = records.filter((item) => item.id !== id);
 		this.setRaw(newRecords);
 
-		const existing = this.records.get(id)?.deref();
-		if (existing) {
-			existing.data.complete();
-			this._change$.next(existing);
-		}
-		this.records.delete(id);
-	};
-}
-class DocumentApiImpl<in out RecordType extends AnyRecordType>
-	implements DocumentApi<RecordType>
-{
-	public readonly data: BehaviorSubject<RecordType['record']>;
-	readonly collection: LocalCollection<RecordType>;
-	private readonly schema: ZodSchema<RecordType['record']>;
+		this.documentCache.get(id)?.deref()?.data.complete();
+		this.documentCache.delete(id);
 
-	private friendFunctions: {
-		__set(item: RecordType['record']): void;
-		__delete: (id: string) => void;
-	};
-
-	constructor(
-		data: BehaviorSubject<RecordType['record']>,
-		collection: LocalCollection<RecordType>,
-		friendFunctions: {
-			__set(item: RecordType['record']): void;
-			__delete: (id: string) => void;
-		},
-		schema: ZodSchema<RecordType['record']>,
-	) {
-		this.data = data;
-		this.collection = collection;
-		this.friendFunctions = friendFunctions;
-		this.schema = schema;
+		this.#change$.next({ type: 'delete', id });
 	}
 
 	async update(
+		id: RecordType['record']['id'],
+		revision: number,
 		changeSet: ChangeSet<Omit<RecordType['record'], 'id' | 'revision'>>,
 	): Promise<void> {
-		const oldData = this.data.getValue();
-		let updated = applyChangeset(oldData, changeSet);
+		const records = this.getRaw();
 
-		if (updated === oldData) {
-			return; // No changes made
+		const existingIndex = records.findIndex((i) => i.id === id);
+		if (existingIndex === -1) {
+			throw new Error(`No record with id ${id} found`);
+		}
+		const oldData = records[existingIndex];
+
+		if (oldData.revision !== revision) {
+			throw new Error(
+				`Cannot update item with id ${id} expected revision ${revision} but current revision is ${oldData.revision}`,
+			);
 		}
 
-		updated = { ...updated, id: oldData.id, revision: oldData.revision };
+		const updated = applyChangeset(oldData, changeSet);
 
-		const parsed = this.schema.parse(updated);
-		this.friendFunctions.__set(parsed);
+		if (updated === oldData) {
+			return;
+		}
+
+		const parsed = this.schema.parse({
+			...updated,
+			id: oldData.id,
+			revision: oldData.revision + 1,
+		});
+
+		records[existingIndex] = parsed;
+
+		this.setRaw(records);
+
+		const document = this.wrap(parsed);
+		this.#change$.next({ type: 'update', document: document });
 	}
 
-	async delete(): Promise<void> {
-		this.friendFunctions.__delete(this.data.getValue().id);
-	}
+	private static DocumentApi = class DocumentApi<
+		RecordType extends AnyRecordType,
+	> implements DocumentApi<RecordType>
+	{
+		constructor(
+			readonly data: BehaviorSubject<RecordType['record']>,
+			readonly collection: LocalCollection<RecordType>,
+		) {}
+
+		async update(
+			changeSet: ChangeSet<Omit<RecordType['record'], 'id' | 'revision'>>,
+		): Promise<void> {
+			const { id, revision } = this.data.value;
+
+			return this.collection.update(id, revision, changeSet);
+		}
+
+		async delete(): Promise<void> {
+			return this.collection.delete(this.data.getValue().id);
+		}
+	};
 }

@@ -5,14 +5,14 @@ import { AsyncOption } from '@/lib/AsyncOption';
 import type { ChangeSet } from '@/lib/changeSet';
 import filterMap, { Skip } from '@/lib/filterMap';
 import { Option } from '@/lib/Option';
-import { BehaviorSubject, Subject } from 'rxjs';
-import type z from 'zod';
+import { BehaviorSubject, Observable } from 'rxjs';
 import type RoomHostConnection from '../room/RoomHostConnection';
 import {
 	type CreateResult,
 	type DbNotificationMessages,
 	type DbRequestMessages,
 	type DbResponseMessages,
+	type Get$Result,
 	type GetOneResult,
 	type GetResult,
 	type SuccessResult,
@@ -26,70 +26,24 @@ export type RemoteCollectionMessages<T> =
 export default class RemoteCollection<RecordType extends AnyRecordType = never>
 	implements Collection<RecordType>
 {
-	private readonly connection: RoomHostConnection;
-
-	readonly #change$ = new Subject<DocumentApi<RecordType>>();
-	readonly change$ = this.#change$.asObservable();
-
-	private readonly records: Map<
+	private readonly records = new Map<
 		string,
-		WeakRef<RemoteDocumentApi<RecordType>>
-	>;
+		WeakRef<
+			InstanceType<typeof RemoteCollection.RemoteDocumentApi<RecordType>>
+		>
+	>();
 
 	constructor(
-		connection: RoomHostConnection,
+		private readonly connection: RoomHostConnection,
 		readonly name: string,
-		schema: z.ZodType<RecordType['record']>,
-	) {
-		this.connection = connection;
-
-		this.records = new Map<
-			string,
-			WeakRef<RemoteDocumentApi<RecordType>>
-		>();
-
-		const arraySchema = schema.array();
-
-		// TODO: there isn't a notification for deleted records yet.
-		this.connection.notification$
-			.pipe(
-				filterMap((notification) => {
-					if (notification.data.type !== 'db') return Skip;
-					if (notification.data.collection !== this.name) return Skip;
-
-					const validation = arraySchema.safeParse(
-						notification.data.items,
-					);
-
-					if (!validation.success) {
-						console.warn(
-							'Invalid records received from host:',
-							notification.data.items,
-							validation.error,
-						);
-						return Skip;
-					}
-
-					return validation.data;
-				}),
-			)
-			.subscribe((items) => {
-				items
-					.map((item) => {
-						return this.getNotifyOne(item);
-					})
-					.forEach((doc) => {
-						this.#change$.next(doc);
-					});
-			});
-	}
+	) {}
 
 	private getNotifyOne(data: RecordType['record']): DocumentApi<RecordType> {
 		const id = data.id;
 		const existing = this.records.get(id)?.deref();
 
 		if (!existing) {
-			const newDoc = new RemoteDocumentApi<RecordType>(
+			const newDoc = new RemoteCollection.RemoteDocumentApi<RecordType>(
 				new BehaviorSubject(data),
 				this,
 			);
@@ -100,6 +54,7 @@ export default class RemoteCollection<RecordType extends AnyRecordType = never>
 		if (existing.data.getValue().revision !== data.revision) {
 			existing.data.next(data);
 		}
+
 		return existing;
 	}
 
@@ -120,6 +75,54 @@ export default class RemoteCollection<RecordType extends AnyRecordType = never>
 		const data = response.data;
 
 		return new QueryResults(...data.map((item) => this.getNotifyOne(item)));
+	}
+
+	get$(
+		filter?: RecordType['filter'],
+	): Observable<ReadonlySet<DocumentApi<RecordType>>> {
+		return new Observable((subscriber) => {
+			const gmId = this.connection.gm.id;
+			(async () => {
+				const { subscriptionId } = (await this.connection.gm.request({
+					type: 'db',
+					action: 'get$',
+					collection: this.name,
+					filter: filter,
+				})) as Get$Result;
+
+				subscriber.add(() => {
+					this.connection.gm.request({
+						type: 'db',
+						action: 'closeGet$',
+						subscriptionId: subscriptionId,
+					});
+				});
+
+				subscriber.add(
+					this.connection.notification$
+						.pipe(
+							filterMap((notification) =>
+								notification.data.type === 'db' &&
+								notification.data.subscriptionId ===
+									subscriptionId &&
+								notification.senderId === gmId
+									? (notification.data
+											.items as RecordType['record'][])
+									: Skip,
+							),
+						)
+						.subscribe((items) => {
+							subscriber.next(
+								new Set(
+									items.map((item) =>
+										this.getNotifyOne(item),
+									),
+								),
+							);
+						}),
+				);
+			})();
+		});
 	}
 
 	getOne(
@@ -163,44 +166,61 @@ export default class RemoteCollection<RecordType extends AnyRecordType = never>
 
 		return this.getNotifyOne(response.data);
 	}
-}
-
-class RemoteDocumentApi<RecordType extends AnyRecordType>
-	implements DocumentApi<RecordType>
-{
-	readonly data: BehaviorSubject<RecordType['record']>;
-
-	readonly collection: RemoteCollection<RecordType>;
-
-	constructor(
-		data: BehaviorSubject<RecordType['record']>,
-
-		collection: RemoteCollection<RecordType>,
-	) {
-		this.data = data;
-		this.collection = collection;
-	}
 
 	async update(
+		id: RecordType['record']['id'],
+		revision: number,
 		changeSet: ChangeSet<Omit<RecordType['record'], 'id' | 'revision'>>,
 	): Promise<void> {
-		(await this.collection['connection'].gm.request({
+		(await this.connection.gm.request({
 			type: 'db',
 			action: 'update',
-			collection: this.collection.name,
-			id: this.data.getValue().id,
-			revision: this.data.getValue().revision,
+			collection: this.name,
+			id,
+			revision,
 			changeSet,
 		})) as SuccessResult;
 	}
 
-	async delete(): Promise<void> {
-		await this.collection['connection'].gm.request({
+	async delete(
+		id: RecordType['record']['id'],
+		revision: number,
+	): Promise<void> {
+		await this.connection.gm.request({
 			type: 'db',
 			action: 'delete',
-			collection: this.collection.name,
-			id: this.data.getValue().id,
-			revision: this.data.getValue().revision,
+			collection: this.name,
+			id,
+			revision,
 		});
 	}
+
+	private static RemoteDocumentApi = class RemoteDocumentApi<
+		RecordType extends AnyRecordType,
+	> implements DocumentApi<RecordType>
+	{
+		readonly data: BehaviorSubject<RecordType['record']>;
+
+		readonly collection: RemoteCollection<RecordType>;
+
+		constructor(
+			data: BehaviorSubject<RecordType['record']>,
+			collection: RemoteCollection<RecordType>,
+		) {
+			this.data = data;
+			this.collection = collection;
+		}
+
+		async update(
+			changeSet: ChangeSet<Omit<RecordType['record'], 'id' | 'revision'>>,
+		): Promise<void> {
+			const { id, revision } = this.data.value;
+			return this.collection.update(id, revision, changeSet);
+		}
+
+		async delete(): Promise<void> {
+			const { id, revision } = this.data.value;
+			return this.collection.delete(id, revision);
+		}
+	};
 }

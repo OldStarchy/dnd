@@ -24,6 +24,24 @@ export const getRequestSchema = RequestResponse({
 	}),
 });
 
+export const get$RequestSchema = RequestResponse({
+	request: z.object({
+		action: z.literal('get$'),
+		filter: z.unknown().optional(),
+	}),
+	response: z.object({
+		subscriptionId: z.string(),
+	}),
+});
+
+export const closeGet$RequestSchema = RequestResponse({
+	request: z.object({
+		action: z.literal('closeGet$'),
+		subscriptionId: z.string(),
+	}),
+	response: z.null(),
+});
+
 export const getOneRequestSchema = RequestResponse({
 	request: z.object({
 		action: z.literal('getOne'),
@@ -66,6 +84,7 @@ export const deleteRequestSchema = RequestResponse({
 export const collectionRequestSchema = z
 	.discriminatedUnion('action', [
 		getRequestSchema.request,
+		get$RequestSchema.request,
 		getOneRequestSchema.request,
 		createRequestSchema.request,
 		updateRequestSchema.request,
@@ -76,10 +95,19 @@ export const collectionRequestSchema = z
 			type: z.literal('db'),
 			collection: z.string(),
 		}),
+	)
+	.or(
+		closeGet$RequestSchema.request.and(
+			z.object({
+				type: z.literal('db'),
+			}),
+		),
 	);
 
 export const collectionResponseSchema = z.union([
 	getRequestSchema.response,
+	get$RequestSchema.response,
+	closeGet$RequestSchema.response,
 	getOneRequestSchema.response,
 	createRequestSchema.response,
 	updateRequestSchema.response,
@@ -88,7 +116,7 @@ export const collectionResponseSchema = z.union([
 
 export const collectionNotificationSchema = z.object({
 	type: z.literal('db'),
-	collection: z.string(),
+	subscriptionId: z.string(),
 	items: z.unknown().array(),
 });
 
@@ -136,6 +164,10 @@ export type GetOneResult<RecordType extends AnyRecordType> = {
 
 export type GetResult<RecordType extends AnyRecordType> = {
 	data: RecordType['record'][];
+};
+
+export type Get$Result = {
+	subscriptionId: string;
 };
 
 export type CreateResult<RecordType extends AnyRecordType> = {

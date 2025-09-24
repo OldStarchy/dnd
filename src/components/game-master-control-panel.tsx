@@ -348,7 +348,7 @@ function GameMasterControlPanel({
 					{selectedInitiativeTableEntry ? (
 						<div className="pl-4 pr-6 py-4">
 							<InitiativeTableEntryForm
-								entry={selectedInitiativeTableEntry}
+								record={selectedInitiativeTableEntry}
 								key={selectedInitiativeTableEntry.id}
 							/>
 						</div>
