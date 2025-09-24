@@ -1,7 +1,8 @@
 {
 	"typescript.preferences.autoImportSpecifierExcludeRegexes": [
 		"^node:",
-		"vm"
+		"vm",
+		"^@radix-ui/.*"
 	],
 	"remote.portsAttributes": {
 		"3000": {
@@ -12,5 +13,6 @@
 			"label": "Vite",
 			"onAutoForward": "ignore"
 		}
-	}
+	},
+	"typescript.tsdk": "node_modules/typescript/lib"
 }
