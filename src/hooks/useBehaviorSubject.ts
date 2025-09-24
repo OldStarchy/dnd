@@ -3,12 +3,23 @@ import type { Observable } from 'rxjs';
 
 export default function useBehaviorSubject<T>(
 	subject$: Observable<T> & { value: T },
-): T {
-	const [value, setValue] = useState(subject$.value);
+): T;
+export default function useBehaviorSubject<T>(
+	subject$?: Observable<T> & { value: T },
+): T | undefined;
+
+export default function useBehaviorSubject<T>(
+	subject$?: Observable<T> & { value: T },
+): T | undefined {
+	const [value, setValue] = useState(subject$?.value);
 
 	useEffect(() => {
-		const subscription = subject$.subscribe(setValue);
-		return () => subscription.unsubscribe();
+		if (subject$) {
+			const subscription = subject$.subscribe(setValue);
+			return () => subscription.unsubscribe();
+		} else {
+			setValue(undefined);
+		}
 	}, [subject$]);
 
 	return value;

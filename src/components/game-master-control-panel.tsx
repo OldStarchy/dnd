@@ -17,7 +17,7 @@ import type RoomApi from '@/sync/room/RoomApi';
 import { DropdownMenuTrigger } from '@radix-ui/react-dropdown-menu';
 import { ChevronDown, Plus } from 'lucide-react';
 import { useCallback, useMemo, useState } from 'react';
-import { type EntityPropertySchema } from './forms/EntityPropertyPanel';
+import { type EntityProperties } from './forms/EntityProperties/Form';
 import InitiativeTable from './InitiativeTable/InitiativeTable';
 import {
 	DropdownMenu,
@@ -117,7 +117,7 @@ function GameMasterControlPanel({
 	// );
 
 	const _entityToEditPanelSchema = useCallback(
-		(entity: Entity): EntityPropertySchema => {
+		(entity: Entity): EntityProperties => {
 			const creature = (() => {
 				if (entity.creature.type === 'unique') {
 					const id = entity.creature.id;

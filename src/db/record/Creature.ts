@@ -11,7 +11,7 @@ export const creatureSchema = z.object({
 
 	name: z.string().min(1, 'Name is required'),
 	race: z.string().optional(),
-	images: z.array(z.string()).optional(),
+	images: z.array(z.string()),
 	hp: z.coerce.number().int(),
 	maxHp: z.coerce.number().int(),
 	hitpointsRoll: z.string().optional(), // e.g., "2d10+5"
@@ -36,7 +36,7 @@ export const creatureSchema = z.object({
 			charisma: z.coerce.number().int().optional(),
 		})
 		.optional(),
-	debuffs: debuffSpec.array().optional(),
+	debuffs: debuffSpec.array(),
 	description: z.string().optional(),
 });
 

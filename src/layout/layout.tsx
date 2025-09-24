@@ -25,7 +25,7 @@ function Layout() {
 				<div className="flex flex-col flex-grow items-stretch justify-center min-h-screen bg-background p-4 gap-4">
 					<AppHeader />
 
-					<main className="flex-1 grid overflow-auto">
+					<main className="flex-1 grid grid-cols-1 grid-rows-1 overflow-hidden">
 						<Outlet />
 					</main>
 
