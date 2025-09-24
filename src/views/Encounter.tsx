@@ -50,6 +50,8 @@ function EncounterWrapper({ room }: { room: RoomApi }) {
 							name: 'Steven',
 							hp: 10,
 							maxHp: 10,
+							debuffs: [],
+							images: [],
 						},
 					},
 				});

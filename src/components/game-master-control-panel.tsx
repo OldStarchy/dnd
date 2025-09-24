@@ -7,17 +7,25 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area';
 import type { DocumentApi } from '@/db/Collection';
 import type { EncounterRecordType } from '@/db/record/Encounter';
+import type { InitiativeTableEntryRecord } from '@/db/record/InitiativeTableEntry';
 import { dnd5eApi, dnd5eApiUrl } from '@/dnd5eApi';
 import useBehaviorSubject from '@/hooks/useBehaviorSubject';
 import useCollectionQuery from '@/hooks/useCollectionQuery';
 import useLocalStorage from '@/hooks/useLocalStorage';
 import useMonsterList from '@/hooks/useMonsterList';
+import rollDice from '@/lib/rollDice';
 import { HealthObfuscation, type Entity } from '@/store/types/Entity';
+import useRoomContext from '@/sync/react/hooks/useRoomContext';
 import type RoomApi from '@/sync/room/RoomApi';
 import { DropdownMenuTrigger } from '@radix-ui/react-dropdown-menu';
 import { ChevronDown, Plus } from 'lucide-react';
-import { useCallback, useMemo, useState } from 'react';
-import { type EntityProperties } from './forms/EntityProperties/Form';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import EntityPropertiesForm from './forms/EntityProperties/Form';
+import { type EntityProperties } from './forms/EntityProperties/schema';
+import {
+	applyEntityToInitiativeEntry,
+	toEntity,
+} from './forms/EntityProperties/translate';
 import InitiativeTable from './InitiativeTable/InitiativeTable';
 import {
 	DropdownMenu,
@@ -40,7 +48,9 @@ function GameMasterControlPanel({
 		v !== 'vertical' ? 'horizontal' : 'vertical',
 	);
 
-	const entities = useCollectionQuery(room.db.initiativeTableEntry);
+	const initiativeTableEntry = useCollectionQuery(
+		room.db.initiativeTableEntry,
+	);
 	const encounterData = useBehaviorSubject(encounter.data);
 	const shareCode = useBehaviorSubject(room.code$);
 
@@ -52,7 +62,7 @@ function GameMasterControlPanel({
 		null,
 	);
 
-	const selectedEntity = entities.find(
+	const selectedInitiativeTableEntry = initiativeTableEntry.find(
 		(entity) => entity.id === selectedEntityId,
 	);
 
@@ -70,6 +80,7 @@ function GameMasterControlPanel({
 					hp: 10,
 					maxHp: 10,
 					debuffs: [],
+					images: [],
 				},
 			},
 		};
@@ -114,78 +125,6 @@ function GameMasterControlPanel({
 	// 				return ety;
 	// 			}),
 	// 	[entities, characters],
-	// );
-
-	const _entityToEditPanelSchema = useCallback(
-		(entity: Entity): EntityProperties => {
-			const creature = (() => {
-				if (entity.creature.type === 'unique') {
-					const id = entity.creature.id;
-					return characters.find((c) => c.id === id)!;
-				} else return entity.creature.data;
-			})();
-
-			return {
-				initiative: entity.initiative,
-				visible: entity.visible,
-				images: creature.images,
-				obfuscateHealth: entity.obfuscateHealth,
-				name: creature.name,
-				hp: creature.hp,
-				maxHp: creature.maxHp,
-				ac: creature.ac,
-				debuffs: creature.debuffs ?? [],
-			};
-		},
-		[characters],
-	);
-
-	// const saveEntityPanelChanges = useCallback(
-	// 	(id: string, data: EntityPropertySchema) => {
-	// 		const entity = entities.find((e) => e.id === id);
-	// 		if (!entity) return;
-
-	// 		if (entity.creature.type === 'unique') {
-	// 			const id = entity.creature.id;
-	// 			update(id, {
-	// 				name: { value: data.name },
-	// 				ac: { value: data.ac },
-	// 				hp: { value: data.hp },
-	// 				maxHp: { value: data.maxHp },
-	// 				debuffs: { value: data.debuffs },
-	// 				images: { value: data.images },
-	// 			});
-	// 			dispatch(setEntity({ ...entity, visible: data.visible }));
-	// 		} else {
-	// 			dispatch(
-	// 				setEntity({
-	// 					...entity,
-	// 					creature: {
-	// 						...entity.creature,
-	// 						data: {
-	// 							...entity.creature.data,
-	// 							name: data.name || entity.creature.data.name,
-	// 							ac: data.ac ?? entity.creature.data.ac,
-	// 							hp: data.hp ?? entity.creature.data.hp,
-	// 							maxHp: data.maxHp ?? entity.creature.data.maxHp,
-	// 							debuffs: data.debuffs,
-	// 							images:
-	// 								(
-	// 									data.images ??
-	// 									entity.creature.data.images ??
-	// 									[]
-	// 								).filter((i) => i !== undefined) ?? [],
-	// 						},
-	// 					},
-	// 					initiative: data.initiative ?? entity.initiative,
-	// 					obfuscateHealth:
-	// 						data.obfuscateHealth ?? entity.obfuscateHealth,
-	// 					visible: data.visible ?? entity.visible,
-	// 				}),
-	// 			);
-	// 		}
-	// 	},
-	// 	[entities, dispatch, update],
 	// );
 
 	return (
@@ -406,18 +345,12 @@ function GameMasterControlPanel({
 			<ResizableHandle />
 			<ResizablePanel defaultSize={50}>
 				<ScrollArea className="h-full">
-					{selectedEntity ? (
+					{selectedInitiativeTableEntry ? (
 						<div className="pl-4 pr-6 py-4">
-							{/* <EntityPropertyPanel
-								entity={entityToEditPanelSchema(selectedEntity)}
-								key={selectedEntity.id}
-								onChange={(entity) => {
-									saveEntityPanelChanges(
-										selectedEntity.id,
-										entity,
-									);
-								}}
-							/> */}
+							<InitiativeTableEntryForm
+								entry={selectedInitiativeTableEntry}
+								key={selectedInitiativeTableEntry.id}
+							/>
 						</div>
 					) : (
 						<div className="flex items-center justify-center w-full h-full">
@@ -430,33 +363,49 @@ function GameMasterControlPanel({
 	);
 }
 
-function rollDice(str: string): number {
-	const [count, sides, modifier] = (() => {
-		const match =
-			/^(?<count>\d+)d(?<sides>\d+)(?<modifier>[+-]?\d+)?$/.exec(str);
-		if (!match) {
-			throw new Error(`Invalid dice format: ${str}`);
-		}
-
-		const { count, sides, modifier } = match.groups as {
-			count: string;
-			sides: string;
-			modifier?: string;
-		};
-		return [
-			Number(count),
-			Number(sides),
-			modifier ? Number(modifier) : 0,
-		] as const;
-	})();
-
-	let total = 0;
-	for (let i = 0; i < count; i++) {
-		total += Math.floor(Math.random() * sides) + 1;
-	}
-	return total + modifier;
-}
 export default GameMasterControlPanel;
+
+function InitiativeTableEntryForm({
+	record,
+}: {
+	record: DocumentApi<InitiativeTableEntryRecord>;
+}) {
+	const room = useRoomContext();
+
+	if (!room) {
+		throw new Error('No room context');
+	}
+
+	const [entity, setEntity] = useState<EntityProperties>();
+
+	useEffect(() => {
+		toEntity(record.data.value, room.db.creature).then(setEntity);
+	}, [record, room.db.creature]);
+
+	const saveEntityPanelChanges = useCallback(
+		async (id: string, data: EntityProperties) => {
+			const record = await room.db.initiativeTableEntry
+				.getOne({ id })
+				.unwrap('Entity not found');
+			applyEntityToInitiativeEntry(record, data, room.db.creature);
+		},
+		[room],
+	);
+
+	if (!entity) {
+		return <div>Loading...</div>;
+	}
+
+	return (
+		<EntityPropertiesForm
+			entity={entity}
+			onChange={(data) => {
+				applyEntityToInitiativeEntry(record, data, room.db.creature);
+				setEntity(data);
+			}}
+		/>
+	);
+}
 
 // function InitiativeTableWrapper() {
 // 	const room = useRoomContext();
