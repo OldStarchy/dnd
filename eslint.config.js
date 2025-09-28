@@ -14,7 +14,7 @@ export default tseslint.config(
 		files: ['**/*.{ts,tsx}'],
 		ignores: ['dnd5eapi/**', 'src/components/ui/**'],
 		languageOptions: {
-			ecmaVersion: 2020,
+			ecmaVersion: 'latest',
 			globals: globals.browser,
 		},
 		plugins: {
