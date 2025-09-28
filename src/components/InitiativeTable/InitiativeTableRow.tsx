@@ -28,7 +28,7 @@ import { Toggle } from '@/components/ui/toggle';
 import type { Creature } from '@/db/record/Creature';
 import type { InitiativeTableEntry } from '@/db/record/InitiativeTableEntry';
 import { cn } from '@/lib/utils';
-import useRoomContext from '@/sync/react/hooks/useRoomContext';
+import useRoomContext from '@/sync/react/context/room/useRoomContext';
 
 import type { FieldVisibility } from './InitiativeTable';
 

@@ -19,7 +19,7 @@ import useLocalStorage from '@/hooks/useLocalStorage';
 import useMonsterList from '@/hooks/useMonsterList';
 import rollDice from '@/lib/rollDice';
 import { type Entity, HealthObfuscation } from '@/store/types/Entity';
-import useRoomContext from '@/sync/react/hooks/useRoomContext';
+import useRoomContext from '@/sync/react/context/room/useRoomContext';
 import type RoomApi from '@/sync/room/RoomApi';
 
 import EntityPropertiesForm from './forms/EntityProperties/Form';

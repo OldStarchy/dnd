@@ -2,15 +2,16 @@ import '@/index.css';
 import { describe, expect, it } from 'vitest';
 import { render } from 'vitest-browser-react';
 
-import { ModeToggle } from './mode-toggle';
-import { ThemeProvider } from './theme-provider';
+import ThemeProvider from '@/context/theme/ThemeProvider';
+
+import { ThemeToggle } from './ThemeToggle';
 
 describe('ModeToggle', () => {
 	it('switches to the selected theme', async () => {
 		// Render a React element into the DOM
 		const screen = render(
 			<ThemeProvider storageKey="vite-ui-theme">
-				<ModeToggle />
+				<ThemeToggle />
 			</ThemeProvider>,
 		);
 

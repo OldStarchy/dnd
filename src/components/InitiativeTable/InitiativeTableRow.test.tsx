@@ -7,9 +7,9 @@ import { Table } from '@/components/ui/table';
 import type { InitiativeTableEntry } from '@/db/record/InitiativeTableEntry';
 import { Debuff } from '@/type/Debuff';
 
-import { ThemeProvider } from '../theme-provider';
 import type { FieldVisibility } from './InitiativeTable';
 import InitiativeTableRow from './InitiativeTableRow';
+import { ThemeProvider } from '../../context/theme/ThemeProvider';
 
 const visibility: FieldVisibility = {
 	initiative: true,

@@ -8,11 +8,11 @@ import {
 	RouterProvider,
 } from 'react-router';
 
-import { RoomHostContextProvider } from '@/components/context/RoomHostContextProvider';
-import { ThemeProvider } from '@/components/theme-provider';
+import ThemeProvider from '@/context/theme/ThemeProvider';
 import Logger, { consoleWriter } from '@/lib/log';
 import routes from '@/routes';
-import RoomContextProvider from '@/sync/react/components/RoomActionsContextProvider';
+import RoomContextProvider from '@/sync/react/context/roomActions/RoomActionsContextProvider';
+import { RoomHostContextProvider } from '@/sync/react/context/roomHost/RoomHostContextProvider';
 
 Logger.default.addWriter(Logger.INFO, consoleWriter);
 

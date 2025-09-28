@@ -1,6 +1,6 @@
 import { useContext } from 'react';
 
-import { RoomHostContext } from '@/sync/react/context/RoomHostContext';
+import { RoomHostContext } from '@/sync/react/context/roomHost/RoomHostContext';
 import type RoomHost from '@/sync/room/RoomHost';
 
 export function useRoomHost(): RoomHost {

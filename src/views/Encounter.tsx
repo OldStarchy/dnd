@@ -6,7 +6,7 @@ import Typography from '@/components/Typography';
 import { PAGES } from '@/const';
 import type { DocumentApi } from '@/db/Collection';
 import type { EncounterRecordType } from '@/db/record/Encounter';
-import useRoomContext from '@/sync/react/hooks/useRoomContext';
+import useRoomContext from '@/sync/react/context/room/useRoomContext';
 import type RoomApi from '@/sync/room/RoomApi';
 
 function Home() {

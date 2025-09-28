@@ -1,7 +1,7 @@
 import { SplitSquareHorizontal, SplitSquareVertical } from 'lucide-react';
 import { useCallback } from 'react';
 
-import { ModeToggle } from '@/components/mode-toggle';
+import { ThemeToggle } from '@/components/ThemeToggle';
 import { Button } from '@/components/ui/button';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import useLocalStorage from '@/hooks/useLocalStorage';
@@ -19,7 +19,7 @@ export default function Header() {
 		setSplitDirection((prev) =>
 			prev !== 'vertical' ? 'vertical' : 'horizontal',
 		);
-	}, []);
+	}, [setSplitDirection]);
 
 	return (
 		<header className="flex items-center justify-end space-x-2">
@@ -45,7 +45,7 @@ export default function Header() {
 				<span className="sr-only">Toggle split direction</span>
 			</Button>
 
-			<ModeToggle />
+			<ThemeToggle />
 		</header>
 	);
 }
