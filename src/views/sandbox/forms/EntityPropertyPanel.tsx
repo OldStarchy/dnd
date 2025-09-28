@@ -47,7 +47,7 @@ function Page() {
 		setRecord(newRecord);
 	};
 
-	const data = useBehaviorSubject(record?.data);
+	const data = useBehaviorSubject(record?.data$);
 
 	return (
 		<section className="grid grid-cols-2 gap-6 max-h-full items-start">

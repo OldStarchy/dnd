@@ -60,7 +60,7 @@ describe('Collection', () => {
 
 		const items = await collection.get();
 		expect(items).toHaveLength(1);
-		expect(items[0].data.getValue()).toHaveProperty('name', 'Test Item');
+		expect(items[0].data).toHaveProperty('name', 'Test Item');
 	});
 
 	it('returns the same item for the same id', async () => {
@@ -78,7 +78,7 @@ describe('Collection', () => {
 		const createdItem = await collection.create(newItem);
 
 		const fetchedItem = await collection.getOne({
-			id: createdItem.data.getValue().id,
+			id: createdItem.data.id,
 		});
 		expect(fetchedItem).toEqual(createdItem);
 	});
@@ -102,9 +102,9 @@ describe('Collection', () => {
 		});
 
 		const fetchedItem = await collection.getOne({
-			id: createdItem.data.getValue().id,
+			id: createdItem.data.id,
 		});
-		expect(fetchedItem.unwrapOrNull()?.data.getValue()).toHaveProperty(
+		expect(fetchedItem.unwrapOrNull()?.data).toHaveProperty(
 			'name',
 			'Updated Item',
 		);
@@ -143,14 +143,14 @@ describe('Collection', () => {
 		);
 
 		const createdItem = await collection.create({ name: 'Test Item' });
-		const initialRevision = createdItem.data.getValue().revision;
+		const initialRevision = createdItem.data.revision;
 
 		await createdItem.update({
 			merge: { name: { replace: 'Updated Item' } },
 		});
 
-		expect(createdItem.data.getValue().revision).toBe(initialRevision + 1);
-		expect(createdItem.data.getValue().name).toBe('Updated Item');
+		expect(createdItem.data.revision).toBe(initialRevision + 1);
+		expect(createdItem.data.name).toBe('Updated Item');
 	});
 
 	it('filters items', async () => {
@@ -173,6 +173,6 @@ describe('Collection', () => {
 
 		const filteredItems = await collection.get({ name: 'Item 1' });
 		expect(filteredItems).toHaveLength(2);
-		expect(filteredItems[0].data.getValue().name).toBe('Item 1');
+		expect(filteredItems[0].data.name).toBe('Item 1');
 	});
 });

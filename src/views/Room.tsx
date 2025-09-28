@@ -218,7 +218,7 @@ function RoomConfiguratorInner({
 
 	useEffect(() => {
 		if (room) {
-			setNameImpl(room.me.data.getValue().name);
+			setNameImpl(room.me.data.name);
 		} else {
 			setNameImpl('');
 		}
@@ -227,7 +227,7 @@ function RoomConfiguratorInner({
 	useEffect(() => {
 		if (!room) return;
 
-		const sub = room.me.data.subscribe({
+		const sub = room.me.data$.subscribe({
 			next: (data) => {
 				setNameImpl(data.name);
 			},
@@ -323,7 +323,7 @@ function LocalRoomView({
 
 	return (
 		<>
-			<p>Local Room "{room.meta.data.getValue().name}"</p>
+			<p>Local Room "{room.meta.data.name}"</p>
 			<ul className="ml-2">
 				{[...hosts.entries()].map(([host, publication]) => {
 					return (
@@ -378,7 +378,7 @@ function LocalRoomView({
 }
 
 function GenericRoomView({ room }: { room: RoomApi }) {
-	const meta = useBehaviorSubject(room.meta.data);
+	const meta = useBehaviorSubject(room.meta.data$);
 	const members = useCollectionQuery(room.db.member);
 	const presense = useBehaviorSubject(room.presence$);
 
@@ -386,11 +386,11 @@ function GenericRoomView({ room }: { room: RoomApi }) {
 		<>
 			<p>Remote Room "{meta.name}"</p>
 
-			{members.length > 0 && (
+			{members.size > 0 && (
 				<>
 					<h3>Members</h3>
 					<ul>
-						{members.map((member) => (
+						{members.values().map(({ data: member }) => (
 							<li
 								key={member.id}
 								title={member.id}

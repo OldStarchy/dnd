@@ -279,8 +279,8 @@ export default class Room implements RoomApi {
 				host: roomHost.host,
 				membershipToken,
 				code: roomCode,
-				name: this.meta.data.value.name,
-				roomId: this.meta.data.value.id,
+				name: this.meta.data.name,
+				roomId: this.meta.data.id,
 			},
 		});
 

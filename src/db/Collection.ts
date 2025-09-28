@@ -20,7 +20,8 @@ export interface ReadonlyCollection<RecordType extends AnyRecordType> {
 }
 
 export interface ReadonlyDocumentApi<RecordType extends AnyRecordType> {
-	readonly data: Omit<BehaviorSubject<RecordType['record']>, 'next'>;
+	readonly data: RecordType['record'];
+	readonly data$: Omit<BehaviorSubject<RecordType['record']>, 'next'>;
 	readonly collection: ReadonlyCollection<RecordType>;
 }
 
@@ -46,7 +47,7 @@ export interface Collection<RecordType extends AnyRecordType>
 
 export interface DocumentApi<RecordType extends AnyRecordType>
 	extends ReadonlyDocumentApi<RecordType> {
-	readonly data: Omit<BehaviorSubject<RecordType['record']>, 'next'>;
+	readonly data$: Omit<BehaviorSubject<RecordType['record']>, 'next'>;
 	readonly collection: Collection<RecordType>;
 
 	update(

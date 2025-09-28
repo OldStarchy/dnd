@@ -40,7 +40,7 @@ function RoomWidgetInner({ room }: { room: RoomApi }) {
 				) : (
 					''
 				)}
-				{room.meta.data.getValue().name || 'Unnamed Room'}
+				{room.meta.data.name || 'Unnamed Room'}
 			</span>
 			<Link to="/room" title="Room Settings">
 				<Button variant="outline" size="icon">

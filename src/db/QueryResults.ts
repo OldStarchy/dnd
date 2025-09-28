@@ -9,7 +9,7 @@ export class ReadonlyQueryResults<
 	}
 
 	toRaw(): RecordType['record'][] {
-		return this.map((item) => item.data.getValue());
+		return this.map((item) => item.data);
 	}
 }
 
@@ -27,6 +27,6 @@ export class QueryResults<RecordType extends AnyRecordType> extends Array<
 	}
 
 	toRaw(): RecordType['record'][] {
-		return Array.from(this).map((item) => item.data.getValue());
+		return Array.from(this).map((item) => item.data);
 	}
 }

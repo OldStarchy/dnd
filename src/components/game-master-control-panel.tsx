@@ -53,7 +53,7 @@ function GameMasterControlPanel({
 	const initiativeTableEntry = useCollectionQuery(
 		room.db.initiativeTableEntry,
 	);
-	const encounterData = useBehaviorSubject(encounter.data);
+	const encounterData = useBehaviorSubject(encounter.data$);
 	const shareCode = useBehaviorSubject(room.code$);
 
 	const { monsters } = useMonsterList();
@@ -64,9 +64,9 @@ function GameMasterControlPanel({
 		null,
 	);
 
-	const selectedInitiativeTableEntry = initiativeTableEntry.find(
-		(entity) => entity.id === selectedEntityId,
-	);
+	const selectedInitiativeTableEntry = initiativeTableEntry
+		.values()
+		.find((entity) => entity.data.id === selectedEntityId);
 
 	const createNewEntity = useCallback(() => {
 		const _newEntity: Entity = {
@@ -220,7 +220,7 @@ function GameMasterControlPanel({
 															})
 															.then((record) => {
 																setSelectedEntityId(
-																	record.data
+																	record.data$
 																		.value
 																		.id,
 																);
@@ -320,7 +320,7 @@ function GameMasterControlPanel({
 																	) => {
 																		setSelectedEntityId(
 																			newEntity
-																				.data
+																				.data$
 																				.value
 																				.id,
 																		);
@@ -381,7 +381,7 @@ function InitiativeTableEntryForm({
 	const [entity, setEntity] = useState<EntityProperties>();
 
 	useEffect(() => {
-		toEntity(record.data.value, room.db.creature).then(setEntity);
+		toEntity(record.data, room.db.creature).then(setEntity);
 	}, [record, room.db.creature]);
 
 	const saveEntityPanelChanges = useCallback(
@@ -436,7 +436,7 @@ function EncounterView({
 }) {
 	const encounterFilter = useMemo(
 		() => ({
-			encounterId: encounter.data.value.id,
+			encounterId: encounter.data.id,
 		}),
 		[encounter],
 	);
@@ -446,7 +446,7 @@ function EncounterView({
 	);
 	const creatures = useCollectionQuery(room.db.creature);
 
-	const encounterData = useBehaviorSubject(encounter.data);
+	const encounterData = useBehaviorSubject(encounter.data$);
 
 	const [selectedEntityId, setSelectedEntityId] = useState<string | null>(
 		null,

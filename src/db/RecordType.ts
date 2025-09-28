@@ -8,7 +8,7 @@ export type RecordType<
 	TRecord extends { id: string; revision: number },
 	TFilter,
 > = {
-	record: TRecord;
+	record: Readonly<TRecord>;
 	filter: TFilter;
 	request: DbRequestMessages<TRecord>;
 	response: DbResponseMessages<TRecord>;

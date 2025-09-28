@@ -71,7 +71,7 @@ export default function InitiativeTableRow({
 				const id = entry.creature.id;
 				const creature = await getCreature(id);
 				if (creature) {
-					setCreatureInfo(creature.data.value);
+					setCreatureInfo(creature.data);
 				} else {
 					console.error(`Creature with id ${id} not found.`);
 				}

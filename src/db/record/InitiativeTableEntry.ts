@@ -39,6 +39,8 @@ export type InitiativeTableEntryRecord = RecordType<
 export const initiativeTableEntryFilter: RecordFilter<
 	InitiativeTableEntryRecord
 > = (record, filter) => {
+	if (!filter) return true;
+
 	if (filter.id && record.id !== filter.id) return false;
 
 	if (filter.encounterId && record.encounterId !== filter.encounterId)

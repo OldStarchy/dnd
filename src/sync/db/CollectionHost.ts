@@ -116,7 +116,7 @@ export class CollectionHost<
 
 		const id = crypto.randomUUID();
 		const subscription = collection.get$(data.filter).subscribe((items) => {
-			const raw = items.values().map((item) => item.data.value);
+			const raw = items.values().map((item) => item.data);
 
 			if (member.online$.closed) {
 				subscription.unsubscribe();
@@ -155,7 +155,7 @@ export class CollectionHost<
 		return {
 			data: await collection
 				.getOne(data.filter)
-				.map((doc) => doc.data.getValue())
+				.map((doc) => doc.data)
 				.unwrapOrNull(),
 		};
 	}
@@ -169,7 +169,7 @@ export class CollectionHost<
 				await collection
 					// eslint-disable-next-line @typescript-eslint/no-explicit-any
 					.create(data.data as any)
-			).data.getValue(),
+			).data,
 		};
 	}
 

@@ -39,7 +39,9 @@ export default class RemoteCollection<RecordType extends AnyRecordType = never>
 		readonly name: string,
 	) {}
 
-	private getNotifyOne(data: RecordType['record']): DocumentApi<RecordType> {
+	private getNotifyOne(
+		data: RecordType['record'],
+	): InstanceType<typeof RemoteCollection.RemoteDocumentApi<RecordType>> {
 		const id = data.id;
 		const existing = this.records.get(id)?.deref();
 
@@ -52,8 +54,8 @@ export default class RemoteCollection<RecordType extends AnyRecordType = never>
 			return newDoc;
 		}
 
-		if (existing.data.getValue().revision !== data.revision) {
-			existing.data.next(data);
+		if (existing.data.revision !== data.revision) {
+			existing.data$.next(data);
 		}
 
 		return existing;
@@ -200,27 +202,24 @@ export default class RemoteCollection<RecordType extends AnyRecordType = never>
 		RecordType extends AnyRecordType,
 	> implements DocumentApi<RecordType>
 	{
-		readonly data: BehaviorSubject<RecordType['record']>;
-
-		readonly collection: RemoteCollection<RecordType>;
+		get data() {
+			return this.data$.getValue();
+		}
 
 		constructor(
-			data: BehaviorSubject<RecordType['record']>,
-			collection: RemoteCollection<RecordType>,
-		) {
-			this.data = data;
-			this.collection = collection;
-		}
+			readonly data$: BehaviorSubject<RecordType['record']>,
+			readonly collection: RemoteCollection<RecordType>,
+		) {}
 
 		async update(
 			changeSet: ChangeSet<Omit<RecordType['record'], 'id' | 'revision'>>,
 		): Promise<void> {
-			const { id, revision } = this.data.value;
+			const { id, revision } = this.data;
 			return this.collection.update(id, revision, changeSet);
 		}
 
 		async delete(): Promise<void> {
-			const { id, revision } = this.data.value;
+			const { id, revision } = this.data;
 			return this.collection.delete(id, revision);
 		}
 	};

@@ -18,7 +18,7 @@ export async function toEntity(
 		}
 
 		const {
-			data: { value: creatureData },
+			data$: { value: creatureData },
 		} = await creatureCollection
 			.getOne({ id: data.creature.id })
 			.unwrap('Referenced creature not found');
@@ -54,13 +54,13 @@ export async function applyEntityToInitiativeEntry(
 	entity: EntityProperties,
 	creatureCollection?: Collection<CreatureRecordType>,
 ) {
-	if (record.data.value.creature.type !== 'generic') {
+	if (record.data.creature.type !== 'generic') {
 		if (!creatureCollection) {
 			throw new Error('Only generic entities are supported');
 		}
 
 		const creature = await creatureCollection
-			.getOne({ id: record.data.value.creature.id })
+			.getOne({ id: record.data.creature.id })
 			.unwrap('Referenced creature not found');
 
 		await creature.update({

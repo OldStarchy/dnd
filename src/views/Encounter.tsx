@@ -42,7 +42,7 @@ function EncounterWrapper({ room }: { room: RoomApi }) {
 				});
 
 				await room.db.initiativeTableEntry.create({
-					encounterId: encounter.data.value.id,
+					encounterId: encounter.data.id,
 					initiative: 0,
 					healthDisplay: 'Living?',
 					creature: {

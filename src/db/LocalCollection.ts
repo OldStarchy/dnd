@@ -58,7 +58,7 @@ export abstract class LocalCollection<RecordType extends AnyRecordType>
 			this.documentCache.set(id, new WeakRef(newDoc));
 			return newDoc;
 		} else {
-			existing.data.next(data);
+			existing.data$.next(data);
 		}
 
 		return existing;
@@ -90,10 +90,7 @@ export abstract class LocalCollection<RecordType extends AnyRecordType>
 						switch (change.type) {
 							case 'create':
 								if (
-									this.filterFn(
-										change.document.data.value,
-										filter,
-									)
+									this.filterFn(change.document.data, filter)
 								) {
 									results = new Set([
 										...results,
@@ -107,7 +104,7 @@ export abstract class LocalCollection<RecordType extends AnyRecordType>
 								{
 									const exists = results.has(change.document);
 									const matches = this.filterFn(
-										change.document.data.value,
+										change.document.data,
 										filter,
 									);
 
@@ -134,8 +131,7 @@ export abstract class LocalCollection<RecordType extends AnyRecordType>
 									const existing = results
 										.values()
 										.find(
-											(doc) =>
-												doc.data.value.id === change.id,
+											(doc) => doc.data.id === change.id,
 										);
 									if (existing) {
 										results = new Set(
@@ -191,7 +187,7 @@ export abstract class LocalCollection<RecordType extends AnyRecordType>
 		const newRecords = records.filter((item) => item.id !== id);
 		this.setRaw(newRecords);
 
-		this.documentCache.get(id)?.deref()?.data.complete();
+		this.documentCache.get(id)?.deref()?.data$.complete();
 		this.documentCache.delete(id);
 
 		this.#change$.next({ type: 'delete', id });
@@ -240,21 +236,25 @@ export abstract class LocalCollection<RecordType extends AnyRecordType>
 		RecordType extends AnyRecordType,
 	> implements DocumentApi<RecordType>
 	{
+		get data() {
+			return this.data$.getValue();
+		}
+
 		constructor(
-			readonly data: BehaviorSubject<RecordType['record']>,
+			readonly data$: BehaviorSubject<RecordType['record']>,
 			readonly collection: LocalCollection<RecordType>,
 		) {}
 
 		async update(
 			changeSet: ChangeSet<Omit<RecordType['record'], 'id' | 'revision'>>,
 		): Promise<void> {
-			const { id, revision } = this.data.value;
+			const { id, revision } = this.data;
 
 			return this.collection.update(id, revision, changeSet);
 		}
 
 		async delete(): Promise<void> {
-			return this.collection.delete(this.data.getValue().id);
+			return this.collection.delete(this.data.id);
 		}
 	};
 }

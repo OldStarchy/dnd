@@ -1,24 +1,18 @@
 import { BehaviorSubject } from 'rxjs';
 
 import type { DocumentApi, ReadonlyDocumentApi } from '@/db/Collection';
-import { type CreatureRecordType, creatureSchema } from '@/db/record/Creature';
-import {
-	type EncounterRecordType,
-	encounterSchema,
-} from '@/db/record/Encounter';
-import {
-	type InitiativeTableEntryRecord,
-	initiativeTableEntrySchema,
-} from '@/db/record/InitiativeTableEntry';
+import type { CreatureRecordType } from '@/db/record/Creature';
+import type { EncounterRecordType } from '@/db/record/Encounter';
+import type { InitiativeTableEntryRecord } from '@/db/record/InitiativeTableEntry';
 import { traceAsync } from '@/decorators/trace';
 import { setJsonStorage } from '@/hooks/useJsonStorage';
 import Logger from '@/lib/log';
 import RemoteCollection from '@/sync/db/RemoteCollection';
-import { type MemberRecordType, memberSchema } from '@/sync/room/member/Record';
+import type { MemberRecordType } from '@/sync/room/member/Record';
 import type RoomApi from '@/sync/room/RoomApi';
 import type RoomHost from '@/sync/room/RoomHost';
 import type RoomHostConnection from '@/sync/room/RoomHostConnection';
-import { type RoomMetaRecordType, roomMetaSchema } from '@/sync/room/RoomMeta';
+import type { RoomMetaRecordType } from '@/sync/room/RoomMeta';
 import type { MembershipToken, RoomCode } from '@/sync/room/types';
 
 export default class RemoteRoom implements RoomApi {
@@ -39,7 +33,6 @@ export default class RemoteRoom implements RoomApi {
 				return await new RemoteCollection<RoomMetaRecordType>(
 					connection,
 					'room',
-					roomMetaSchema,
 				)
 					.getOne()
 					.okOr('missing_room_meta' as const)
@@ -57,7 +50,7 @@ export default class RemoteRoom implements RoomApi {
 								host: roomHost.host,
 								membershipToken,
 								code: room.code$.value!,
-								name: meta.data.value.name,
+								name: meta.data.name,
 							},
 						});
 
@@ -99,25 +92,21 @@ export default class RemoteRoom implements RoomApi {
 		const creature = new RemoteCollection<CreatureRecordType>(
 			connection,
 			'creature',
-			creatureSchema,
 		);
 		const member = new RemoteCollection<MemberRecordType>(
 			connection,
 			'member',
-			memberSchema,
 		);
 
 		const encounter = new RemoteCollection<EncounterRecordType>(
 			connection,
 			'encounter',
-			encounterSchema,
 		);
 
 		const initiativeTableEntry =
 			new RemoteCollection<InitiativeTableEntryRecord>(
 				connection,
 				'initiativeTableEntry',
-				initiativeTableEntrySchema,
 			);
 
 		const me = await member
