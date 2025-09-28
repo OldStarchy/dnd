@@ -1,5 +1,6 @@
-import { CreatureListContext } from '@/context/CreatureListContext';
 import { useContext } from 'react';
+
+import { CreatureListContext } from '@/context/CreatureListContext';
 
 declare global {
 	interface LocalStorageKeys {

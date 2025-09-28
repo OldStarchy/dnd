@@ -1,7 +1,8 @@
-import filterMap, { Skip } from '@/lib/filterMap';
-import { Observable } from 'rxjs';
+import type { Observable } from 'rxjs';
 import type z from 'zod';
-import type { ClosableTransport, Transport } from './Transport';
+
+import filterMap, { Skip } from '@/lib/filterMap';
+import type { ClosableTransport, Transport } from '@/sync/transports/Transport';
 
 export default class JsonTransport<Send, Receive>
 	implements Transport<Send, Receive>

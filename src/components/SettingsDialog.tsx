@@ -1,3 +1,5 @@
+import { useEffect, useState } from 'react';
+
 import { Button } from '@/components/ui/button';
 import {
 	Dialog,
@@ -10,7 +12,6 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useLocalConfig } from '@/hooks/useLocalConfig';
-import { useEffect, useState } from 'react';
 
 interface SettingsDialogProps {
 	open: boolean;

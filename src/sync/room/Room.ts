@@ -1,44 +1,45 @@
 import '@/lib/OptionResultInterop';
 
-import { type Collection, type DocumentApi } from '@/db/Collection';
+import { BehaviorSubject, map, of, switchMap } from 'rxjs';
+
+import type { Collection, DocumentApi } from '@/db/Collection';
 import { LocalStorageCollection } from '@/db/LocalStorageCollection';
 import { RamCollection } from '@/db/RamCollection';
 import {
+	type CreatureRecordType,
 	creatureSchema,
 	filterCreature,
-	type CreatureRecordType,
 } from '@/db/record/Creature';
 import {
 	encounterFilter,
-	encounterSchema,
 	type EncounterRecordType,
+	encounterSchema,
 } from '@/db/record/Encounter';
 import {
 	initiativeTableEntryFilter,
-	initiativeTableEntrySchema,
 	type InitiativeTableEntryRecord,
+	initiativeTableEntrySchema,
 } from '@/db/record/InitiativeTableEntry';
 import autoSubject from '@/decorators/autoSubject';
 import { traceAsync } from '@/decorators/trace';
 import { setJsonStorage } from '@/hooks/useJsonStorage';
 import Logger from '@/lib/log';
 import { Err, Ok } from '@/lib/Result';
-import { BehaviorSubject, map, of, switchMap } from 'rxjs';
-import { CollectionHost } from '../db/CollectionHost';
+import { CollectionHost } from '@/sync/db/CollectionHost';
 import {
 	filterMember,
-	memberSchema,
 	type MemberRecordType,
-} from './member/Record';
-import type RoomApi from './RoomApi';
-import type RoomHost from './RoomHost';
+	memberSchema,
+} from '@/sync/room/member/Record';
+import type RoomApi from '@/sync/room/RoomApi';
+import type RoomHost from '@/sync/room/RoomHost';
 import {
-	roomMetaSchema,
 	type RoomMeta,
 	type RoomMetaRecordType,
-} from './RoomMeta';
-import RoomPublication from './RoomPublication';
-import type { MemberId, MembershipToken, RoomCode } from './types';
+	roomMetaSchema,
+} from '@/sync/room/RoomMeta';
+import RoomPublication from '@/sync/room/RoomPublication';
+import type { MemberId, MembershipToken, RoomCode } from '@/sync/room/types';
 
 export default class Room implements RoomApi {
 	private static rooms: Collection<RoomMetaRecordType>;

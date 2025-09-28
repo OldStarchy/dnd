@@ -1,12 +1,12 @@
-import { LOCAL_STORAGE_NAMESPACE } from '@/const';
-import Logger from '@/lib/log';
-import { Err, Ok, type Result } from '@/lib/Result';
 import type { Dispatch } from 'react';
 import z from 'zod';
+
 import useLocalStorage, {
 	getLocalStorage,
 	setLocalStorage,
-} from './useLocalStorage';
+} from '@/hooks/useLocalStorage';
+import Logger from '@/lib/log';
+import { Err, Ok, type Result } from '@/lib/Result';
 
 function writeTransformer<T>(): (value: T) => string {
 	return (value: T) => JSON.stringify(value);

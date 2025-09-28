@@ -1,6 +1,7 @@
-import { type RoomMetaIdBrand } from '@/sync/room/RoomMeta';
 import z from 'zod';
-import useJsonStorage from '../useJsonStorage';
+
+import useJsonStorage from '@/hooks/useJsonStorage';
+import type { RoomMetaIdBrand } from '@/sync/room/RoomMeta';
 
 const roomSessionSchema = z.object({
 	lastRoom: z

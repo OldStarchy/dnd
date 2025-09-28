@@ -1,7 +1,8 @@
 import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import z from 'zod';
+
 import { LocalStorageCollection } from './LocalStorageCollection';
-import { type DbRecord, type RecordType } from './RecordType';
+import type { DbRecord, RecordType } from './RecordType';
 
 describe('Collection', () => {
 	let store: { [key: string]: string } = {};

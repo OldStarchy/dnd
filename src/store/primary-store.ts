@@ -1,6 +1,7 @@
 import { configureStore, createListenerMiddleware } from '@reduxjs/toolkit';
 import { useDispatch, useSelector } from 'react-redux';
 import z from 'zod';
+
 import initiativeReducer, {
 	type InitiativeState,
 } from './reducers/initiativeSlice';

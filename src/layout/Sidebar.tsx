@@ -1,3 +1,22 @@
+import { DropdownMenuLabel } from '@radix-ui/react-dropdown-menu';
+import {
+	BugPlay,
+	ChevronUp,
+	Cog,
+	Crown,
+	Database,
+	Dog,
+	GraduationCap,
+	Home,
+	LogOut,
+	Speech,
+	Sword,
+	User2,
+	Users2,
+} from 'lucide-react';
+import { Fragment, type ReactNode, useState } from 'react';
+import { Link } from 'react-router';
+
 import { SettingsDialog } from '@/components/SettingsDialog';
 import { Button } from '@/components/ui/button';
 import {
@@ -19,24 +38,6 @@ import {
 import { PAGES } from '@/const';
 import slugToTitleCase from '@/lib/slugToTitleCase';
 import { sandboxRoutes } from '@/routes';
-import { DropdownMenuLabel } from '@radix-ui/react-dropdown-menu';
-import {
-	BugPlay,
-	ChevronUp,
-	Cog,
-	Crown,
-	Database,
-	Dog,
-	GraduationCap,
-	Home,
-	LogOut,
-	Speech,
-	Sword,
-	User2,
-	Users2,
-} from 'lucide-react';
-import { Fragment, useState, type ReactNode } from 'react';
-import { Link } from 'react-router';
 
 export default function AppSidebar() {
 	const [settingsOpen, setSettingsOpen] = useState(false);

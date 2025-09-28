@@ -1,5 +1,6 @@
 import z from 'zod';
-import useJsonStorage from './useJsonStorage';
+
+import useJsonStorage from '@/hooks/useJsonStorage';
 
 const DEFAULT_SERVER_URL = (import.meta.env.VITE_BASE_URL || '').replace(
 	/\/+$/,

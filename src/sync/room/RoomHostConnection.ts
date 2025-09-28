@@ -1,25 +1,28 @@
+import type { Observable } from 'rxjs';
+import { BehaviorSubject, take } from 'rxjs';
+
 import { traceAsync } from '@/decorators/trace';
 import type { Deferred } from '@/deferred';
 import deferred from '@/deferred';
 import CancellablePromise from '@/lib/CancellablePromise';
 import filterMap, { Skip } from '@/lib/filterMap';
 import Logger from '@/lib/log';
-import { BehaviorSubject, Observable, take } from 'rxjs';
-import { InboundNotification, InboundRequest } from '../message/inbound';
-import type { OutboundNotification } from '../message/outbound';
+import { InboundNotification, InboundRequest } from '@/sync/message/inbound';
+import type { OutboundNotification } from '@/sync/message/outbound';
 import {
-	userMessageSchema,
 	type UserMessage,
 	type UserMessageOfType,
-} from '../message/raw';
-import {
-	type InboundSystemMessage,
-	type InboundSystemMessageOfType,
-} from '../message/schema/InboundSystemMessage';
-import { type OutboundSystemMessage } from '../message/schema/OutboundSystemMessage';
-import type { ClosableTransport } from '../transports/Transport';
-import type RoomHost from './RoomHost';
+	userMessageSchema,
+} from '@/sync/message/raw';
+import type {
+	InboundSystemMessage,
+	InboundSystemMessageOfType,
+} from '@/sync/message/schema/InboundSystemMessage';
+import type { OutboundSystemMessage } from '@/sync/message/schema/OutboundSystemMessage';
+import type { ClosableTransport } from '@/sync/transports/Transport';
+
 import Member from './member/Member';
+import type RoomHost from './RoomHost';
 import type { MemberId, RoomCode } from './types';
 
 type MemberPresence = {

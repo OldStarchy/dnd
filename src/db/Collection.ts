@@ -1,6 +1,8 @@
+import type { BehaviorSubject, Observable } from 'rxjs';
+
 import type { AsyncOption } from '@/lib/AsyncOption';
-import { BehaviorSubject, Observable } from 'rxjs';
-import { type ChangeSet } from '../lib/changeSet';
+import type { ChangeSet } from '@/lib/changeSet';
+
 import type { QueryResults, ReadonlyQueryResults } from './QueryResults';
 import type { AnyRecordType } from './RecordType';
 

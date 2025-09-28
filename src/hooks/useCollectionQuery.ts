@@ -1,7 +1,8 @@
-import { DocumentApi, type Collection } from '@/db/Collection';
-import type { AnyRecordType } from '@/db/RecordType';
 import { useEffect, useMemo, useRef } from 'react';
 import { Observable } from 'rxjs';
+
+import type { Collection, DocumentApi } from '@/db/Collection';
+import type { AnyRecordType } from '@/db/RecordType';
 
 export default function useCollectionQuery<RecordType extends AnyRecordType>(
 	collection: Collection<RecordType>,

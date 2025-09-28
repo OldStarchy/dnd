@@ -1,6 +1,7 @@
 import '@/index.css';
 import { describe, expect, it } from 'vitest';
 import { render } from 'vitest-browser-react';
+
 import { ModeToggle } from './mode-toggle';
 import { ThemeProvider } from './theme-provider';
 

@@ -2,7 +2,7 @@ import type { EntityProperties } from '@/components/forms/EntityProperties/schem
 import type { Collection, DocumentApi } from '@/db/Collection';
 import type { CreatureRecordType } from '@/db/record/Creature';
 import type { Encounter } from '@/db/record/Encounter';
-import { type InitiativeTableEntryRecord } from '@/db/record/InitiativeTableEntry';
+import type { InitiativeTableEntryRecord } from '@/db/record/InitiativeTableEntry';
 import {
 	getObfuscatedHealthText,
 	HealthObfuscation,

@@ -1,5 +1,6 @@
-import type { RecordFilter, RecordType } from '@/db/RecordType';
 import z from 'zod';
+
+import type { RecordFilter, RecordType } from '@/db/RecordType';
 
 export const testRecordSchema = z.object({
 	id: z.string(),

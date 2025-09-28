@@ -1,6 +1,8 @@
+import { Outlet } from 'react-router';
+
 import { SidebarProvider } from '@/components/ui/sidebar';
 import useLocalStorage from '@/hooks/useLocalStorage';
-import { Outlet } from 'react-router';
+
 import AppFooter from './Footer';
 import AppHeader from './Header';
 import AppSidebar from './Sidebar';

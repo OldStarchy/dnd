@@ -1,6 +1,7 @@
+import z from 'zod';
+
 import { HealthObfuscation } from '@/store/types/Entity';
 import { debuffSpec } from '@/type/Debuff';
-import z from 'zod';
 
 const entityPropertiesSchema = z.object({
 	name: z.string().min(1, 'Name must be at least 1 characters long'),

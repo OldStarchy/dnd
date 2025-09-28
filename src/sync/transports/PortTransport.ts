@@ -1,5 +1,9 @@
 import { BehaviorSubject, Subject } from 'rxjs';
-import { TransportState, type ClosableTransport } from './Transport';
+
+import {
+	type ClosableTransport,
+	TransportState,
+} from '@/sync/transports/Transport';
 
 export class PortTransport implements ClosableTransport<unknown, unknown> {
 	private port: MessagePort;

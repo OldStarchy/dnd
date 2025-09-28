@@ -1,6 +1,7 @@
+import z from 'zod';
+
 import { creatureSchema } from '@/db/record/Creature';
 import exhaustiveCheck from '@/lib/exhaustiveCheck';
-import z from 'zod';
 
 export const HealthObfuscation = {
 	/**

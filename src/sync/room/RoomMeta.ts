@@ -1,5 +1,6 @@
-import type { RecordType } from '@/db/RecordType';
 import z from 'zod';
+
+import type { RecordType } from '@/db/RecordType';
 
 declare const RoomMetaIdBrand: unique symbol;
 export type RoomMetaIdBrand = typeof RoomMetaIdBrand;

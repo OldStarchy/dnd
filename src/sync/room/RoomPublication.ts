@@ -1,7 +1,8 @@
 import type { Subscription } from 'rxjs';
-import type RoomHost from './RoomHost';
-import type RoomHostConnection from './RoomHostConnection';
-import type { MembershipToken, RoomCode } from './types';
+
+import type RoomHost from '@/sync/room/RoomHost';
+import type RoomHostConnection from '@/sync/room/RoomHostConnection';
+import type { MembershipToken, RoomCode } from '@/sync/room/types';
 
 export default class RoomPublication {
 	constructor(

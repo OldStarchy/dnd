@@ -1,6 +1,6 @@
-import { Fragment, useCallback, useRef, type ReactNode } from 'react';
-import type { InitiativeTableEntry } from '../../db/record/InitiativeTableEntry';
-import { Button } from '../ui/button';
+import { Fragment, type ReactNode, useCallback, useRef } from 'react';
+
+import { Button } from '@/components/ui/button';
 import {
 	Table,
 	TableBody,
@@ -9,7 +9,9 @@ import {
 	TableHead,
 	TableHeader,
 	TableRow,
-} from '../ui/table';
+} from '@/components/ui/table';
+import type { InitiativeTableEntry } from '@/db/record/InitiativeTableEntry';
+
 import InitiativeTableRow from './InitiativeTableRow';
 
 const defaultFieldVisibility = {

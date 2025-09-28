@@ -1,6 +1,7 @@
 import type z from 'zod';
-import { AsyncResult } from '../AsyncResult';
-import { Err, Ok, Result, UnknownError, type IntoResultFn } from '../Result';
+
+import { AsyncResult } from '@/lib/AsyncResult';
+import { Err, type IntoResultFn, Ok, Result, UnknownError } from '@/lib/Result';
 
 export type AsyncAndThenOperator<In, Out, Err> = (
 	value: In,

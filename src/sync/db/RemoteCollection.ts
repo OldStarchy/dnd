@@ -1,3 +1,5 @@
+import { BehaviorSubject, Observable } from 'rxjs';
+
 import type { Collection, DocumentApi } from '@/db/Collection';
 import { QueryResults } from '@/db/QueryResults';
 import type { AnyRecordType } from '@/db/RecordType';
@@ -5,18 +7,17 @@ import { AsyncOption } from '@/lib/AsyncOption';
 import type { ChangeSet } from '@/lib/changeSet';
 import filterMap, { Skip } from '@/lib/filterMap';
 import { Option } from '@/lib/Option';
-import { BehaviorSubject, Observable } from 'rxjs';
-import type RoomHostConnection from '../room/RoomHostConnection';
-import {
-	type CreateResult,
-	type DbNotificationMessages,
-	type DbRequestMessages,
-	type DbResponseMessages,
-	type Get$Result,
-	type GetOneResult,
-	type GetResult,
-	type SuccessResult,
-} from './Messages';
+import type {
+	CreateResult,
+	DbNotificationMessages,
+	DbRequestMessages,
+	DbResponseMessages,
+	Get$Result,
+	GetOneResult,
+	GetResult,
+	SuccessResult,
+} from '@/sync/db/Messages';
+import type RoomHostConnection from '@/sync/room/RoomHostConnection';
 
 export type RemoteCollectionMessages<T> =
 	| DbRequestMessages<T>

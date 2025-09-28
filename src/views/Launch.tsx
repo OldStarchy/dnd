@@ -1,6 +1,7 @@
+import { Link } from 'react-router';
+
 import Typography from '@/components/Typography';
 import { PAGES } from '@/const';
-import { Link } from 'react-router';
 
 function Launch() {
 	return (

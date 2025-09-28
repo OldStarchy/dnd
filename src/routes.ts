@@ -1,13 +1,14 @@
+import type { RouteObject } from 'react-router';
+
+import Layout from '@/layout/layout';
+import DatabaseViewer from '@/views/DatabaseViewer';
 import Encounter from '@/views/Encounter';
+import Launch from '@/views/Launch';
 import Monsters from '@/views/Monsters';
 import PopoutView from '@/views/Popout';
+import RoomConfigurator from '@/views/Room';
 import Sandbox from '@/views/Sandbox';
-import { type RouteObject } from 'react-router';
-import Layout from './layout/layout';
-import DatabaseViewer from './views/DatabaseViewer';
-import Launch from './views/Launch';
-import RoomConfigurator from './views/Room';
-import EntityPropertyPanel from './views/sandbox/forms/EntityPropertyPanel';
+import EntityPropertyPanel from '@/views/sandbox/forms/EntityPropertyPanel';
 
 export const sandboxRoutes: RouteObject[] = [
 	{

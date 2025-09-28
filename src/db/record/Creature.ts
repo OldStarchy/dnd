@@ -1,6 +1,7 @@
-import type { RecordFilter, RecordType } from '@/db/RecordType';
 import { z } from 'zod';
-import { debuffSpec } from '../../type/Debuff';
+
+import type { RecordFilter, RecordType } from '@/db/RecordType';
+import { debuffSpec } from '@/type/Debuff';
 
 declare const CreatureIdBrand: unique symbol;
 export type CreatureIdBrand = typeof CreatureIdBrand;

@@ -1,24 +1,25 @@
+import { BehaviorSubject } from 'rxjs';
+
 import type { DocumentApi, ReadonlyDocumentApi } from '@/db/Collection';
-import { creatureSchema, type CreatureRecordType } from '@/db/record/Creature';
+import { type CreatureRecordType, creatureSchema } from '@/db/record/Creature';
 import {
-	encounterSchema,
 	type EncounterRecordType,
+	encounterSchema,
 } from '@/db/record/Encounter';
 import {
-	initiativeTableEntrySchema,
 	type InitiativeTableEntryRecord,
+	initiativeTableEntrySchema,
 } from '@/db/record/InitiativeTableEntry';
 import { traceAsync } from '@/decorators/trace';
 import { setJsonStorage } from '@/hooks/useJsonStorage';
 import Logger from '@/lib/log';
 import RemoteCollection from '@/sync/db/RemoteCollection';
-import { memberSchema, type MemberRecordType } from '@/sync/room/member/Record';
+import { type MemberRecordType, memberSchema } from '@/sync/room/member/Record';
 import type RoomApi from '@/sync/room/RoomApi';
 import type RoomHost from '@/sync/room/RoomHost';
-import RoomHostConnection from '@/sync/room/RoomHostConnection';
-import { roomMetaSchema, type RoomMetaRecordType } from '@/sync/room/RoomMeta';
+import type RoomHostConnection from '@/sync/room/RoomHostConnection';
+import { type RoomMetaRecordType, roomMetaSchema } from '@/sync/room/RoomMeta';
 import type { MembershipToken, RoomCode } from '@/sync/room/types';
-import { BehaviorSubject } from 'rxjs';
 
 export default class RemoteRoom implements RoomApi {
 	@traceAsync(Logger.INFO)

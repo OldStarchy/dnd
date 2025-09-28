@@ -1,10 +1,12 @@
+import { SplitSquareHorizontal, SplitSquareVertical } from 'lucide-react';
+import { useCallback } from 'react';
+
 import { ModeToggle } from '@/components/mode-toggle';
 import { Button } from '@/components/ui/button';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import useLocalStorage from '@/hooks/useLocalStorage';
 import { cn } from '@/lib/utils';
-import { SplitSquareHorizontal, SplitSquareVertical } from 'lucide-react';
-import { useCallback } from 'react';
+
 import RoomWidget from './header/RoomWidget';
 
 export default function Header() {

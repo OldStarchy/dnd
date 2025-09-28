@@ -1,6 +1,8 @@
-import type { RecordFilter, RecordType } from '@/db/RecordType';
-import { type CreatureIdBrand, creatureSchema } from '@/db/record/Creature';
 import { z } from 'zod';
+
+import { type CreatureIdBrand, creatureSchema } from '@/db/record/Creature';
+import type { RecordFilter, RecordType } from '@/db/RecordType';
+
 import type { EncounterIdBrand } from './Encounter';
 
 declare const InitiativeTableIdBrand: unique symbol;

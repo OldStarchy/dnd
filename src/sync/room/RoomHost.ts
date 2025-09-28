@@ -1,20 +1,21 @@
+import { StatusCodes } from 'http-status-codes';
+import { z } from 'zod';
+
 import type { AsyncResult } from '@/lib/AsyncResult';
-import { Err, Ok, Result, UnknownError } from '@/lib/Result';
+import type { Result } from '@/lib/Result';
+import { Err, Ok, UnknownError } from '@/lib/Result';
+import type { FetchError, ServerResponseError } from '@/lib/result/fetch';
 import {
-	FetchError,
 	fetchResult,
 	responseOk,
-	ServerResponseError,
 	UnexpectedStatusError,
 	validateJsonResponse,
 } from '@/lib/result/fetch';
-import { StatusCodes } from 'http-status-codes';
-import { z } from 'zod';
-import { inboundSystemMessageSchema } from '../message/schema/InboundSystemMessage';
-import { ClosableJsonTransport } from '../transports/JsonTransport';
-import ReconnectingWebSocket from './ReconnectingWebSocket';
-import RoomHostConnection from './RoomHostConnection';
-import type { MembershipToken } from './types';
+import { inboundSystemMessageSchema } from '@/sync/message/schema/InboundSystemMessage';
+import ReconnectingWebSocket from '@/sync/room/ReconnectingWebSocket';
+import RoomHostConnection from '@/sync/room/RoomHostConnection';
+import type { MembershipToken } from '@/sync/room/types';
+import { ClosableJsonTransport } from '@/sync/transports/JsonTransport';
 
 const roomCreated = z.object({
 	membershipToken: z.string().brand<'MembershipToken'>(),

@@ -1,7 +1,8 @@
-import slugToTitleCase from '@/lib/slugToTitleCase';
-import { sandboxRoutes } from '@/routes';
 import { useMemo } from 'react';
 import { Link, useLocation } from 'react-router';
+
+import slugToTitleCase from '@/lib/slugToTitleCase';
+import { sandboxRoutes } from '@/routes';
 
 function Sandbox() {
 	const location = useLocation();

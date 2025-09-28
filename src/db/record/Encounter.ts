@@ -1,5 +1,6 @@
 import z from 'zod';
-import type { RecordFilter, RecordType } from '../RecordType';
+
+import type { RecordFilter, RecordType } from '@/db/RecordType';
 
 declare const EncounterIdBrand: unique symbol;
 export type EncounterIdBrand = typeof EncounterIdBrand;

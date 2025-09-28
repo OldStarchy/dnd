@@ -1,4 +1,5 @@
 import type { ZodType as ZodSchema } from 'zod';
+
 import { LocalCollection } from './LocalCollection';
 import type { AnyRecordType, RecordFilter } from './RecordType';
 

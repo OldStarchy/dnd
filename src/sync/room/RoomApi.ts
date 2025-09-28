@@ -1,3 +1,5 @@
+import type { BehaviorSubject } from 'rxjs';
+
 import type {
 	Collection,
 	DocumentApi,
@@ -6,10 +8,9 @@ import type {
 import type { CreatureRecordType } from '@/db/record/Creature';
 import type { EncounterRecordType } from '@/db/record/Encounter';
 import type { InitiativeTableEntryRecord } from '@/db/record/InitiativeTableEntry';
-import type { BehaviorSubject } from 'rxjs';
-import type { MemberRecordType } from './member/Record';
-import type { RoomMetaRecordType } from './RoomMeta';
-import type { MemberId, RoomCode } from './types';
+import type { MemberRecordType } from '@/sync/room/member/Record';
+import type { RoomMetaRecordType } from '@/sync/room/RoomMeta';
+import type { MemberId, RoomCode } from '@/sync/room/types';
 
 export default interface RoomApi {
 	readonly me: DocumentApi<MemberRecordType>;

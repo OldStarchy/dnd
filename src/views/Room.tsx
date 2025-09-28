@@ -1,3 +1,6 @@
+import { AlertTriangle, RefreshCcw } from 'lucide-react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -14,8 +17,6 @@ import Room from '@/sync/room/Room';
 import type RoomApi from '@/sync/room/RoomApi';
 import RoomHost from '@/sync/room/RoomHost';
 import { RoomCode } from '@/sync/room/types';
-import { AlertTriangle, RefreshCcw } from 'lucide-react';
-import { useCallback, useEffect, useRef, useState } from 'react';
 
 /**
  * This page allows creating, publishing, or joining a room, as well as managing

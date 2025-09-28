@@ -1,8 +1,9 @@
-import { AsyncResult } from '@/lib/AsyncResult';
+import { createContext } from 'react';
+
+import type { AsyncResult } from '@/lib/AsyncResult';
 import type { Result } from '@/lib/Result';
 import type RemoteRoom from '@/sync/room/RemoteRoom';
 import type Room from '@/sync/room/Room';
-import { createContext } from 'react';
 
 export const RoomActionsContext = createContext<{
 	create: (...args: Parameters<typeof Room.create>) => Promise<void>;

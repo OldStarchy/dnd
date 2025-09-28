@@ -1,8 +1,9 @@
+import type { BehaviorSubject } from 'rxjs';
+
 import type CancellablePromise from '@/lib/CancellablePromise';
 import type { UserMessageOfType } from '@/sync/message/raw';
-import { BehaviorSubject } from 'rxjs';
-import type RoomHostConnection from '../RoomHostConnection';
-import type { MemberId } from '../types';
+import type RoomHostConnection from '@/sync/room/RoomHostConnection';
+import type { MemberId } from '@/sync/room/types';
 
 export default class Member {
 	constructor(

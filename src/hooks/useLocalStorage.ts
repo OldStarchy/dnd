@@ -1,11 +1,12 @@
-import { LOCAL_STORAGE_NAMESPACE } from '@/const';
 import {
+	type Dispatch,
+	type SetStateAction,
 	useCallback,
 	useEffect,
 	useState,
-	type Dispatch,
-	type SetStateAction,
 } from 'react';
+
+import { LOCAL_STORAGE_NAMESPACE } from '@/const';
 
 declare global {
 	// eslint-disable-next-line @typescript-eslint/no-empty-object-type

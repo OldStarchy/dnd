@@ -1,5 +1,6 @@
-import type { AnyRecordType } from '@/db/RecordType';
 import z from 'zod';
+
+import type { AnyRecordType } from '@/db/RecordType';
 
 interface RequestResponse<
 	Request extends z.ZodType,

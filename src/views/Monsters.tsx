@@ -1,5 +1,6 @@
-import useMonsterList from '@/hooks/useMonsterList';
 import { Link } from 'react-router';
+
+import useMonsterList from '@/hooks/useMonsterList';
 
 function Monsters() {
 	const { monsters, loading } = useMonsterList();

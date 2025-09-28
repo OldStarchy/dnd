@@ -1,6 +1,8 @@
-import { LOCAL_STORAGE_NAMESPACE } from '@/const';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { renderHook } from 'vitest-browser-react';
+
+import { LOCAL_STORAGE_NAMESPACE } from '@/const';
+
 import { useLocalConfig } from './useLocalConfig';
 
 describe('useServerConfig', () => {

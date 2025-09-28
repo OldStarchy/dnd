@@ -1,15 +1,16 @@
 import z from 'zod';
+
 import {
 	collectionNotificationSchema,
 	collectionRequestSchema,
 	collectionResponseSchema,
-} from '../db/Messages';
-import type { MessageOfType } from './MessageOfType';
+} from '@/sync/db/Messages';
+import type { MessageOfType } from '@/sync/message/MessageOfType';
 import {
 	notificationSchemaFactory,
 	requestSchemaFactory,
 	responseSchemaFactory,
-} from './schema/schemaFactory';
+} from '@/sync/message/schema/schemaFactory';
 
 export const userMessageSchema = z.discriminatedUnion('type', [
 	requestSchemaFactory(collectionRequestSchema),

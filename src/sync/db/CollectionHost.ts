@@ -1,12 +1,9 @@
+import { filter, Subscription } from 'rxjs';
+import type z from 'zod';
+
 import type { Collection } from '@/db/Collection';
 import type { AnyRecordType } from '@/db/RecordType';
 import exhaustiveCheck from '@/lib/exhaustiveCheck';
-import { filter, Subscription } from 'rxjs';
-import type z from 'zod';
-import type { InboundRequest } from '../message/inbound';
-import type { UserMessageOfType } from '../message/raw';
-import type RoomHostConnection from '../room/RoomHostConnection';
-import type { MemberId } from '../room/types';
 import type {
 	closeGet$RequestSchema,
 	createRequestSchema,
@@ -15,7 +12,11 @@ import type {
 	getOneRequestSchema,
 	getRequestSchema,
 	updateRequestSchema,
-} from './Messages';
+} from '@/sync/db/Messages';
+import type { InboundRequest } from '@/sync/message/inbound';
+import type { UserMessageOfType } from '@/sync/message/raw';
+import type RoomHostConnection from '@/sync/room/RoomHostConnection';
+import type { MemberId } from '@/sync/room/types';
 
 export class CollectionHost<
 	const RecordMap extends {

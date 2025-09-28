@@ -1,7 +1,9 @@
-import { AsyncOption } from '@/lib/AsyncOption';
-import { type ChangeSet, applyChangeset } from '@/lib/changeSet';
 import { BehaviorSubject, Observable, Subject } from 'rxjs';
 import type { ZodType as ZodSchema } from 'zod';
+
+import { AsyncOption } from '@/lib/AsyncOption';
+import { applyChangeset, type ChangeSet } from '@/lib/changeSet';
+
 import type { Collection, DocumentApi } from './Collection';
 import { QueryResults } from './QueryResults';
 import type { AnyRecordType } from './RecordType';

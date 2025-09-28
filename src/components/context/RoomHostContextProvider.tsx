@@ -1,7 +1,8 @@
+import { type ReactNode, useMemo } from 'react';
+
 import { useLocalConfig } from '@/hooks/useLocalConfig';
 import { RoomHostContext } from '@/sync/react/context/RoomHostContext';
 import RoomHost from '@/sync/room/RoomHost';
-import { useMemo, type ReactNode } from 'react';
 
 interface ConfigurableBackendApiProviderProps {
 	children: ReactNode;

@@ -1,10 +1,11 @@
+import { BehaviorSubject, Subject } from 'rxjs';
+
 import trace from '@/decorators/trace';
 import Logger from '@/lib/log';
-import { BehaviorSubject, Subject } from 'rxjs';
 import {
-	TransportState,
 	type ClosableTransport,
-} from '../transports/Transport';
+	TransportState,
+} from '@/sync/transports/Transport';
 
 export type WebSocketData = Parameters<WebSocket['send']>[0];
 

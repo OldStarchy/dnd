@@ -1,7 +1,9 @@
 import '@/index.css';
-import { Debuff as DebuffObj } from '@/type/Debuff';
 import { describe, expect, it } from 'vitest';
 import { render } from 'vitest-browser-react';
+
+import type { Debuff as DebuffObj } from '@/type/Debuff';
+
 import Debuff from './Debuff';
 import { ThemeProvider } from './theme-provider';
 

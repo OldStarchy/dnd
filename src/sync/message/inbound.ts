@@ -1,6 +1,6 @@
 import type { Deferred } from '@/deferred';
-import type { MemberId } from '../room/types';
-import type { UserMessageOfType } from './raw';
+import type { UserMessageOfType } from '@/sync/message/raw';
+import type { MemberId } from '@/sync/room/types';
 
 export abstract class InboundMessage<Data> {
 	constructor(

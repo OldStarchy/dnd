@@ -1,3 +1,5 @@
+import { useMemo, useState } from 'react';
+
 import EntityPropertiesForm, {
 	Actions,
 	Fields,
@@ -18,11 +20,10 @@ import type { DocumentApi } from '@/db/Collection';
 import { RamCollection } from '@/db/RamCollection';
 import {
 	initiativeTableEntryFilter,
-	initiativeTableEntrySchema,
 	type InitiativeTableEntryRecord,
+	initiativeTableEntrySchema,
 } from '@/db/record/InitiativeTableEntry';
 import useBehaviorSubject from '@/hooks/useBehaviorSubject';
-import { useMemo, useState } from 'react';
 
 function Page() {
 	const db = useMemo(() => {

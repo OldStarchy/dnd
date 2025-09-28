@@ -1,12 +1,13 @@
+import { useEffect, useRef, useState } from 'react';
+import { Link } from 'react-router';
+
+import GameMasterControlPanel from '@/components/game-master-control-panel';
 import Typography from '@/components/Typography';
 import { PAGES } from '@/const';
 import type { DocumentApi } from '@/db/Collection';
-import { type EncounterRecordType } from '@/db/record/Encounter';
+import type { EncounterRecordType } from '@/db/record/Encounter';
 import useRoomContext from '@/sync/react/hooks/useRoomContext';
 import type RoomApi from '@/sync/room/RoomApi';
-import { useEffect, useRef, useState } from 'react';
-import { Link } from 'react-router';
-import GameMasterControlPanel from '../components/game-master-control-panel';
 
 function Home() {
 	const room = useRoomContext();

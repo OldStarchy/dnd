@@ -1,6 +1,7 @@
-import type { AsyncOption } from './AsyncOption';
-import optionResultInteropMissing from './optionResultInteropMissing';
-import { Err, Ok, Result, UnknownError } from './Result';
+import type { AsyncOption } from '@/lib/AsyncOption';
+import optionResultInteropMissing from '@/lib/optionResultInteropMissing';
+import type { Result } from '@/lib/Result';
+import { Err, Ok, UnknownError } from '@/lib/Result';
 
 export class AsyncResult<T, E> implements PromiseLike<Result<T, E>> {
 	declare ok: <T>(this: AsyncResult<T, unknown>) => AsyncOption<T>;

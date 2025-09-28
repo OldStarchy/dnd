@@ -1,6 +1,7 @@
+import { createContext } from 'react';
+
 import type { Creature } from '@/db/record/Creature';
 import type { Merge } from '@/lib/changeSet';
-import { createContext } from 'react';
 
 export const CreatureListContext = createContext<{
 	list(): Promise<Creature[]>;

@@ -1,9 +1,9 @@
 import {
+	type DependencyList,
 	useCallback,
 	useEffect,
 	useRef,
 	useState,
-	type DependencyList,
 } from 'react';
 
 type PendingResult<T> =

@@ -1,3 +1,7 @@
+import { DropdownMenuTrigger } from '@radix-ui/react-dropdown-menu';
+import { ChevronDown, Plus } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+
 import { Button } from '@/components/ui/button';
 import {
 	ResizableHandle,
@@ -14,14 +18,12 @@ import useCollectionQuery from '@/hooks/useCollectionQuery';
 import useLocalStorage from '@/hooks/useLocalStorage';
 import useMonsterList from '@/hooks/useMonsterList';
 import rollDice from '@/lib/rollDice';
-import { HealthObfuscation, type Entity } from '@/store/types/Entity';
+import { type Entity, HealthObfuscation } from '@/store/types/Entity';
 import useRoomContext from '@/sync/react/hooks/useRoomContext';
 import type RoomApi from '@/sync/room/RoomApi';
-import { DropdownMenuTrigger } from '@radix-ui/react-dropdown-menu';
-import { ChevronDown, Plus } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+
 import EntityPropertiesForm from './forms/EntityProperties/Form';
-import { type EntityProperties } from './forms/EntityProperties/schema';
+import type { EntityProperties } from './forms/EntityProperties/schema';
 import {
 	applyEntityToInitiativeEntry,
 	toEntity,

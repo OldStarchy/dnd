@@ -1,7 +1,8 @@
 import type z from 'zod';
-import type { AsyncResult } from './AsyncResult';
-import type { Option } from './Option';
-import optionResultInteropMissing from './optionResultInteropMissing';
+
+import type { AsyncResult } from '@/lib/AsyncResult';
+import type { Option } from '@/lib/Option';
+import optionResultInteropMissing from '@/lib/optionResultInteropMissing';
 
 const OK = Symbol('Result.OK');
 const ERR = Symbol('Result.ERR');

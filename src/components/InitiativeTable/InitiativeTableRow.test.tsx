@@ -1,11 +1,13 @@
-import sybilProfile from '@/components/InitiativeTable/fixtures/sybil_profile.png';
 import '@/index.css';
-import { Debuff } from '@/type/Debuff';
 import { describe, expect, it } from 'vitest';
 import { render } from 'vitest-browser-react';
-import { type InitiativeTableEntry } from '../../db/record/InitiativeTableEntry';
+
+import sybilProfile from '@/components/InitiativeTable/fixtures/sybil_profile.png';
+import { Table } from '@/components/ui/table';
+import type { InitiativeTableEntry } from '@/db/record/InitiativeTableEntry';
+import { Debuff } from '@/type/Debuff';
+
 import { ThemeProvider } from '../theme-provider';
-import { Table } from '../ui/table';
 import type { FieldVisibility } from './InitiativeTable';
 import InitiativeTableRow from './InitiativeTableRow';
 

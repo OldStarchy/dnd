@@ -1,6 +1,7 @@
 import '@/index.css';
 import { describe, expect, it, vi } from 'vitest';
 import { render } from 'vitest-browser-react';
+
 import type { InitiativeTableEntry } from '../../db/record/InitiativeTableEntry';
 import { ThemeProvider } from '../theme-provider';
 import InitiativeTable from './InitiativeTable';

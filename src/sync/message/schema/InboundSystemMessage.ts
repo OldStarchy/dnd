@@ -1,5 +1,6 @@
 import z from 'zod';
-import type { MessageOfType } from '../MessageOfType';
+
+import type { MessageOfType } from '@/sync/message/MessageOfType';
 
 export const inboundSystemMessageSchema = z.union([
 	z.object({

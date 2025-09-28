@@ -1,33 +1,35 @@
-import { type Creature } from '@/db/record/Creature';
-import { cn } from '@/lib/utils';
-import useRoomContext from '@/sync/react/hooks/useRoomContext';
 import { ArrowRight, ChevronLeft } from 'lucide-react';
 import {
+	type ComponentPropsWithoutRef,
+	type ReactNode,
 	useCallback,
 	useEffect,
 	useState,
-	type ComponentPropsWithoutRef,
-	type ReactNode,
 } from 'react';
-import type { InitiativeTableEntry } from '../../db/record/InitiativeTableEntry';
-import Debuff from '../Debuff';
-import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
-import { Button } from '../ui/button';
+
+import Debuff from '@/components/Debuff';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Button } from '@/components/ui/button';
 import {
 	Carousel,
 	CarouselContent,
 	CarouselItem,
 	CarouselNext,
 	CarouselPrevious,
-} from '../ui/carousel';
+} from '@/components/ui/carousel';
 import {
 	Collapsible,
 	CollapsibleContent,
 	CollapsibleTrigger,
-} from '../ui/collapsible';
-import { Dialog, DialogContent, DialogHeader } from '../ui/dialog';
-import { TableBody, TableCell, TableRow } from '../ui/table';
-import { Toggle } from '../ui/toggle';
+} from '@/components/ui/collapsible';
+import { Dialog, DialogContent, DialogHeader } from '@/components/ui/dialog';
+import { TableBody, TableCell, TableRow } from '@/components/ui/table';
+import { Toggle } from '@/components/ui/toggle';
+import type { Creature } from '@/db/record/Creature';
+import type { InitiativeTableEntry } from '@/db/record/InitiativeTableEntry';
+import { cn } from '@/lib/utils';
+import useRoomContext from '@/sync/react/hooks/useRoomContext';
+
 import type { FieldVisibility } from './InitiativeTable';
 
 export default function InitiativeTableRow({

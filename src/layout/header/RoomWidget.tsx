@@ -1,11 +1,12 @@
+import { Copy, Crown, Settings } from 'lucide-react';
+import { Link } from 'react-router';
+
 import { Button } from '@/components/ui/button';
 import useBehaviorSubject from '@/hooks/useBehaviorSubject';
 import useRoomActionsContext from '@/sync/react/hooks/useRoomActionsContext';
 import useRoomContext from '@/sync/react/hooks/useRoomContext';
 import Room from '@/sync/room/Room';
 import type RoomApi from '@/sync/room/RoomApi';
-import { Copy, Crown, Settings } from 'lucide-react';
-import { Link } from 'react-router';
 
 export default function RoomWidget() {
 	const room = useRoomContext();

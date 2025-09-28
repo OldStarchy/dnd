@@ -1,20 +1,21 @@
-import useRoomSession from '@/hooks/room/useRoomSession';
-import { useLocalConfig } from '@/hooks/useLocalConfig';
-import { RoomActionsContext } from '@/sync/react/context/RoomActionsContext';
-import RemoteRoom from '@/sync/room/RemoteRoom';
-import Room from '@/sync/room/Room';
-import type RoomApi from '@/sync/room/RoomApi';
-import RoomHost from '@/sync/room/RoomHost';
 import {
+	type ReactNode,
 	useCallback,
 	useContext,
 	useEffect,
 	useRef,
 	useState,
-	type ReactNode,
 } from 'react';
 import { filter, take } from 'rxjs';
-import { RoomContext } from '../context/RoomContext';
+
+import useRoomSession from '@/hooks/room/useRoomSession';
+import { useLocalConfig } from '@/hooks/useLocalConfig';
+import { RoomActionsContext } from '@/sync/react/context/RoomActionsContext';
+import { RoomContext } from '@/sync/react/context/RoomContext';
+import RemoteRoom from '@/sync/room/RemoteRoom';
+import Room from '@/sync/room/Room';
+import type RoomApi from '@/sync/room/RoomApi';
+import RoomHost from '@/sync/room/RoomHost';
 
 const Provider = RoomActionsContext.Provider;
 const RoomProvider = RoomContext.Provider;

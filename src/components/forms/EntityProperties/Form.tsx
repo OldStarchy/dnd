@@ -1,3 +1,9 @@
+import { zodResolver } from '@hookform/resolvers/zod';
+import { ChevronDown, Plus } from 'lucide-react';
+import type { ReactNode } from 'react';
+import { Fragment } from 'react/jsx-runtime';
+import { useFieldArray, useForm, useFormContext } from 'react-hook-form';
+
 import { Button } from '@/components/ui/button';
 import {
 	DropdownMenu,
@@ -7,6 +13,15 @@ import {
 	DropdownMenuLabel,
 	DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+	Form,
+	FormControl,
+	FormField,
+	FormItem,
+	FormLabel,
+	FormMessage,
+} from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
 	Select,
@@ -15,24 +30,11 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
 import { HealthObfuscation } from '@/store/types/Entity';
 import { Debuff } from '@/type/Debuff';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { ChevronDown, Plus } from 'lucide-react';
-import type { ReactNode } from 'react';
-import { useFieldArray, useForm, useFormContext } from 'react-hook-form';
-import { Fragment } from 'react/jsx-runtime';
-import {
-	Form,
-	FormControl,
-	FormField,
-	FormItem,
-	FormLabel,
-	FormMessage,
-} from '../../ui/form';
-import { Input } from '../../ui/input';
-import { Switch } from '../../ui/switch';
+
 import colors from '../colors';
 import entityPropertiesSpec, { type EntityProperties } from './schema';
 
