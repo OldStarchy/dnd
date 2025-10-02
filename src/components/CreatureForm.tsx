@@ -1,9 +1,10 @@
-/*
-import { creatureSchema, type Creature } from '@/db/record/Creature';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useCallback, type ReactNode } from 'react';
+import { type ReactNode, useCallback } from 'react';
 import { useForm } from 'react-hook-form';
-import z from 'zod';
+import type z from 'zod';
+
+import { type Creature, creatureSchema } from '@/db/record/Creature';
+
 import { Button } from './ui/button';
 import {
 	Form,
@@ -119,7 +120,7 @@ function CreatureForm({
 									<FormField
 										control={form.control}
 										name="ac"
-										render={({ field }) => (
+										render={() => (
 											<FormItem className="contents">
 												<FormLabel className="[grid-row-start:label]">
 													AC
@@ -128,7 +129,12 @@ function CreatureForm({
 													<Input
 														type="number"
 														className="[grid-row-start:field]"
-														{...field}
+														{...form.register(
+															'ac',
+															{
+																valueAsNumber: true,
+															},
+														)}
 														placeholder="Armor Class"
 													/>
 												</FormControl>
@@ -139,7 +145,7 @@ function CreatureForm({
 									<FormField
 										control={form.control}
 										name="hp"
-										render={({ field }) => (
+										render={() => (
 											<FormItem className="contents">
 												<FormLabel className="[grid-row-start:label]">
 													HP
@@ -148,7 +154,12 @@ function CreatureForm({
 													<Input
 														type="number"
 														className="[grid-row-start:field]"
-														{...field}
+														{...form.register(
+															'hp',
+															{
+																valueAsNumber: true,
+															},
+														)}
 														placeholder="Hitpoints"
 													/>
 												</FormControl>
@@ -159,7 +170,7 @@ function CreatureForm({
 									<FormField
 										control={form.control}
 										name="maxHp"
-										render={({ field }) => (
+										render={() => (
 											<FormItem className="contents">
 												<FormLabel className="[grid-row-start:label]">
 													Max
@@ -168,7 +179,12 @@ function CreatureForm({
 													<Input
 														type="number"
 														className="[grid-row-start:field]"
-														{...field}
+														{...form.register(
+															'maxHp',
+															{
+																valueAsNumber: true,
+															},
+														)}
 														placeholder="Max Hitpoints"
 													/>
 												</FormControl>
@@ -347,4 +363,3 @@ function CreatureForm({
 }
 
 export default CreatureForm;
-*/

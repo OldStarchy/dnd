@@ -1,4 +1,7 @@
-// import CreatureForm from '@/components/CreatureForm';
+import { type ReactNode, useState } from 'react';
+
+import CreatureForm from '@/components/CreatureForm';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import {
@@ -9,60 +12,124 @@ import {
 	TableHeader,
 	TableRow,
 } from '@/components/ui/table';
-import type { Collection } from '@/db/Collection';
+import type { Collection, DocumentApi } from '@/db/Collection';
 import { LocalStorageCollection } from '@/db/LocalStorageCollection';
 import {
+	CreatureCollectionSchema,
 	type CreatureRecordType,
-	creatureSchema,
-	filterCreature,
 } from '@/db/record/Creature';
 import type { AnyRecordType } from '@/db/RecordType';
+import useBehaviorSubject from '@/hooks/useBehaviorSubject';
 import useCollectionQuery from '@/hooks/useCollectionQuery';
+import { cn } from '@/lib/utils';
 import {
-	filterMember,
+	MemberCollectionSchema,
 	type MemberRecordType,
-	memberSchema,
 } from '@/sync/room/member/Record';
+import { Db } from '@/sync/room/RoomApi';
 
-const creatures = new LocalStorageCollection<CreatureRecordType>(
-	'creatures',
-	filterCreature,
-	creatureSchema,
-);
+const db = new Db<{
+	creature: Collection<CreatureRecordType>;
+	member: Collection<MemberRecordType>;
+}>({
+	creature: (db) =>
+		new LocalStorageCollection<CreatureRecordType>(
+			CreatureCollectionSchema,
+			db,
+		),
 
-const members = new LocalStorageCollection<MemberRecordType>(
-	'members',
-	filterMember,
-	memberSchema,
-);
+	member: (db) =>
+		new LocalStorageCollection<MemberRecordType>(
+			MemberCollectionSchema,
+			db,
+		),
+} as const);
+
+const creatures = db.get('creature');
+const members = db.get('member');
 
 export default function DatabaseViewer() {
+	const [selectedCreature, setSelectedCreature] =
+		useState<DocumentApi<CreatureRecordType> | null>(null);
 	return (
 		<div>
 			<h1>Database Viewer</h1>
 			<CollectionView
 				collection={creatures}
 				columns={[
-					['Name', (r) => r.name],
-					['Race', (r) => r.race ?? ''],
-					['Speed', (r) => r.speed?.walk || '0'],
-					['HP', (r) => `${r.hp}/${r.maxHp}`],
-					['AC', (r) => r.ac?.toString() || '0'],
-					['Attributes', (r) => JSON.stringify(r.attributes)],
+					['Name', ({ data }) => data.name],
+					[
+						'Avatar',
+						({
+							data: {
+								name,
+								images: [image],
+							},
+						}) => (
+							<Avatar>
+								<AvatarImage src={image} alt={name} />
+								<AvatarFallback>
+									{name
+										.replace(/[^a-zA-Z0-9 ]+/g, ' ')
+										.replace(
+											/(?:^| )(\w)\w+/g,
+											(_, initial: string) =>
+												initial.toUpperCase(),
+										)}
+								</AvatarFallback>
+							</Avatar>
+						),
+					],
+					['Race', ({ data }) => data.race ?? ''],
+					['Speed', ({ data }) => data.speed?.walk || '0'],
+					['HP', ({ data }) => `${data.hp}/${data.maxHp}`],
+					['AC', ({ data }) => data.ac?.toString() || '0'],
+					[
+						'Attributes',
+						({ data }) => JSON.stringify(data.attributes),
+					],
 				]}
+				onClickRecord={(record) =>
+					setSelectedCreature((r) => (r === record ? null : record))
+				}
+				selectedRecord={selectedCreature}
 			/>
 
 			<Separator className="my-4" />
-			{/* <CreatureForm
+			<CreatureForm
+				key={selectedCreature?.data.id}
+				creature={selectedCreature?.data ?? undefined}
 				onSubmit={(record) => {
-					creatures.create(record);
+					if (selectedCreature)
+						selectedCreature.update({ replace: record });
+					else creatures.create(record);
 				}}
-			/> */}
+			/>
 			<Separator className="my-4" />
 
 			<CollectionView
 				collection={members}
-				columns={[['Name', (r) => r.name]]}
+				columns={[
+					['ID', ({ data: { id } }) => id],
+					[
+						'Avatar',
+						({ data: { name, avatar } }) => (
+							<Avatar>
+								<AvatarImage src={avatar} alt={name} />
+								<AvatarFallback>
+									{name
+										.replace(/[^a-zA-Z0-9 ]+/g, ' ')
+										.replace(
+											/(?:^| )(\w)\w+/g,
+											(_, initial: string) =>
+												initial.toUpperCase(),
+										)}
+								</AvatarFallback>
+							</Avatar>
+						),
+					],
+					['Name', ({ data }) => data.name],
+				]}
 			/>
 
 			<Separator className="my-4" />
@@ -70,17 +137,23 @@ export default function DatabaseViewer() {
 	);
 }
 
-function CollectionView<RecordType extends AnyRecordType>({
+function CollectionView<
+	RecordType extends AnyRecordType,
+	Record extends DocumentApi<AnyRecordType>,
+>({
 	collection,
 	columns,
+	filter,
+	onClickRecord,
+	selectedRecord,
 }: {
-	collection: Collection<RecordType>;
-	columns: [
-		label: string,
-		getter: (record: RecordType['record']) => string,
-	][];
+	collection: Collection<RecordType, Record>;
+	columns: [label: string, getter: (record: Record) => ReactNode][];
+	filter?: RecordType['filter'];
+	onClickRecord?: (record: Record) => void;
+	selectedRecord?: Record | null;
 }) {
-	const records = useCollectionQuery(collection);
+	const records = useCollectionQuery(collection, filter);
 
 	return (
 		<div>
@@ -96,18 +169,39 @@ function CollectionView<RecordType extends AnyRecordType>({
 						</TableRow>
 					</TableHeader>
 					<TableBody>
-						{records.map((record, index) => (
-							<TableRow key={index}>
-								{columns.map(([, getter], colIndex) => (
-									<TableCell key={colIndex}>
-										{`${getter(record)}`}
-									</TableCell>
-								))}
-							</TableRow>
+						{records?.map((record, index) => (
+							<CollectionViewRecord
+								key={index}
+								onClick={() => onClickRecord?.(record)}
+								className={cn({
+									'bg-accent/50': record === selectedRecord,
+								})}
+								record={record}
+								columns={columns}
+							/>
 						))}
 					</TableBody>
 				</Table>
 			</ScrollArea>
 		</div>
+	);
+}
+
+function CollectionViewRecord<Record extends DocumentApi<AnyRecordType>>({
+	record,
+	columns,
+	...props
+}: {
+	record: Record;
+	columns: [label: string, getter: (record: Record) => ReactNode][];
+} & React.ComponentProps<typeof TableRow>) {
+	const data = useBehaviorSubject(record.data$);
+
+	return (
+		<TableRow key={data.revision} {...props}>
+			{columns.map(([, getter], colIndex) => (
+				<TableCell key={colIndex}>{getter(record)}</TableCell>
+			))}
+		</TableRow>
 	);
 }
