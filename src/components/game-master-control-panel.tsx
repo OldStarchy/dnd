@@ -1,5 +1,5 @@
 import { DropdownMenuTrigger } from '@radix-ui/react-dropdown-menu';
-import { ChevronDown, Plus } from 'lucide-react';
+import { ChevronDown, Plus, Trash } from 'lucide-react';
 import {
 	type Dispatch,
 	type SetStateAction,
@@ -527,6 +527,18 @@ function EncounterView({
 				description: true,
 			}}
 			onAdvanceTurnClick={() => encounter.advanceTurn()}
+			actions={(entity) => (
+				<Button
+					variant="ghost"
+					className="opacity-0 group-hover:opacity-100"
+					onClick={() => {
+						entity.delete();
+					}}
+				>
+					<Trash />
+					<span className="sr-only">Edit entity</span>
+				</Button>
+			)}
 		/>
 	);
 }
