@@ -140,6 +140,7 @@ export function mergeGenericRecordFromEntity(
 						hp: entity.hp,
 						maxHp: entity.maxHp,
 						debuffs: entity.debuffs,
+						ac: entity.ac,
 					},
 				},
 			},
