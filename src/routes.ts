@@ -10,6 +10,8 @@ import RoomConfigurator from '@/views/Room';
 import Sandbox from '@/views/Sandbox';
 import EntityPropertyPanel from '@/views/sandbox/forms/EntityPropertyPanel';
 
+import CustomCreatureEditor from './views/CustomCreatureEditor';
+
 export const sandboxRoutes: RouteObject[] = [
 	{
 		index: true,
@@ -37,10 +39,10 @@ const routes: RouteObject[] = [
 				path: '/room',
 				Component: RoomConfigurator,
 			},
-			// {
-			// 	path: '/characters',
-			// 	Component: CustomCreatureEditor,
-			// },
+			{
+				path: '/characters',
+				Component: CustomCreatureEditor,
+			},
 			{
 				path: '/monsters',
 				Component: Monsters,

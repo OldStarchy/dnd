@@ -1,5 +1,8 @@
-/*
-import CreatureForm, { type CreatureFormData } from '@/components/CreatureForm';
+import { AccordionHeader, AccordionTrigger } from '@radix-ui/react-accordion';
+import { ChevronDownIcon, Plus } from 'lucide-react';
+import { useState } from 'react';
+
+import CreatureForm from '@/components/CreatureForm';
 import {
 	Accordion,
 	AccordionContent,
@@ -8,61 +11,40 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import useLocalStorageCreatureList from '@/hooks/useLocalStorageCreatureList';
-import { AccordionHeader, AccordionTrigger } from '@radix-ui/react-accordion';
-import { ChevronDownIcon, Plus } from 'lucide-react';
-import { useCallback } from 'react';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import type { Collection } from '@/db/Collection';
+import { LocalStorageCollection } from '@/db/LocalStorageCollection';
+import {
+	CreatureCollectionSchema,
+	type CreatureRecordType,
+} from '@/db/record/Creature';
+import useCollectionQuery from '@/hooks/useCollectionQuery';
+import { Db } from '@/sync/room/RoomApi';
+
+const db = new Db<{
+	creature: Collection<CreatureRecordType>;
+}>({
+	creature: (db) =>
+		new LocalStorageCollection<CreatureRecordType>(
+			CreatureCollectionSchema,
+			db,
+		),
+});
+
+const creatureCollection = db.get('creature');
 
 /**
  * Allows editing of player characters.
- *
+ */
 function CustomCreatureEditor() {
-	// TODO: useCreatureList(); for Players
-	const [creatures, setCreatures] = useLocalStorageCreatureList();
+	const [selectedCreature, setSelectedCreature] = useState<InstanceType<
+		(typeof CreatureCollectionSchema)['documentClass']
+	> | null>(null);
 
-	const addCreature = useCallback(
-		(_character: CreatureFormData) => {
-			// setCreatures((prev) => [
-			// 	...prev,
-			// 	{
-			// 		...character,
-			// 		id: crypto.randomUUID(),
-			// 		images: (character.images?.filter(Boolean) ??
-			// 			[]) as string[],
-			// 	},
-			// ]);
-		},
-		[setCreatures],
-	);
-
-	const modifyCreature = useCallback(
-		(id: string, updatedCreature: CreatureFormData) => {
-			setCreatures((prev) =>
-				prev.map((char) =>
-					char.id === id
-						? {
-								...char,
-								...updatedCreature,
-								images: (updatedCreature.images?.filter(
-									Boolean,
-								) ?? []) as string[],
-							}
-						: char,
-				),
-			);
-		},
-		[setCreatures],
-	);
-
-	const deleteCreature = useCallback(
-		(id: string) => {
-			setCreatures((prev) => prev.filter((char) => char.id !== id));
-		},
-		[setCreatures],
-	);
+	const creatures = useCollectionQuery(creatureCollection) ?? [];
 
 	return (
-		<div>
+		<ScrollArea>
 			<h1 className="text-2xl font-bold mb-4">Permanent Creatures</h1>
 			<p className="mb-4">
 				Here you can manage recurring players and npcs.
@@ -71,17 +53,20 @@ function CustomCreatureEditor() {
 			<div className="space-y-4">
 				<Accordion type="multiple">
 					{creatures.map((creature) => (
-						<AccordionItem value={creature.id} key={creature.id}>
+						<AccordionItem
+							value={creature.data.id}
+							key={creature.data.id}
+						>
 							<AccordionHeader>
 								<AccordionTrigger asChild>
 									<Card className="w-full p-4 flex flex-row justify-start items-center [&[data-state=open]>svg]:rotate-180">
 										<Avatar>
 											<AvatarImage
-												src={creature.images?.[0]}
-												alt={creature.name}
+												src={creature.data.images?.[0]}
+												alt={creature.data.name}
 											/>
 											<AvatarFallback>
-												{creature.name
+												{creature.data.name
 													.replace(
 														/[^a-zA-Z0-9 ]+/g,
 														' ',
@@ -94,13 +79,13 @@ function CustomCreatureEditor() {
 											</AvatarFallback>
 										</Avatar>
 										<h2 className="text-xl font-semibold">
-											{creature.name}
+											{creature.data.name}
 										</h2>
 										<p>
-											Health: {creature.hp} /{' '}
-											{creature.maxHp}
-											{creature.hitpointsRoll
-												? ` (${creature.hitpointsRoll})`
+											Health: {creature.data.hp} /{' '}
+											{creature.data.maxHp}
+											{creature.data.hitpointsRoll
+												? ` (${creature.data.hitpointsRoll})`
 												: ''}
 										</p>
 
@@ -110,15 +95,13 @@ function CustomCreatureEditor() {
 							</AccordionHeader>
 							<AccordionContent className="p-4">
 								<CreatureForm
-									creature={creature}
+									creature={creature.data}
 									onSubmit={(data) => {
-										modifyCreature(creature.id, data);
+										creature.update({ replace: data });
 									}}
 									actions={
 										<Button
-											onClick={() =>
-												deleteCreature(creature.id)
-											}
+											onClick={() => creature.delete()}
 											variant="destructive"
 										>
 											Delete
@@ -147,17 +130,16 @@ function CustomCreatureEditor() {
 						<AccordionContent className="p-4">
 							<CreatureForm
 								creature={undefined}
-								onSubmit={(data) => {
-									addCreature(data);
+								onSubmit={(record) => {
+									creatureCollection.create(record);
 								}}
 							/>
 						</AccordionContent>
 					</AccordionItem>
 				</Accordion>
 			</div>
-		</div>
+		</ScrollArea>
 	);
 }
 
 export default CustomCreatureEditor;
-*/
