@@ -2,23 +2,20 @@ import '@/lib/OptionResultInterop';
 
 import { BehaviorSubject, map, of, switchMap } from 'rxjs';
 
-import type { Collection, DocumentApi } from '@/db/Collection';
+import type { DocumentApi } from '@/db/Collection';
 import { LocalStorageCollection } from '@/db/LocalStorageCollection';
 import { RamCollection } from '@/db/RamCollection';
 import {
+	CreatureCollectionSchema,
 	type CreatureRecordType,
-	creatureSchema,
-	filterCreature,
 } from '@/db/record/Creature';
 import {
-	encounterFilter,
+	EncounterCollectionSchema,
 	type EncounterRecordType,
-	encounterSchema,
 } from '@/db/record/Encounter';
 import {
-	initiativeTableEntryFilter,
+	InitiativeTableEntryCollectionSchema,
 	type InitiativeTableEntryRecord,
-	initiativeTableEntrySchema,
 } from '@/db/record/InitiativeTableEntry';
 import autoSubject from '@/decorators/autoSubject';
 import { traceAsync } from '@/decorators/trace';
@@ -27,31 +24,74 @@ import Logger from '@/lib/log';
 import { Err, Ok } from '@/lib/Result';
 import { CollectionHost } from '@/sync/db/CollectionHost';
 import {
-	filterMember,
+	MemberCollectionSchema,
 	type MemberRecordType,
-	memberSchema,
 } from '@/sync/room/member/Record';
 import type RoomApi from '@/sync/room/RoomApi';
+import { Db, type DndDb } from '@/sync/room/RoomApi';
 import type RoomHost from '@/sync/room/RoomHost';
 import {
 	type RoomMeta,
+	RoomMetaDocumentDefinition,
 	type RoomMetaRecordType,
-	roomMetaSchema,
 } from '@/sync/room/RoomMeta';
 import RoomPublication from '@/sync/room/RoomPublication';
 import type { MemberId, MembershipToken, RoomCode } from '@/sync/room/types';
+import type EncounterApi from '@/type/EncounterApi';
+import type { InitiativeTableEntryApi } from '@/type/EncounterApi';
 
 export default class Room implements RoomApi {
-	private static rooms: Collection<RoomMetaRecordType>;
+	private static db: DndDb;
 	static {
-		this.rooms = new LocalStorageCollection<RoomMetaRecordType>(
-			'room',
-			(_record, filter) => {
-				if (filter !== undefined) throw new Error('NYI');
-				return true;
-			},
-			roomMetaSchema,
+		const db: DndDb = new Db();
+
+		db.register(
+			'creature',
+			(db) =>
+				new LocalStorageCollection<CreatureRecordType>(
+					CreatureCollectionSchema,
+					db,
+				),
 		);
+
+		db.register(
+			'encounter',
+			(db) =>
+				new LocalStorageCollection<EncounterRecordType, EncounterApi>(
+					EncounterCollectionSchema,
+					db,
+				),
+		);
+
+		db.register(
+			'initiativeTableEntry',
+			(db) =>
+				new LocalStorageCollection<
+					InitiativeTableEntryRecord,
+					InitiativeTableEntryApi
+				>(InitiativeTableEntryCollectionSchema, db),
+		);
+
+		db.register(
+			'member',
+			(db) =>
+				new RamCollection<MemberRecordType>(MemberCollectionSchema, db),
+		);
+
+		db.register(
+			'roomMeta',
+			(db) =>
+				new LocalStorageCollection<RoomMetaRecordType>(
+					RoomMetaDocumentDefinition,
+					db,
+				),
+		);
+
+		this.db = db;
+	}
+
+	static get rooms() {
+		return this.db.get('roomMeta');
 	}
 
 	static async create(
@@ -73,21 +113,11 @@ export default class Room implements RoomApi {
 	constructor(
 		readonly me: DocumentApi<MemberRecordType>,
 		readonly meta: DocumentApi<RoomMetaRecordType>,
-		collections: {
-			creatures: Collection<CreatureRecordType>;
-			encounters: Collection<EncounterRecordType>;
-			initiativeTableEntries: Collection<InitiativeTableEntryRecord>;
-			members: Collection<MemberRecordType>;
-		},
+		collections: DndDb,
 		hosts: ReadonlyMap<string, RoomPublication>,
 	) {
 		this.hosts = hosts;
-		this.db = {
-			creature: collections.creatures,
-			member: collections.members,
-			encounter: collections.encounters,
-			initiativeTableEntry: collections.initiativeTableEntries,
-		};
+		this.db = collections;
 		this.hosts$
 			.pipe(
 				map(
@@ -116,44 +146,14 @@ export default class Room implements RoomApi {
 	>;
 
 	private static async construct(meta: DocumentApi<RoomMetaRecordType>) {
-		const creatures = new LocalStorageCollection<CreatureRecordType>(
-			'creature',
-			filterCreature,
-			creatureSchema,
-		);
-
-		const encounters = new LocalStorageCollection<EncounterRecordType>(
-			'encounter',
-			encounterFilter,
-			encounterSchema,
-		);
-
-		const initiativeTableEntries =
-			new LocalStorageCollection<InitiativeTableEntryRecord>(
-				'initiativeTableEntry',
-				initiativeTableEntryFilter,
-				initiativeTableEntrySchema,
-			);
-
-		const members = new RamCollection<MemberRecordType>(
-			'member',
-			filterMember,
-			memberSchema,
-		);
-
-		const me = await members.create({
+		const me = await this.db.get('member').create({
 			name: 'Game Master',
 			identities: [],
 		});
 
 		const hosts = new Map<string, RoomPublication>();
 
-		return new Room(
-			me,
-			meta,
-			{ creatures, members, encounters, initiativeTableEntries },
-			hosts,
-		);
+		return new Room(me, meta, this.db, hosts);
 	}
 
 	@traceAsync(Logger.INFO)
@@ -215,10 +215,11 @@ export default class Room implements RoomApi {
 		});
 
 		for (const member of connection.getMembers()) {
-			await this.db.member
+			await this.db
+				.get('member')
 				.getOne({ identity: member.id })
 				.unwrapOrElse(() =>
-					this.db.member.create({
+					this.db.get('member').create({
 						name: 'Unnamed player',
 						identities: [
 							{
@@ -242,18 +243,22 @@ export default class Room implements RoomApi {
 				if (msg.type === 'room.members.joined') {
 					const { id } = msg.data;
 
-					this.db.member.getOne({ identity: id }).unwrapOrElse(() =>
-						this.db.member.create({
-							name: 'Unnamed player',
-							identities: [{ host: roomHost.host, id }],
-						}),
-					);
+					this.db
+						.get('member')
+						.getOne({ identity: id })
+						.unwrapOrElse(() =>
+							this.db.get('member').create({
+								name: 'Unnamed player',
+								identities: [{ host: roomHost.host, id }],
+							}),
+						);
 				}
 
 				if (msg.type === 'room.members.left') {
 					const { id } = msg.data;
 
-					this.db.member
+					this.db
+						.get('member')
 						.getOne({ identity: id })
 						.map((doc) => doc.delete());
 				}

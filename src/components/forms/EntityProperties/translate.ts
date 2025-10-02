@@ -3,6 +3,7 @@ import type { Collection, DocumentApi } from '@/db/Collection';
 import type { CreatureRecordType } from '@/db/record/Creature';
 import type { Encounter } from '@/db/record/Encounter';
 import type { InitiativeTableEntryRecord } from '@/db/record/InitiativeTableEntry';
+import type { ChangeSet } from '@/lib/changeSet';
 import {
 	getObfuscatedHealthText,
 	HealthObfuscation,
@@ -90,9 +91,7 @@ export async function applyEntityToInitiativeEntry(
 		return;
 	}
 
-	await record.update({
-		replace: createGenericRecordFromEntity(entity),
-	});
+	await record.update(mergeGenericRecordFromEntity(entity));
 }
 
 export function createGenericRecordFromEntity(
@@ -117,5 +116,39 @@ export function createGenericRecordFromEntity(
 		},
 		initiative: entity.initiative,
 		effect: entity.visible ? undefined : 'invisible',
+	};
+}
+
+export function mergeGenericRecordFromEntity(
+	entity: EntityProperties,
+): ChangeSet<Omit<InitiativeTableEntryRecord['record'], 'id' | 'revision'>> {
+	return {
+		merge: {
+			healthDisplay: {
+				replace: getObfuscatedHealthText(
+					entity.hp,
+					entity.maxHp,
+					entity.obfuscateHealth,
+				),
+			},
+			creature: {
+				replace: {
+					type: 'generic',
+					data: {
+						name: entity.name,
+						images: entity.images ?? [],
+						hp: entity.hp,
+						maxHp: entity.maxHp,
+						debuffs: entity.debuffs,
+					},
+				},
+			},
+			initiative: {
+				replace: entity.initiative,
+			},
+			effect: {
+				replace: entity.visible ? undefined : 'invisible',
+			},
+		},
 	};
 }

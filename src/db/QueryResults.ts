@@ -1,28 +1,17 @@
-import type { DocumentApi, ReadonlyDocumentApi } from './Collection';
+import type { DocumentApi } from './Collection';
 import type { AnyRecordType } from './RecordType';
 
-export class ReadonlyQueryResults<
+export class QueryResults<
 	RecordType extends AnyRecordType,
-> extends Array<ReadonlyDocumentApi<RecordType>> {
-	constructor(items: ReadonlyDocumentApi<RecordType>[]) {
-		super(...items);
-	}
-
-	toRaw(): RecordType['record'][] {
-		return this.map((item) => item.data);
-	}
-}
-
-export class QueryResults<RecordType extends AnyRecordType> extends Array<
-	DocumentApi<RecordType>
-> {
-	constructor(...items: DocumentApi<RecordType>[]);
+	DocumentSpecies extends DocumentApi<RecordType> = DocumentApi<RecordType>,
+> extends Array<DocumentSpecies> {
+	constructor(...items: DocumentSpecies[]);
 	constructor(size: number);
-	constructor(...args: [...DocumentApi<RecordType>[]] | [size: number]) {
+	constructor(...args: [...DocumentSpecies[]] | [size: number]) {
 		if (typeof args[0] === 'number') {
 			super(args[0]);
 		} else {
-			super(...(args as DocumentApi<RecordType>[]));
+			super(...(args as DocumentSpecies[]));
 		}
 	}
 

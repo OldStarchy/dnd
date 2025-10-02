@@ -16,33 +16,39 @@ import {
 	CardHeader,
 } from '@/components/ui/card';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
-import type { DocumentApi } from '@/db/Collection';
 import { RamCollection } from '@/db/RamCollection';
 import {
-	initiativeTableEntryFilter,
+	InitiativeTableEntryCollectionSchema,
 	type InitiativeTableEntryRecord,
-	initiativeTableEntrySchema,
 } from '@/db/record/InitiativeTableEntry';
 import useBehaviorSubject from '@/hooks/useBehaviorSubject';
+import { Db, type DndDb } from '@/sync/room/RoomApi';
+import type { InitiativeTableEntryApi } from '@/type/EncounterApi';
 
 function Page() {
-	const db = useMemo(() => {
-		const db = new RamCollection<InitiativeTableEntryRecord>(
-			'entity',
-			initiativeTableEntryFilter,
-			initiativeTableEntrySchema,
+	const collection = useMemo(() => {
+		const db: DndDb = new Db();
+
+		db.register(
+			'initiativeTableEntry',
+			(db) =>
+				new RamCollection<
+					InitiativeTableEntryRecord,
+					InitiativeTableEntryApi
+				>(InitiativeTableEntryCollectionSchema, db),
 		);
 
-		return db;
+		return db.get('initiativeTableEntry');
 	}, []);
 
-	const [record, setRecord] =
-		useState<DocumentApi<InitiativeTableEntryRecord>>();
+	const [record, setRecord] = useState<InitiativeTableEntryApi>();
 
 	const [entity, setEntity] = useState<EntityProperties>();
 
 	const createNewRecord = async (data: EntityProperties) => {
-		const newRecord = await db.create(createGenericRecordFromEntity(data));
+		const newRecord = await collection.create(
+			createGenericRecordFromEntity(data),
+		);
 
 		setRecord(newRecord);
 	};

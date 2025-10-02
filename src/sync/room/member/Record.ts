@@ -1,6 +1,7 @@
 import z from 'zod';
 
-import type { RecordFilter, RecordType } from '@/db/RecordType';
+import { DocumentApi } from '@/db/Collection';
+import { defineRecordType, type RecordType } from '@/db/RecordType';
 
 export const memberSchema = z.object({
 	id: z.string(),
@@ -16,20 +17,10 @@ export const memberSchema = z.object({
 });
 
 export type Member = z.infer<typeof memberSchema>;
+export type MemberRecordType = RecordType<Member, MemberFilter>;
 
-export type MemberRecordType = RecordType<
-	Member,
-	{ id?: string; name?: string; identity?: string }
->;
-
-export const filterMember: RecordFilter<MemberRecordType> = (
-	member,
-	filter,
-) => {
-	if (!filter) {
-		return true;
-	}
-
+type MemberFilter = { id?: string; name?: string; identity?: string };
+function filterMember(member: Member, filter: MemberFilter) {
 	if (filter.id && member.id !== filter.id) {
 		return false;
 	}
@@ -45,4 +36,11 @@ export const filterMember: RecordFilter<MemberRecordType> = (
 	}
 
 	return true;
-};
+}
+
+export const MemberCollectionSchema = defineRecordType({
+	name: 'member',
+	schema: memberSchema,
+	filterFn: filterMember,
+	documentClass: DocumentApi<MemberRecordType>,
+});

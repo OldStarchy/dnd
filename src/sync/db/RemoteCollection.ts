@@ -1,11 +1,12 @@
-import { BehaviorSubject, Observable } from 'rxjs';
+import { distinctUntilChanged, map, Observable } from 'rxjs';
 
 import type { Collection, DocumentApi } from '@/db/Collection';
-import { QueryResults } from '@/db/QueryResults';
-import type { AnyRecordType } from '@/db/RecordType';
+import type { AnyRecordType, RecordTypeDefinition } from '@/db/RecordType';
 import { AsyncOption } from '@/lib/AsyncOption';
 import type { ChangeSet } from '@/lib/changeSet';
 import filterMap, { Skip } from '@/lib/filterMap';
+import LazyBehaviorSubject from '@/lib/LazyBehaviorSubject';
+import type ObservableWithValue from '@/lib/ObservableWithValue';
 import { Option } from '@/lib/Option';
 import type {
 	CreateResult,
@@ -19,55 +20,82 @@ import type {
 } from '@/sync/db/Messages';
 import type RoomHostConnection from '@/sync/room/RoomHostConnection';
 
+import type { DndDb } from '../room/RoomApi';
+
 export type RemoteCollectionMessages<T> =
 	| DbRequestMessages<T>
 	| DbResponseMessages<T>
 	| DbNotificationMessages<T>;
 
-export default class RemoteCollection<RecordType extends AnyRecordType = never>
-	implements Collection<RecordType>
+export default class RemoteCollection<
+	RecordType extends AnyRecordType = never,
+	Document extends DocumentApi<RecordType> = DocumentApi<RecordType>,
+> implements Collection<RecordType, Document>
 {
-	private readonly records = new Map<
-		string,
-		WeakRef<
-			InstanceType<typeof RemoteCollection.RemoteDocumentApi<RecordType>>
-		>
-	>();
+	private readonly records = new Map<string, WeakRef<Document>>();
 
+	readonly name: string;
+	readonly Document: {
+		new (
+			data$: ObservableWithValue<RecordType['record']>,
+			collection: Collection<RecordType['filter'], Document>,
+		): Document;
+	};
 	constructor(
+		definition: RecordTypeDefinition<
+			RecordType['record'],
+			RecordType['filter'],
+			Document
+		>,
+		readonly db: DndDb,
 		private readonly connection: RoomHostConnection,
-		readonly name: string,
-	) {}
-
-	private getNotifyOne(
-		data: RecordType['record'],
-	): InstanceType<typeof RemoteCollection.RemoteDocumentApi<RecordType>> {
-		const id = data.id;
-		const existing = this.records.get(id)?.deref();
-
-		if (!existing) {
-			const newDoc = new RemoteCollection.RemoteDocumentApi<RecordType>(
-				new BehaviorSubject(data),
-				this,
-			);
-			this.records.set(id, new WeakRef(newDoc));
-			return newDoc;
-		}
-
-		if (existing.data.revision !== data.revision) {
-			existing.data$.next(data);
-		}
-
-		return existing;
+	) {
+		this.name = definition.name;
+		this.Document = definition.documentClass;
 	}
 
-	private maybeGetOne(id: string): Option<DocumentApi<RecordType>> {
+	private getCached(id: string): Option<Document> {
 		return Option.of(this.records.get(id)?.deref());
 	}
+	private cache(id: string, document: Document): void {
+		this.records.set(id, new WeakRef(document));
+	}
 
-	async get(
-		filter?: RecordType['filter'],
-	): Promise<QueryResults<RecordType>> {
+	private wrap(data: RecordType['record']): Document {
+		const { id } = data;
+
+		return this.getCached(id).unwrapOrElse(() => {
+			const newDoc = new this.Document(
+				new LazyBehaviorSubject(data, (subscriber) => {
+					this.createSubscription({ id: data.id })
+						.pipe(
+							map((records) => records.at(0)),
+							distinctUntilChanged(
+								(a: number | undefined, b) => a === b,
+								(r) => r?.revision,
+							),
+						)
+						.subscribe({
+							complete: () => subscriber.complete(),
+							error: (err) => subscriber.error(err),
+							next: (record) => {
+								if (record === undefined) {
+									subscriber.complete();
+									return;
+								}
+								subscriber.next(record);
+							},
+						});
+				}),
+				this,
+			);
+
+			this.cache(id, newDoc);
+			return newDoc;
+		});
+	}
+
+	async get(filter?: RecordType['filter']): Promise<Document[]> {
 		const response = (await this.connection.gm.request({
 			type: 'db',
 			action: 'get',
@@ -75,15 +103,11 @@ export default class RemoteCollection<RecordType extends AnyRecordType = never>
 			filter: filter,
 		})) as GetResult<RecordType>;
 
-		const data = response.data;
-
-		return new QueryResults(...data.map((item) => this.getNotifyOne(item)));
+		return response.data.map((item) => this.wrap(item));
 	}
 
-	get$(
-		filter?: RecordType['filter'],
-	): Observable<ReadonlySet<DocumentApi<RecordType>>> {
-		return new Observable((subscriber) => {
+	private createSubscription(filter?: RecordType['filter']) {
+		return new Observable<RecordType['record'][]>((subscriber) => {
 			const gmId = this.connection.gm.id;
 			(async () => {
 				const { subscriptionId } = (await this.connection.gm.request({
@@ -101,65 +125,55 @@ export default class RemoteCollection<RecordType extends AnyRecordType = never>
 					});
 				});
 
-				subscriber.add(
-					this.connection.notification$
-						.pipe(
-							filterMap((notification) =>
-								notification.data.type === 'db' &&
-								notification.data.subscriptionId ===
-									subscriptionId &&
-								notification.senderId === gmId
-									? (notification.data
-											.items as RecordType['record'][])
-									: Skip,
-							),
-						)
-						.subscribe((items) => {
-							subscriber.next(
-								new Set(
-									items.map((item) =>
-										this.getNotifyOne(item),
-									),
-								),
-							);
-						}),
-				);
+				this.connection.notification$
+					.pipe(
+						filterMap((notification) =>
+							notification.data.type === 'db' &&
+							notification.data.subscriptionId ===
+								subscriptionId &&
+							notification.senderId === gmId
+								? (notification.data
+										.items as RecordType['record'][])
+								: Skip,
+						),
+					)
+					.subscribe(subscriber);
 			})();
 		});
 	}
 
-	getOne(
-		filter?: RecordType['filter'],
-	): AsyncOption<DocumentApi<RecordType>> {
-		const cached = this.maybeGetOne(filter as unknown as string);
+	get$(filter?: RecordType['filter']): Observable<Document[]> {
+		return this.createSubscription(filter).pipe(
+			map((items) => items.map((item) => this.wrap(item))),
+		);
+	}
 
-		// TODO: Given that changes are pushed from the host, we probably don't
-		// need to proactively fetch for updates here if we have a cached item.
-		const fetchPromise = (async () => {
-			const response = (await this.connection.gm.request({
-				type: 'db',
-				action: 'getOne',
-				collection: this.name,
-				filter: filter,
-			})) as GetOneResult<RecordType>;
+	/**
+	 * This doesn't produce "live" records, use `get$` if you need
+	 * `.data$` to be live.
+	 */
+	getOne(filter?: RecordType['filter']): AsyncOption<Document> {
+		return AsyncOption.of(
+			(async () => {
+				const response = (await this.connection.gm.request({
+					type: 'db',
+					action: 'getOne',
+					collection: this.name,
+					filter: filter,
+				})) as GetOneResult<RecordType>;
 
-			if (response.data === null) {
-				return null;
-			}
+				if (response.data === null) {
+					return null;
+				}
 
-			// TODO: Calling getOne again before previous calls complete could
-			// lead to multiple notifications for the same item.
-			return this.getNotifyOne(response.data as RecordType['record']);
-		})();
-
-		return cached
-			.map(() => AsyncOption.Some(cached.unwrap()))
-			.unwrapOrElse(() => AsyncOption.of(fetchPromise));
+				return this.wrap(response.data as RecordType['record']);
+			})(),
+		);
 	}
 
 	async create(
 		data: Omit<RecordType['record'], 'id' | 'revision'>,
-	): Promise<DocumentApi<RecordType>> {
+	): Promise<Document> {
 		const response = (await this.connection.gm.request({
 			type: 'db',
 			action: 'create',
@@ -167,7 +181,7 @@ export default class RemoteCollection<RecordType extends AnyRecordType = never>
 			data,
 		})) as CreateResult<RecordType>;
 
-		return this.getNotifyOne(response.data);
+		return this.wrap(response.data);
 	}
 
 	async update(
@@ -197,30 +211,4 @@ export default class RemoteCollection<RecordType extends AnyRecordType = never>
 			revision,
 		});
 	}
-
-	private static RemoteDocumentApi = class RemoteDocumentApi<
-		RecordType extends AnyRecordType,
-	> implements DocumentApi<RecordType>
-	{
-		get data() {
-			return this.data$.getValue();
-		}
-
-		constructor(
-			readonly data$: BehaviorSubject<RecordType['record']>,
-			readonly collection: RemoteCollection<RecordType>,
-		) {}
-
-		async update(
-			changeSet: ChangeSet<Omit<RecordType['record'], 'id' | 'revision'>>,
-		): Promise<void> {
-			const { id, revision } = this.data;
-			return this.collection.update(id, revision, changeSet);
-		}
-
-		async delete(): Promise<void> {
-			const { id, revision } = this.data;
-			return this.collection.delete(id, revision);
-		}
-	};
 }

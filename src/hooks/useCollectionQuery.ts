@@ -1,28 +1,27 @@
-import { useEffect, useState } from 'react';
+import { useMemo } from 'react';
 
-import type { Collection, DocumentApi } from '@/db/Collection';
+import type { Collection } from '@/db/Collection';
 import type { AnyRecordType } from '@/db/RecordType';
+import useObservable from '@/hooks/useObservable';
 
 /**
- * Calls collection.get$ with the given filter.
+ * Calls get$ on a database given the filter and returns a state const with the
+ * latest result, or `undefined` prior to the first result.
  *
- * ! Make sure you memoize the filter object.
+ * Make sure that you memoize filter if its set so this doesn't keep creating
+ * new subscriptions each render.
  */
-export default function useCollectionQuery<RecordType extends AnyRecordType>(
-	collection: Collection<RecordType>,
+export default function useCollectionQuery<
+	RecordType extends AnyRecordType,
+	Record,
+>(
+	collection: Collection<RecordType, Record>,
 	filter?: RecordType['filter'],
-): ReadonlySet<DocumentApi<RecordType>> {
-	const [records, setRecords] = useState<
-		ReadonlySet<DocumentApi<RecordType>>
-	>(new Set());
+): Record[] | undefined {
+	const results$ = useMemo(
+		() => collection.get$(filter),
+		[collection, filter],
+	);
 
-	useEffect(() => {
-		const subscription = collection
-			.get$(filter)
-			.subscribe((records) => setRecords(records));
-
-		return () => subscription.unsubscribe();
-	}, [collection, filter]);
-
-	return records;
+	return useObservable(results$);
 }

@@ -1,6 +1,7 @@
 import z from 'zod';
 
-import type { RecordFilter, RecordType } from '@/db/RecordType';
+import { defineRecordType, type RecordType } from '@/db/RecordType';
+import EncounterApi from '@/type/EncounterApi';
 
 declare const EncounterIdBrand: unique symbol;
 export type EncounterIdBrand = typeof EncounterIdBrand;
@@ -15,25 +16,26 @@ export const encounterSchema = z.object({
 });
 
 export type Encounter = z.infer<typeof encounterSchema>;
+type EncounterFilter = { id?: string; name?: string };
+export type EncounterRecordType = RecordType<Encounter, EncounterFilter>;
 
-export type EncounterRecordType = RecordType<
-	Encounter,
-	{ id?: string; name?: string }
->;
+export const EncounterCollectionSchema = defineRecordType({
+	name: 'encounter',
+	schema: encounterSchema,
+	filterFn: (record, filter: EncounterFilter) => {
+		if (!filter) return true;
 
-export const encounterFilter: RecordFilter<EncounterRecordType> = (
-	record,
-	filter,
-) => {
-	if (!filter) return true;
+		if (filter.id && record.id !== filter.id) return false;
 
-	if (filter.id && record.id !== filter.id) return false;
+		if (
+			filter.name &&
+			!record.name?.toLowerCase().includes(filter.name.toLowerCase())
+		)
+			return false;
 
-	if (
-		filter.name &&
-		!record.name?.toLowerCase().includes(filter.name.toLowerCase())
-	)
-		return false;
+		return true;
+	},
+	documentClass: EncounterApi,
+});
 
-	return true;
-};
+export type EncounterCollectionSchema = typeof EncounterCollectionSchema;

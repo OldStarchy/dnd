@@ -1,8 +1,33 @@
 import { DropdownMenuTrigger } from '@radix-ui/react-dropdown-menu';
 import { ChevronDown, Plus } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import {
+	createContext,
+	type Dispatch,
+	type ReactNode,
+	type SetStateAction,
+	useCallback,
+	useEffect,
+	useMemo,
+	useState,
+} from 'react';
 
+import EntityPropertiesForm from '@/components/forms/EntityProperties/Form';
+import type { EntityProperties } from '@/components/forms/EntityProperties/schema';
+import {
+	applyEntityToInitiativeEntry,
+	toEntity,
+} from '@/components/forms/EntityProperties/translate';
+import InitiativeTable from '@/components/InitiativeTable/InitiativeTable';
 import { Button } from '@/components/ui/button';
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuGroup,
+	DropdownMenuItem,
+	DropdownMenuLabel,
+	DropdownMenuSeparator,
+} from '@/components/ui/dropdown-menu';
+import { Input } from '@/components/ui/input';
 import {
 	ResizableHandle,
 	ResizablePanel,
@@ -21,23 +46,7 @@ import rollDice from '@/lib/rollDice';
 import { type Entity, HealthObfuscation } from '@/store/types/Entity';
 import useRoomContext from '@/sync/react/context/room/useRoomContext';
 import type RoomApi from '@/sync/room/RoomApi';
-
-import EntityPropertiesForm from './forms/EntityProperties/Form';
-import type { EntityProperties } from './forms/EntityProperties/schema';
-import {
-	applyEntityToInitiativeEntry,
-	toEntity,
-} from './forms/EntityProperties/translate';
-import InitiativeTable from './InitiativeTable/InitiativeTable';
-import {
-	DropdownMenu,
-	DropdownMenuContent,
-	DropdownMenuGroup,
-	DropdownMenuItem,
-	DropdownMenuLabel,
-	DropdownMenuSeparator,
-} from './ui/dropdown-menu';
-import { Input } from './ui/input';
+import EncounterApi from '@/type/EncounterApi';
 
 function GameMasterControlPanel({
 	room,
@@ -65,7 +74,7 @@ function GameMasterControlPanel({
 	);
 
 	const selectedInitiativeTableEntry = initiativeTableEntry
-		.values()
+		?.values()
 		.find((entity) => entity.data.id === selectedEntityId);
 
 	const createNewEntity = useCallback(() => {
@@ -138,7 +147,12 @@ function GameMasterControlPanel({
 				<ScrollArea className="h-full">
 					<Button onClick={() => alert('NYI')}>Open in Popout</Button>
 					<Input type="text" value={shareCode ?? ''} readOnly />
-					<EncounterView room={room} encounter={encounter} />
+					<EncounterView
+						room={room}
+						encounter={encounter}
+						selectedEntityId={selectedEntityId}
+						setSelectedEntityId={setSelectedEntityId}
+					/>
 					{/* <InitiativeTable
 						fieldVisibility={{
 							initiative: true,
@@ -201,35 +215,41 @@ function GameMasterControlPanel({
 										<DropdownMenuLabel>
 											Players
 										</DropdownMenuLabel>
-										{characters.length > 0 ? (
-											characters.map((character) => (
-												<DropdownMenuItem
-													key={character.id}
-													onClick={() => {
-														room.db.initiativeTableEntry
-															.create({
-																encounterId:
-																	encounterData.id,
-																creature: {
-																	type: 'unique',
-																	id: character.id,
-																},
-																healthDisplay:
-																	HealthObfuscation.NO,
-																initiative: 0,
-															})
-															.then((record) => {
-																setSelectedEntityId(
-																	record.data$
-																		.value
-																		.id,
+										{characters && characters.size > 0 ? (
+											characters
+												.values()
+												.map(({ data: character }) => (
+													<DropdownMenuItem
+														key={character.id}
+														onClick={() => {
+															room.db.initiativeTableEntry
+																.create({
+																	encounterId:
+																		encounterData.id,
+																	creature: {
+																		type: 'unique',
+																		id: character.id,
+																	},
+																	healthDisplay:
+																		HealthObfuscation.NO,
+																	initiative: 0,
+																})
+																.then(
+																	(
+																		record,
+																	) => {
+																		setSelectedEntityId(
+																			record
+																				.data
+																				.id,
+																		);
+																	},
 																);
-															});
-													}}
-												>
-													{character.name}
-												</DropdownMenuItem>
-											))
+														}}
+													>
+														{character.name}
+													</DropdownMenuItem>
+												))
 										) : (
 											<DropdownMenuItem disabled>
 												Create some Player Character
@@ -351,7 +371,7 @@ function GameMasterControlPanel({
 						<div className="pl-4 pr-6 py-4">
 							<InitiativeTableEntryForm
 								record={selectedInitiativeTableEntry}
-								key={selectedInitiativeTableEntry.id}
+								key={selectedInitiativeTableEntry.data.id}
 							/>
 						</div>
 					) : (
@@ -427,106 +447,71 @@ function InitiativeTableEntryForm({
 // 	return <EncounterView room={room} encounter={encounter.value} />;
 // }
 
+const EncounterContext = createContext<EncounterApi | null>(null);
+function EncounterContextProvider({
+	encounter,
+	children,
+}: {
+	encounter: DocumentApi<EncounterRecordType>;
+	children: ReactNode;
+}) {
+	const room = useRoomContext();
+
+	const api = useMemo(() => {
+		if (encounter && room) {
+			return new EncounterApi(encounter, room.db);
+		}
+
+		return null;
+	}, [encounter, room]);
+
+	return (
+		<EncounterContext.Provider value={api}>
+			{children}
+		</EncounterContext.Provider>
+	);
+}
+
 function EncounterView({
 	room,
 	encounter,
+	selectedEntityId,
+	setSelectedEntityId,
 }: {
 	room: RoomApi;
 	encounter: DocumentApi<EncounterRecordType>;
+	selectedEntityId: string | null;
+	setSelectedEntityId: Dispatch<SetStateAction<string | null>>;
 }) {
+	const encounterApi = useMemo(
+		() => new EncounterApi(encounter, room.db),
+		[encounter, room],
+	);
+
 	const encounterFilter = useMemo(
 		() => ({
 			encounterId: encounter.data.id,
 		}),
 		[encounter],
 	);
-	const entities = useCollectionQuery(
+	const entitiesSet = useCollectionQuery(
 		room.db.initiativeTableEntry,
 		encounterFilter,
 	);
-	const creatures = useCollectionQuery(room.db.creature);
+	const entities = useMemo(() => {
+		return (
+			entitiesSet
+				?.values()
+				.toArray()
+				.sort((a, b) => a.data.initiative - b.data.initiative) ?? []
+		);
+	}, [entitiesSet]);
 
 	const encounterData = useBehaviorSubject(encounter.data$);
 
-	const [selectedEntityId, setSelectedEntityId] = useState<string | null>(
-		null,
-	);
-
-	const advanceTurn = useCallback(() => {
-		const currentIndex = entities.findIndex(
-			(entity) => entity.id === encounterData.currentTurn,
-		);
-
-		if (currentIndex === -1) return;
-
-		const currentEntity = entities[currentIndex];
-
-		const nextIndex = (currentIndex + 1) % entities.length;
-		const nextEntity = entities[nextIndex];
-
-		const creature = (() => {
-			if (currentEntity.creature.type === 'unique') {
-				const id = currentEntity.creature.id;
-				return creatures.find((c) => c.id === id)!;
-			} else return currentEntity.creature.data;
-		})();
-
-		if (creature.debuffs?.some((debuff) => debuff.duration !== undefined)) {
-			const newDebuffs = creature.debuffs
-				.map((debuff) => {
-					if (debuff.duration !== undefined) {
-						return {
-							...debuff,
-							duration: debuff.duration - 1,
-						};
-					}
-					return debuff;
-				})
-				.filter(
-					(debuff) =>
-						debuff.duration === undefined || debuff.duration > 0,
-				);
-
-			if (currentEntity.creature.type === 'generic') {
-				room.db.initiativeTableEntry
-					.getOne({ id: currentEntity.id })
-					.inspect((doc) =>
-						doc.update({
-							merge: {
-								creature: {
-									merge: {
-										data: {
-											merge: {
-												debuffs: {
-													replace: newDebuffs,
-												},
-											},
-										},
-									},
-								},
-							},
-						}),
-					);
-			} else {
-				room.db.creature
-					.getOne({ id: currentEntity.creature.id })
-					.inspect((doc) => {
-						doc.update({
-							merge: {
-								debuffs: { replace: newDebuffs },
-							},
-						});
-					});
-			}
-		}
-		encounter.update({
-			merge: { currentTurn: { replace: nextEntity.id } },
-		});
-	}, [room, entities, creatures, encounter, encounterData]);
-
 	return (
 		<InitiativeTable
-			entries={entities}
+			entries={entities.map((v) => v.data)}
 			selectedEntityId={selectedEntityId}
 			onEntityClick={({ id }) => setSelectedEntityId(id)}
 			currentTurnEntityId={encounterData.currentTurn}
@@ -544,7 +529,7 @@ function EncounterView({
 				debuffs: true,
 				description: true,
 			}}
-			onAdvanceTurnClick={advanceTurn}
+			onAdvanceTurnClick={() => encounterApi.advanceTurn()}
 		/>
 	);
 }

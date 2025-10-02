@@ -1,19 +1,37 @@
 import { BehaviorSubject } from 'rxjs';
 
-import type { DocumentApi, ReadonlyDocumentApi } from '@/db/Collection';
-import type { CreatureRecordType } from '@/db/record/Creature';
-import type { EncounterRecordType } from '@/db/record/Encounter';
-import type { InitiativeTableEntryRecord } from '@/db/record/InitiativeTableEntry';
+import type { DocumentApi } from '@/db/Collection';
+import {
+	CreatureCollectionSchema,
+	type CreatureRecordType,
+} from '@/db/record/Creature';
+import {
+	EncounterCollectionSchema,
+	type EncounterRecordType,
+} from '@/db/record/Encounter';
+import {
+	InitiativeTableEntryCollectionSchema,
+	type InitiativeTableEntryRecord,
+} from '@/db/record/InitiativeTableEntry';
 import { traceAsync } from '@/decorators/trace';
 import { setJsonStorage } from '@/hooks/useJsonStorage';
 import Logger from '@/lib/log';
 import RemoteCollection from '@/sync/db/RemoteCollection';
-import type { MemberRecordType } from '@/sync/room/member/Record';
+import {
+	MemberCollectionSchema,
+	type MemberRecordType,
+} from '@/sync/room/member/Record';
 import type RoomApi from '@/sync/room/RoomApi';
+import { Db, type DndDb } from '@/sync/room/RoomApi';
 import type RoomHost from '@/sync/room/RoomHost';
 import type RoomHostConnection from '@/sync/room/RoomHostConnection';
-import type { RoomMetaRecordType } from '@/sync/room/RoomMeta';
+import {
+	RoomMetaDocumentDefinition,
+	type RoomMetaRecordType,
+} from '@/sync/room/RoomMeta';
 import type { MembershipToken, RoomCode } from '@/sync/room/types';
+import type { InitiativeTableEntryApi } from '@/type/EncounterApi';
+import type EncounterApi from '@/type/EncounterApi';
 
 export default class RemoteRoom implements RoomApi {
 	@traceAsync(Logger.INFO)
@@ -30,10 +48,54 @@ export default class RemoteRoom implements RoomApi {
 		return roomHost.room
 			.connect(membershipToken)
 			.andThen(async (connection) => {
-				return await new RemoteCollection<RoomMetaRecordType>(
-					connection,
-					'room',
-				)
+				const db: DndDb = new Db();
+
+				db.register(
+					'roomMeta',
+					(db) =>
+						new RemoteCollection<RoomMetaRecordType>(
+							RoomMetaDocumentDefinition,
+							db,
+							connection,
+						),
+				);
+
+				db.register(
+					'creature',
+					(db) =>
+						new RemoteCollection<
+							CreatureRecordType,
+							DocumentApi<CreatureRecordType>
+						>(CreatureCollectionSchema, db, connection),
+				);
+				db.register(
+					'member',
+					(db) =>
+						new RemoteCollection<
+							MemberRecordType,
+							DocumentApi<MemberRecordType>
+						>(MemberCollectionSchema, db, connection),
+				);
+				db.register(
+					'encounter',
+					(db) =>
+						new RemoteCollection<EncounterRecordType, EncounterApi>(
+							EncounterCollectionSchema,
+							db,
+							connection,
+						),
+				);
+				db.register(
+					'initiativeTableEntry',
+					(db) =>
+						new RemoteCollection<
+							InitiativeTableEntryRecord,
+							InitiativeTableEntryApi
+						>(InitiativeTableEntryCollectionSchema, db, connection),
+				);
+
+				return await db
+					.get('roomMeta')
 					.getOne()
 					.okOr('missing_room_meta' as const)
 					.andTry(async (meta) => {
@@ -42,6 +104,7 @@ export default class RemoteRoom implements RoomApi {
 							membershipToken,
 							connection,
 							meta,
+							db,
 						);
 
 						setJsonStorage('roomSession', {
@@ -77,8 +140,8 @@ export default class RemoteRoom implements RoomApi {
 		readonly connection: RoomHostConnection,
 		readonly me: DocumentApi<MemberRecordType>,
 		readonly membershipToken: MembershipToken,
-		readonly meta: ReadonlyDocumentApi<RoomMetaRecordType>,
-		readonly db: RoomApi['db'],
+		readonly meta: DocumentApi<RoomMetaRecordType>,
+		readonly db: DndDb,
 	) {
 		this.code$.next(connection.roomCode);
 	}
@@ -87,38 +150,22 @@ export default class RemoteRoom implements RoomApi {
 		roomHost: RoomHost,
 		membershipToken: MembershipToken,
 		connection: RoomHostConnection,
-		meta: ReadonlyDocumentApi<RoomMetaRecordType>,
+		meta: DocumentApi<RoomMetaRecordType>,
+		db: DndDb,
 	) {
-		const creature = new RemoteCollection<CreatureRecordType>(
-			connection,
-			'creature',
-		);
-		const member = new RemoteCollection<MemberRecordType>(
-			connection,
-			'member',
-		);
-
-		const encounter = new RemoteCollection<EncounterRecordType>(
-			connection,
-			'encounter',
-		);
-
-		const initiativeTableEntry =
-			new RemoteCollection<InitiativeTableEntryRecord>(
-				connection,
-				'initiativeTableEntry',
-			);
-
-		const me = await member
+		const me = await db
+			.get('member')
 			.getOne({ identity: connection.id })
 			.unwrap('Failed to retrieve member information for self');
 
-		return new RemoteRoom(roomHost, connection, me, membershipToken, meta, {
-			creature,
-			member,
-			encounter,
-			initiativeTableEntry,
-		});
+		return new RemoteRoom(
+			roomHost,
+			connection,
+			me,
+			membershipToken,
+			meta,
+			db,
+		);
 	}
 
 	async leave(): Promise<void> {

@@ -1,40 +1,55 @@
 import { BehaviorSubject, Observable, Subject } from 'rxjs';
-import type { ZodType as ZodSchema } from 'zod';
+import type z from 'zod';
 
 import { AsyncOption } from '@/lib/AsyncOption';
 import { applyChangeset, type ChangeSet } from '@/lib/changeSet';
+import type { DndDb } from '@/sync/room/RoomApi';
 
 import type { Collection, DocumentApi } from './Collection';
-import { QueryResults } from './QueryResults';
-import type { AnyRecordType } from './RecordType';
+import type { AnyRecordType, RecordTypeDefinition } from './RecordType';
 
-export abstract class LocalCollection<RecordType extends AnyRecordType>
-	implements Collection<RecordType>
+export abstract class LocalCollection<
+	RecordType extends AnyRecordType,
+	Document extends DocumentApi<RecordType>,
+> implements Collection<RecordType, Document>
 {
 	#change$ = new Subject<
-		| { type: 'create' | 'update'; document: DocumentApi<RecordType> }
+		| { type: 'create' | 'update'; document: Document }
 		| { type: 'delete'; id: RecordType['record']['id'] }
 	>();
 
-	private readonly documentCache: Map<
-		string,
-		WeakRef<InstanceType<typeof LocalCollection.DocumentApi<RecordType>>>
-	>;
+	private readonly documentCache: Map<string, WeakRef<Document>>;
+	private readonly data$Cache: WeakMap<
+		Document,
+		BehaviorSubject<RecordType['record']>
+	> = new WeakMap();
+
+	readonly name: string;
+	private readonly filterFn: (
+		item: RecordType['record'],
+		filter: RecordType['filter'],
+	) => boolean;
+	protected readonly schema: z.ZodSchema<RecordType['record']>;
+	readonly Document: {
+		new (
+			data$: BehaviorSubject<RecordType['record']>,
+			collection: Collection<RecordType, Document>,
+		): Document;
+	};
 
 	constructor(
-		readonly name: string,
-		private readonly filterFn: (
-			item: RecordType['record'],
-			filter?: RecordType['filter'],
-		) => boolean,
-		protected readonly schema: ZodSchema<RecordType['record']>,
+		definition: RecordTypeDefinition<
+			RecordType['record'],
+			RecordType['filter'],
+			Document
+		>,
+		readonly db: DndDb,
 	) {
-		this.documentCache = new Map<
-			string,
-			WeakRef<
-				InstanceType<typeof LocalCollection.DocumentApi<RecordType>>
-			>
-		>();
+		this.name = definition.name;
+		this.filterFn = definition.filterFn;
+		this.schema = definition.schema;
+		this.Document = definition.documentClass;
+		this.documentCache = new Map<string, WeakRef<Document>>();
 	}
 
 	private generateId(): string {
@@ -45,44 +60,41 @@ export abstract class LocalCollection<RecordType extends AnyRecordType>
 
 	protected abstract setRaw(items: RecordType['record'][]): void;
 
-	private wrap(data: RecordType['record']): DocumentApi<RecordType> {
+	private wrap(data: RecordType['record']): Document {
 		const id = data.id;
 
 		const existing = this.documentCache.get(id)?.deref();
 
 		if (!existing) {
-			const newDoc = new LocalCollection.DocumentApi<RecordType>(
-				new BehaviorSubject(data),
-				this,
-			);
+			const data$ = new BehaviorSubject(data);
+			const newDoc = new this.Document(data$, this);
+
 			this.documentCache.set(id, new WeakRef(newDoc));
+			this.data$Cache.set(newDoc, data$);
+
 			return newDoc;
 		} else {
-			existing.data$.next(data);
+			this.data$Cache.get(existing)?.next(data);
 		}
 
 		return existing;
 	}
 
-	async get(
-		filter?: RecordType['filter'],
-	): Promise<QueryResults<RecordType>> {
-		const items = this.getRaw();
-		return new QueryResults(
-			...items
-				.filter((item: RecordType['record']) =>
-					this.filterFn(item, filter),
-				)
-				.map((item: RecordType['record']) => this.wrap(item)),
-		);
+	async get(filter?: RecordType['filter']): Promise<Document[]> {
+		let items = this.getRaw();
+
+		if (filter)
+			items = items.filter((item: RecordType['record']) =>
+				this.filterFn(item, filter),
+			);
+
+		return items.map((item: RecordType['record']) => this.wrap(item));
 	}
 
-	get$(
-		filter?: RecordType['filter'],
-	): Observable<ReadonlySet<DocumentApi<RecordType>>> {
+	get$(filter?: RecordType['filter']): Observable<Document[]> {
 		return new Observable((subscriber) => {
 			(async () => {
-				let results = new Set(await this.get(filter));
+				let results = await this.get(filter);
 				subscriber.next(results);
 
 				subscriber.add(
@@ -90,37 +102,37 @@ export abstract class LocalCollection<RecordType extends AnyRecordType>
 						switch (change.type) {
 							case 'create':
 								if (
+									!filter ||
 									this.filterFn(change.document.data, filter)
 								) {
-									results = new Set([
-										...results,
-										change.document,
-									]);
+									results = [...results, change.document];
 									subscriber.next(results);
 								}
 								break;
 
 							case 'update':
 								{
-									const exists = results.has(change.document);
-									const matches = this.filterFn(
-										change.document.data,
-										filter,
+									const exists = results.some(
+										({ data: { id } }) =>
+											id === change.document.data.id,
 									);
 
+									const matches =
+										!filter ||
+										this.filterFn(
+											change.document.data,
+											filter,
+										);
+
 									if (exists && !matches) {
-										results = new Set(
-											[...results].filter(
-												(doc) =>
-													doc !== change.document,
-											),
+										results = results.filter(
+											(doc) => doc !== change.document,
 										);
 										subscriber.next(results);
 									} else if (!exists && matches) {
-										results = new Set([
-											...results,
-											change.document,
-										]);
+										results = [...results, change.document];
+										subscriber.next(results);
+									} else if (exists) {
 										subscriber.next(results);
 									}
 								}
@@ -134,10 +146,8 @@ export abstract class LocalCollection<RecordType extends AnyRecordType>
 											(doc) => doc.data.id === change.id,
 										);
 									if (existing) {
-										results = new Set(
-											[...results].filter(
-												(doc) => doc !== existing,
-											),
+										results = results.filter(
+											(doc) => doc !== existing,
 										);
 										subscriber.next(results);
 									}
@@ -150,15 +160,15 @@ export abstract class LocalCollection<RecordType extends AnyRecordType>
 		});
 	}
 
-	getOne(
-		filter?: RecordType['filter'],
-	): AsyncOption<DocumentApi<RecordType>> {
-		return AsyncOption.of(this.get(filter).then((items) => items[0]));
+	getOne(filter?: RecordType['filter']): AsyncOption<Document> {
+		return AsyncOption.of(
+			this.get(filter).then((items) => items.values().next().value),
+		);
 	}
 
 	async create(
 		newItem: Omit<RecordType['record'], 'id' | 'revision'>,
-	): Promise<DocumentApi<RecordType>> {
+	): Promise<Document> {
 		const data = {
 			...newItem,
 			id: this.generateId(),
@@ -187,8 +197,11 @@ export abstract class LocalCollection<RecordType extends AnyRecordType>
 		const newRecords = records.filter((item) => item.id !== id);
 		this.setRaw(newRecords);
 
-		this.documentCache.get(id)?.deref()?.data$.complete();
-		this.documentCache.delete(id);
+		const existing = this.documentCache.get(id)?.deref();
+		if (existing) {
+			this.data$Cache.get(existing)?.complete();
+			this.documentCache.delete(id);
+		}
 
 		this.#change$.next({ type: 'delete', id });
 	}
@@ -231,30 +244,4 @@ export abstract class LocalCollection<RecordType extends AnyRecordType>
 		const document = this.wrap(parsed);
 		this.#change$.next({ type: 'update', document: document });
 	}
-
-	private static DocumentApi = class DocumentApi<
-		RecordType extends AnyRecordType,
-	> implements DocumentApi<RecordType>
-	{
-		get data() {
-			return this.data$.getValue();
-		}
-
-		constructor(
-			readonly data$: BehaviorSubject<RecordType['record']>,
-			readonly collection: LocalCollection<RecordType>,
-		) {}
-
-		async update(
-			changeSet: ChangeSet<Omit<RecordType['record'], 'id' | 'revision'>>,
-		): Promise<void> {
-			const { id, revision } = this.data;
-
-			return this.collection.update(id, revision, changeSet);
-		}
-
-		async delete(): Promise<void> {
-			return this.collection.delete(this.data.id);
-		}
-	};
 }

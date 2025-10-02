@@ -1,18 +1,24 @@
-import type { ZodType as ZodSchema } from 'zod';
+import type { DndDb } from '@/sync/room/RoomApi';
 
+import type { DocumentApi } from './Collection';
 import { LocalCollection } from './LocalCollection';
-import type { AnyRecordType, RecordFilter } from './RecordType';
+import type { AnyRecordType, RecordTypeDefinition } from './RecordType';
 
 export class LocalStorageCollection<
-	const in out RecordType extends AnyRecordType,
-> extends LocalCollection<RecordType> {
+	const RecordType extends AnyRecordType,
+	const Document extends DocumentApi<RecordType> = DocumentApi<RecordType>,
+> extends LocalCollection<RecordType, Document> {
 	private readonly storageKey: string;
+
 	constructor(
-		name: string,
-		filterFn: RecordFilter<RecordType>,
-		schema: ZodSchema<RecordType['record']>,
+		definition: RecordTypeDefinition<
+			RecordType['record'],
+			RecordType['filter'],
+			Document
+		>,
+		db: DndDb,
 	) {
-		super(name, filterFn, schema);
+		super(definition, db);
 		this.storageKey = `dnd.db.${this.name}`;
 	}
 

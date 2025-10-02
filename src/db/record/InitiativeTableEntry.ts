@@ -1,7 +1,8 @@
 import { z } from 'zod';
 
 import { type CreatureIdBrand, creatureSchema } from '@/db/record/Creature';
-import type { RecordFilter, RecordType } from '@/db/RecordType';
+import { defineRecordType, type RecordType } from '@/db/RecordType';
+import { InitiativeTableEntryApi } from '@/type/EncounterApi';
 
 import type { EncounterIdBrand } from './Encounter';
 
@@ -30,21 +31,27 @@ export const initiativeTableEntrySchema = z.object({
 });
 
 export type InitiativeTableEntry = z.infer<typeof initiativeTableEntrySchema>;
-
+type Filter = { id?: string; encounterId?: string };
 export type InitiativeTableEntryRecord = RecordType<
 	InitiativeTableEntry,
-	{ id?: string; encounterId?: string }
+	Filter
 >;
 
-export const initiativeTableEntryFilter: RecordFilter<
-	InitiativeTableEntryRecord
-> = (record, filter) => {
-	if (!filter) return true;
-
+function initiativeTableEntryFilter(
+	record: InitiativeTableEntry,
+	filter: Filter,
+) {
 	if (filter.id && record.id !== filter.id) return false;
 
 	if (filter.encounterId && record.encounterId !== filter.encounterId)
 		return false;
 
 	return true;
-};
+}
+
+export const InitiativeTableEntryCollectionSchema = defineRecordType({
+	name: 'initiativeTableEntry',
+	schema: initiativeTableEntrySchema,
+	filterFn: initiativeTableEntryFilter,
+	documentClass: InitiativeTableEntryApi,
+});

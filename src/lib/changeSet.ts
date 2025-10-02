@@ -81,7 +81,18 @@ export function applyChangeset<T>(
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		let merged = [...current] as T & any[];
 
-		if ('selected' in update) {
+		const hasSelected = 'selected' in update;
+		const hasRemove = 'remove' in update;
+		const hasReorder = 'reorder' in update;
+		const hasExtend = 'extend' in update;
+
+		if ((hasSelected || hasRemove) && hasReorder) {
+			throw new Error(
+				"Cannot use 'selected' or 'remove' with 'reorder' in array changeset",
+			);
+		}
+
+		if (hasSelected) {
 			for (const item of update.selected!) {
 				let filter = item.filter as Filter<T>;
 				const change = item as ChangeSet<T>;
@@ -99,11 +110,9 @@ export function applyChangeset<T>(
 					merged[filter] = newVal;
 				}
 			}
-			if (!anyChanged) {
-				return current;
-			}
-			return merged as T;
-		} else if ('remove' in update) {
+		}
+
+		if (hasRemove) {
 			const removals: number[] = [];
 			for (let filter of update.remove! as Filter<T>[]) {
 				if (typeof filter === 'object') {
@@ -115,15 +124,21 @@ export function applyChangeset<T>(
 				removals.push(filter as number);
 			}
 
-			if (removals.length === 0) {
-				return current;
-			}
+			if (removals.length > 0) {
+				anyChanged = true;
 
-			merged = merged.filter(
-				(_, index) => !removals.includes(index),
-			) as typeof merged;
-			return merged as T;
-		} else if ('reorder' in update) {
+				merged = merged.filter(
+					(_, index) => !removals.includes(index),
+				) as typeof merged;
+			}
+		}
+
+		if (hasSelected || hasRemove) {
+			if (anyChanged) return merged;
+			return current;
+		}
+
+		if (hasReorder) {
 			if (!Array.isArray(current)) {
 				throw new Error('Cannot reorder a non-array type');
 			}
@@ -156,7 +171,7 @@ export function applyChangeset<T>(
 
 			const newOrder = reorder.map((filter: number) => merged[filter]);
 			return newOrder as T;
-		} else if ('extend' in update) {
+		} else if (hasExtend) {
 			return [...merged, ...update.extend] as typeof merged;
 		}
 	}

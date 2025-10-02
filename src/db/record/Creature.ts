@@ -1,7 +1,9 @@
 import { z } from 'zod';
 
-import type { RecordFilter, RecordType } from '@/db/RecordType';
+import { defineRecordType, type RecordType } from '@/db/RecordType';
 import { debuffSpec } from '@/type/Debuff';
+
+import { DocumentApi } from '../Collection';
 
 declare const CreatureIdBrand: unique symbol;
 export type CreatureIdBrand = typeof CreatureIdBrand;
@@ -48,22 +50,25 @@ export type Creature = z.infer<typeof creatureSchema>;
 
 export type CreatureRecordType = RecordType<
 	Creature,
-	{
+	Parameters<typeof filterCreature>[1]
+>;
+
+export const CreatureCollectionSchema = defineRecordType({
+	name: 'creature',
+	schema: creatureSchema,
+	filterFn: filterCreature,
+	documentClass: DocumentApi<CreatureRecordType>,
+});
+
+function filterCreature(
+	creature: Creature,
+	filter: {
 		id?: string;
 		name?: string;
 		race?: string;
 		hp?: number | { min?: number; max?: number };
-	}
->;
-
-export const filterCreature: RecordFilter<CreatureRecordType> = (
-	creature,
-	filter,
-) => {
-	if (!filter) {
-		return true;
-	}
-
+	},
+) {
 	if (filter.id && creature.id !== filter.id) {
 		return false;
 	}
@@ -92,4 +97,4 @@ export const filterCreature: RecordFilter<CreatureRecordType> = (
 	}
 
 	return true;
-};
+}

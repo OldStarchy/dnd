@@ -1,7 +1,7 @@
 import { filter, Subscription } from 'rxjs';
 import type z from 'zod';
 
-import type { Collection } from '@/db/Collection';
+import type { Collection, DocumentApi } from '@/db/Collection';
 import type { AnyRecordType } from '@/db/RecordType';
 import exhaustiveCheck from '@/lib/exhaustiveCheck';
 import type {
@@ -20,13 +20,11 @@ import type { MemberId } from '@/sync/room/types';
 
 export class CollectionHost<
 	const RecordMap extends {
-		[name: string]: AnyRecordType;
+		[name: string]: Collection<AnyRecordType, DocumentApi<AnyRecordType>>;
 	},
 > {
-	readonly sources: {
-		[K in keyof RecordMap]?: Collection<RecordMap[K]>;
-	};
-	constructor(sources: { [K in keyof RecordMap]: Collection<RecordMap[K]> }) {
+	readonly sources: RecordMap;
+	constructor(sources: RecordMap) {
 		this.sources = sources;
 	}
 
@@ -91,17 +89,20 @@ export class CollectionHost<
 	}
 
 	async #handleGet(
-		collection: Collection<RecordMap[string]>,
+		collection: Collection<AnyRecordType>,
 		data: z.infer<typeof getRequestSchema.request>,
 	): Promise<z.infer<typeof getRequestSchema.response>> {
 		return {
-			data: (await collection.get(data.filter)).toRaw(),
+			data: (await collection.get(data.filter))
+				.values()
+				.map((record) => record.data)
+				.toArray(),
 		};
 	}
 
 	#subscriptions = new Map<string, Subscription>();
 	async #handleGet$(
-		collection: Collection<RecordMap[string]>,
+		collection: Collection<AnyRecordType>,
 		data: z.infer<typeof get$RequestSchema.request>,
 		connection: RoomHostConnection,
 		subscriberId: MemberId,
@@ -149,7 +150,7 @@ export class CollectionHost<
 	}
 
 	async #handleGetOne(
-		collection: Collection<RecordMap[string]>,
+		collection: Collection<AnyRecordType>,
 		data: z.infer<typeof getOneRequestSchema.request>,
 	): Promise<z.infer<typeof getOneRequestSchema.response>> {
 		return {
@@ -161,7 +162,7 @@ export class CollectionHost<
 	}
 
 	async #handleCreate(
-		collection: Collection<RecordMap[string]>,
+		collection: Collection<AnyRecordType>,
 		data: z.infer<typeof createRequestSchema.request>,
 	): Promise<z.infer<typeof createRequestSchema.response>> {
 		return {
@@ -174,7 +175,7 @@ export class CollectionHost<
 	}
 
 	async #handleUpdate(
-		collection: Collection<RecordMap[string]>,
+		collection: Collection<AnyRecordType>,
 		data: z.infer<typeof updateRequestSchema.request>,
 	): Promise<z.infer<typeof updateRequestSchema.response>> {
 		await collection
@@ -185,7 +186,7 @@ export class CollectionHost<
 	}
 
 	async #handleDelete(
-		collection: Collection<RecordMap[string]>,
+		collection: Collection<AnyRecordType>,
 		data: z.infer<typeof deleteRequestSchema.request>,
 	): Promise<z.infer<typeof deleteRequestSchema.response>> {
 		await collection.getOne({ id: data.id }).map((doc) => doc.delete());
