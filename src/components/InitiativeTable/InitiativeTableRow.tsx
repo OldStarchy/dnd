@@ -6,6 +6,7 @@ import {
 	useEffect,
 	useState,
 } from 'react';
+import { Subscription } from 'rxjs';
 
 import Debuff from '@/components/Debuff';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -68,12 +69,17 @@ export default function InitiativeTableRow({
 
 	const entryData = useBehaviorSubject(entry.data$);
 	useEffect(() => {
+		const sub = new Subscription();
 		(async () => {
 			if (entryData.creature.type === 'unique') {
 				const id = entryData.creature.id;
 				const creature = await getCreature(id);
 				if (creature) {
-					setCreatureInfo(creature.data);
+					sub.add(
+						creature.data$.subscribe((data) => {
+							setCreatureInfo(data);
+						}),
+					);
 				} else {
 					console.error(`Creature with id ${id} not found.`);
 				}
@@ -81,6 +87,8 @@ export default function InitiativeTableRow({
 				setCreatureInfo(entryData.creature.data);
 			}
 		})();
+
+		return () => sub.unsubscribe();
 	}, [entryData.creature, getCreature]);
 
 	if (!creatureInfo) {
@@ -206,7 +214,7 @@ export default function InitiativeTableRow({
 					</TableRow>
 					<CollapsibleContent asChild>
 						<TableRow className="h-24">
-							<TableCell colSpan={8}>
+							<TableCell colSpan={actions ? 9 : 8}>
 								<CollapsibleContent asChild>
 									<div className="flex gap-x-4">
 										{(creatureInfo.images?.length ?? 0) >
@@ -215,7 +223,7 @@ export default function InitiativeTableRow({
 												src={creatureInfo.images?.[0]}
 												alt={`${creatureInfo.name} - Profile`}
 												width={64}
-												className="cursor-zoom-in"
+												className="cursor-zoom-in object-contain"
 												onClick={() =>
 													setDialogIsOpen(true)
 												}
