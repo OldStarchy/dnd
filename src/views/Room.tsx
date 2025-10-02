@@ -379,18 +379,18 @@ function LocalRoomView({
 
 function GenericRoomView({ room }: { room: RoomApi }) {
 	const meta = useBehaviorSubject(room.meta.data$);
-	const members = useCollectionQuery(room.db.member);
+	const members = useCollectionQuery(room.db.get('member')) ?? [];
 	const presense = useBehaviorSubject(room.presence$);
 
 	return (
 		<>
 			<p>Remote Room "{meta.name}"</p>
 
-			{members.size > 0 && (
+			{members.length > 0 && (
 				<>
 					<h3>Members</h3>
 					<ul>
-						{members.values().map(({ data: member }) => (
+						{members.map(({ data: member }) => (
 							<li
 								key={member.id}
 								title={member.id}

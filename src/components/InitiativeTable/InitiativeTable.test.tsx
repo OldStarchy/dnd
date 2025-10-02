@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { render } from 'vitest-browser-react';
 
 import InitiativeTable from './InitiativeTable';
-import { ThemeProvider } from '../../context/theme/ThemeProvider';
+import ThemeProvider from '../../context/theme/ThemeProvider';
 import type { InitiativeTableEntry } from '../../db/record/InitiativeTableEntry';
 
 describe('InitiativeTable', () => {
@@ -20,6 +20,7 @@ describe('InitiativeTable', () => {
 				data: {
 					name: 'Goblin',
 					race: 'Goblin',
+					images: [],
 					hp: 7,
 					maxHp: 7,
 					debuffs: [],
@@ -52,6 +53,7 @@ describe('InitiativeTable', () => {
 				data: {
 					name: 'Goblin',
 					race: 'Goblin',
+					images: [],
 					debuffs: [],
 					description: undefined,
 					hp: 12,
@@ -71,6 +73,7 @@ describe('InitiativeTable', () => {
 				data: {
 					name: 'Orc',
 					race: 'Orc',
+					images: [],
 					debuffs: [],
 					description: undefined,
 					hp: 12,
@@ -111,6 +114,7 @@ describe('InitiativeTable', () => {
 				data: {
 					name: 'Goblin',
 					race: 'Goblin',
+					images: [],
 					debuffs: [],
 					description: undefined,
 					hp: 12,

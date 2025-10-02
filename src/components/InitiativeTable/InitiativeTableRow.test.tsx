@@ -9,7 +9,7 @@ import { Debuff } from '@/type/Debuff';
 
 import type { FieldVisibility } from './InitiativeTable';
 import InitiativeTableRow from './InitiativeTableRow';
-import { ThemeProvider } from '../../context/theme/ThemeProvider';
+import ThemeProvider from '../../context/theme/ThemeProvider';
 
 const visibility: FieldVisibility = {
 	initiative: true,
@@ -35,6 +35,7 @@ describe('InitiativeTableRow', () => {
 				data: {
 					name: 'Goblin',
 					race: 'Goblin',
+					images: [],
 					debuffs: [],
 					description: undefined,
 					hp: 12,
@@ -72,6 +73,7 @@ describe('InitiativeTableRow', () => {
 				data: {
 					name: 'Goblin',
 					race: 'Goblin',
+					images: [],
 					debuffs: [],
 					description:
 						'This is a goblin, a small and mischievous creature.',
@@ -114,6 +116,7 @@ describe('InitiativeTableRow', () => {
 				data: {
 					name: 'Goblin',
 					race: 'Goblin',
+					images: [],
 					debuffs: [],
 					description:
 						'This is a goblin, a small and mischievous creature.',
@@ -155,6 +158,7 @@ describe('InitiativeTableRow', () => {
 				data: {
 					name: 'Goblin',
 					race: 'Goblin',
+					images: [],
 					debuffs: [
 						{
 							...Debuff.poisoned,
@@ -200,6 +204,7 @@ describe('InitiativeTableRow', () => {
 				data: {
 					name: 'Goblin',
 					race: 'Goblin',
+					images: [],
 					debuffs: [],
 					description:
 						'This is a goblin, a small and mischievous creature.',

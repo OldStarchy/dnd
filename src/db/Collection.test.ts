@@ -1,8 +1,29 @@
 import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import z from 'zod';
 
+import { Db } from '@/sync/room/RoomApi';
+
+import { DocumentApi } from './Collection';
 import { LocalStorageCollection } from './LocalStorageCollection';
-import type { DbRecord, RecordType } from './RecordType';
+import { defineRecordType, type RecordType } from './RecordType';
+
+const TestDocumentSchema = z.object({
+	id: z.string(),
+	revision: z.number(),
+	name: z.string(),
+});
+
+type TestDocument = z.infer<typeof TestDocumentSchema>;
+type TestDocumentFilter = { id?: string; name?: string };
+type TestRecordType = RecordType<TestDocument, TestDocumentFilter>;
+
+const TestCollectionSchema = defineRecordType({
+	name: 'test',
+	schema: TestDocumentSchema,
+	filterFn: (item, filter) =>
+		item.id === filter.id || item.name === filter.name,
+	documentClass: DocumentApi<RecordType<TestDocument, TestDocumentFilter>>,
+});
 
 describe('Collection', () => {
 	let store: { [key: string]: string } = {};
@@ -31,13 +52,9 @@ describe('Collection', () => {
 	});
 
 	it('constructs', () => {
-		const collection = new LocalStorageCollection(
-			'test',
-			() => true,
-			z.object({
-				id: z.string(),
-				revision: z.number(),
-			}),
+		const collection = new LocalStorageCollection<TestRecordType>(
+			TestCollectionSchema,
+			new Db(),
 		);
 
 		expect(collection).toBeInstanceOf(LocalStorageCollection);
@@ -45,14 +62,9 @@ describe('Collection', () => {
 	});
 
 	it('can create a new item', async () => {
-		const collection = new LocalStorageCollection(
-			'test',
-			() => true,
-			z.object({
-				id: z.string(),
-				revision: z.number(),
-				name: z.string(),
-			}),
+		const collection = new LocalStorageCollection<TestRecordType>(
+			TestCollectionSchema,
+			new Db(),
 		);
 
 		const newItem = { name: 'Test Item' };
@@ -64,34 +76,26 @@ describe('Collection', () => {
 	});
 
 	it('returns the same item for the same id', async () => {
-		const collection = new LocalStorageCollection(
-			'test',
-			() => true,
-			z.object({
-				id: z.string(),
-				revision: z.number(),
-				name: z.string(),
-			}),
+		const collection = new LocalStorageCollection<TestRecordType>(
+			TestCollectionSchema,
+			new Db(),
 		);
 
 		const newItem = { name: 'Test Item' };
 		const createdItem = await collection.create(newItem);
 
-		const fetchedItem = await collection.getOne({
-			id: createdItem.data.id,
-		});
-		expect(fetchedItem).toEqual(createdItem);
+		const fetchedItem = await collection
+			.getOne({
+				id: createdItem.data.id,
+			})
+			.unwrapOrNull();
+		expect(fetchedItem).toBe(createdItem);
 	});
 
 	it('updates an existing item', async () => {
-		const collection = new LocalStorageCollection(
-			'test',
-			(item, filter?: { id: string }) => !filter || item.id === filter.id,
-			z.object({
-				id: z.string(),
-				revision: z.number(),
-				name: z.string(),
-			}),
+		const collection = new LocalStorageCollection<TestRecordType>(
+			TestCollectionSchema,
+			new Db(),
 		);
 
 		await collection.create({ name: 'Test Item 1' });
@@ -111,14 +115,9 @@ describe('Collection', () => {
 	});
 
 	it('deletes an item', async () => {
-		const collection = new LocalStorageCollection(
-			'test',
-			() => true,
-			z.object({
-				id: z.string(),
-				revision: z.number(),
-				name: z.string(),
-			}),
+		const collection = new LocalStorageCollection<TestRecordType>(
+			TestCollectionSchema,
+			new Db(),
 		);
 
 		const createdItem = await collection.create({ name: 'Test Item' });
@@ -130,16 +129,9 @@ describe('Collection', () => {
 
 	// TODO: need to use rxjs test stuff
 	it('updates an item with a new revision', async () => {
-		const collection = new LocalStorageCollection<
-			RecordType<DbRecord<{ name: string }>, never>
-		>(
-			'test',
-			() => true,
-			z.object({
-				id: z.string(),
-				revision: z.number(),
-				name: z.string(),
-			}),
+		const collection = new LocalStorageCollection<TestRecordType>(
+			TestCollectionSchema,
+			new Db(),
 		);
 
 		const createdItem = await collection.create({ name: 'Test Item' });
@@ -154,17 +146,9 @@ describe('Collection', () => {
 	});
 
 	it('filters items', async () => {
-		const collection = new LocalStorageCollection<
-			RecordType<DbRecord<{ name: string }>, { name: string }>
-		>(
-			'test',
-			(item, filter?: { name: string }) =>
-				!filter || item.name === filter.name,
-			z.object({
-				id: z.string(),
-				revision: z.number(),
-				name: z.string(),
-			}),
+		const collection = new LocalStorageCollection<TestRecordType>(
+			TestCollectionSchema,
+			new Db(),
 		);
 
 		await collection.create({ name: 'Item 1' });

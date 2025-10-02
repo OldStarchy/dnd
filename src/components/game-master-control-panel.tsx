@@ -1,9 +1,7 @@
 import { DropdownMenuTrigger } from '@radix-ui/react-dropdown-menu';
 import { ChevronDown, Plus } from 'lucide-react';
 import {
-	createContext,
 	type Dispatch,
-	type ReactNode,
 	type SetStateAction,
 	useCallback,
 	useEffect,
@@ -35,7 +33,6 @@ import {
 } from '@/components/ui/resizable';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import type { DocumentApi } from '@/db/Collection';
-import type { EncounterRecordType } from '@/db/record/Encounter';
 import type { InitiativeTableEntryRecord } from '@/db/record/InitiativeTableEntry';
 import { dnd5eApi, dnd5eApiUrl } from '@/dnd5eApi';
 import useBehaviorSubject from '@/hooks/useBehaviorSubject';
@@ -46,28 +43,28 @@ import rollDice from '@/lib/rollDice';
 import { type Entity, HealthObfuscation } from '@/store/types/Entity';
 import useRoomContext from '@/sync/react/context/room/useRoomContext';
 import type RoomApi from '@/sync/room/RoomApi';
-import EncounterApi from '@/type/EncounterApi';
+import type EncounterApi from '@/type/EncounterApi';
 
 function GameMasterControlPanel({
 	room,
 	encounter,
 }: {
 	room: RoomApi;
-	encounter: DocumentApi<EncounterRecordType>;
+	encounter: EncounterApi;
 }) {
 	const [splitDirection] = useLocalStorage('layoutDirection', (v) =>
 		v !== 'vertical' ? 'horizontal' : 'vertical',
 	);
 
 	const initiativeTableEntry = useCollectionQuery(
-		room.db.initiativeTableEntry,
+		room.db.get('initiativeTableEntry'),
 	);
 	const encounterData = useBehaviorSubject(encounter.data$);
 	const shareCode = useBehaviorSubject(room.code$);
 
 	const { monsters } = useMonsterList();
 
-	const characters = useCollectionQuery(room.db.creature);
+	const characters = useCollectionQuery(room.db.get('creature'));
 
 	const [selectedEntityId, setSelectedEntityId] = useState<string | null>(
 		null,
@@ -215,14 +212,16 @@ function GameMasterControlPanel({
 										<DropdownMenuLabel>
 											Players
 										</DropdownMenuLabel>
-										{characters && characters.size > 0 ? (
-											characters
-												.values()
-												.map(({ data: character }) => (
+										{characters && characters.length > 0 ? (
+											characters.map(
+												({ data: character }) => (
 													<DropdownMenuItem
 														key={character.id}
 														onClick={() => {
-															room.db.initiativeTableEntry
+															room.db
+																.get(
+																	'initiativeTableEntry',
+																)
 																.create({
 																	encounterId:
 																		encounterData.id,
@@ -249,7 +248,8 @@ function GameMasterControlPanel({
 													>
 														{character.name}
 													</DropdownMenuItem>
-												))
+												),
+											)
 										) : (
 											<DropdownMenuItem disabled>
 												Create some Player Character
@@ -293,7 +293,10 @@ function GameMasterControlPanel({
 																		)
 																	: (result.hit_points ??
 																		0);
-															room.db.initiativeTableEntry
+															room.db
+																.get(
+																	'initiativeTableEntry',
+																)
 																.create({
 																	encounterId:
 																		encounterData.id,
@@ -401,15 +404,16 @@ function InitiativeTableEntryForm({
 	const [entity, setEntity] = useState<EntityProperties>();
 
 	useEffect(() => {
-		toEntity(record.data, room.db.creature).then(setEntity);
-	}, [record, room.db.creature]);
+		toEntity(record.data, room.db.get('creature')).then(setEntity);
+	}, [record, room]);
 
 	const saveEntityPanelChanges = useCallback(
 		async (id: string, data: EntityProperties) => {
-			const record = await room.db.initiativeTableEntry
+			const record = await room.db
+				.get('initiativeTableEntry')
 				.getOne({ id })
 				.unwrap('Entity not found');
-			applyEntityToInitiativeEntry(record, data, room.db.creature);
+			applyEntityToInitiativeEntry(record, data, room.db.get('creature'));
 		},
 		[room],
 	);
@@ -422,7 +426,11 @@ function InitiativeTableEntryForm({
 		<EntityPropertiesForm
 			entity={entity}
 			onChange={(data) => {
-				applyEntityToInitiativeEntry(record, data, room.db.creature);
+				applyEntityToInitiativeEntry(
+					record,
+					data,
+					room.db.get('creature'),
+				);
 				setEntity(data);
 			}}
 		/>
@@ -447,31 +455,6 @@ function InitiativeTableEntryForm({
 // 	return <EncounterView room={room} encounter={encounter.value} />;
 // }
 
-const EncounterContext = createContext<EncounterApi | null>(null);
-function EncounterContextProvider({
-	encounter,
-	children,
-}: {
-	encounter: DocumentApi<EncounterRecordType>;
-	children: ReactNode;
-}) {
-	const room = useRoomContext();
-
-	const api = useMemo(() => {
-		if (encounter && room) {
-			return new EncounterApi(encounter, room.db);
-		}
-
-		return null;
-	}, [encounter, room]);
-
-	return (
-		<EncounterContext.Provider value={api}>
-			{children}
-		</EncounterContext.Provider>
-	);
-}
-
 function EncounterView({
 	room,
 	encounter,
@@ -479,15 +462,10 @@ function EncounterView({
 	setSelectedEntityId,
 }: {
 	room: RoomApi;
-	encounter: DocumentApi<EncounterRecordType>;
+	encounter: EncounterApi;
 	selectedEntityId: string | null;
 	setSelectedEntityId: Dispatch<SetStateAction<string | null>>;
 }) {
-	const encounterApi = useMemo(
-		() => new EncounterApi(encounter, room.db),
-		[encounter, room],
-	);
-
 	const encounterFilter = useMemo(
 		() => ({
 			encounterId: encounter.data.id,
@@ -495,7 +473,7 @@ function EncounterView({
 		[encounter],
 	);
 	const entitiesSet = useCollectionQuery(
-		room.db.initiativeTableEntry,
+		room.db.get('initiativeTableEntry'),
 		encounterFilter,
 	);
 	const entities = useMemo(() => {
@@ -529,7 +507,7 @@ function EncounterView({
 				debuffs: true,
 				description: true,
 			}}
-			onAdvanceTurnClick={() => encounterApi.advanceTurn()}
+			onAdvanceTurnClick={() => encounter.advanceTurn()}
 		/>
 	);
 }

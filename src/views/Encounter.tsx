@@ -4,10 +4,9 @@ import { Link } from 'react-router';
 import GameMasterControlPanel from '@/components/game-master-control-panel';
 import Typography from '@/components/Typography';
 import { PAGES } from '@/const';
-import type { DocumentApi } from '@/db/Collection';
-import type { EncounterRecordType } from '@/db/record/Encounter';
 import useRoomContext from '@/sync/react/context/room/useRoomContext';
 import type RoomApi from '@/sync/room/RoomApi';
+import type EncounterApi from '@/type/EncounterApi';
 
 function Home() {
 	const room = useRoomContext();
@@ -27,21 +26,21 @@ function Home() {
 }
 
 function EncounterWrapper({ room }: { room: RoomApi }) {
-	const [encounter, setEncounter] =
-		useState<DocumentApi<EncounterRecordType> | null>(null);
+	const [encounter, setEncounter] = useState<EncounterApi | null>(null);
 
 	const loading = useRef(false);
 	useEffect(() => {
 		if (loading.current) return;
 
-		room.db.encounter
+		room.db
+			.get('encounter')
 			.getOne()
 			.unwrapOrElse(async () => {
-				const encounter = await room.db.encounter.create({
+				const encounter = await room.db.get('encounter').create({
 					currentTurn: null,
 				});
 
-				await room.db.initiativeTableEntry.create({
+				await room.db.get('initiativeTableEntry').create({
 					encounterId: encounter.data.id,
 					initiative: 0,
 					healthDisplay: 'Living?',

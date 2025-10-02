@@ -55,7 +55,7 @@ export default function InitiativeTableRow({
 
 	const getCreature = useCallback(
 		(id: Creature['id']) => {
-			return room.db.creature.getOne({ id }).unwrapOrNull();
+			return room.db.get('creature').getOne({ id }).unwrapOrNull();
 		},
 		[room],
 	);
