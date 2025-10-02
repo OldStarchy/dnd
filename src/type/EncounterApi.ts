@@ -21,7 +21,9 @@ export default class EncounterApi extends DocumentApi<EncounterRecordType> {
 	}
 
 	async advanceTurn() {
-		const entities = await this.getEntities();
+		const entities = (await this.getEntities()).sort(
+			(a, b) => b.data.initiative - a.data.initiative,
+		);
 
 		const currentTurnId = this.data.currentTurn;
 		const currentTurnIndex = entities.findIndex(
