@@ -1,7 +1,11 @@
 import { Observable, share, startWith, tap } from 'rxjs';
 import type { Observer, Subscribable, Unsubscribable } from 'rxjs';
 
-export default class LazyBehaviorSubject<T> implements Subscribable<T> {
+import type ObservableWithValue from './ObservableWithValue';
+
+export default class LazyBehaviorSubject<T>
+	implements Subscribable<T>, ObservableWithValue<T>
+{
 	#source: Observable<T>;
 
 	#value: T;
@@ -24,7 +28,13 @@ export default class LazyBehaviorSubject<T> implements Subscribable<T> {
 		this.#value = initialValue;
 	}
 
-	subscribe(observer: Partial<Observer<T>>): Unsubscribable {
-		return this.#source.pipe(startWith(this.#value)).subscribe(observer);
+	subscribe(
+		observerOrNext?: Partial<Observer<T>> | ((value: T) => void),
+	): Unsubscribable {
+		return this.asObservable().subscribe(observerOrNext);
+	}
+
+	asObservable(): Observable<T> {
+		return this.#source.pipe(startWith(this.#value));
 	}
 }

@@ -10,7 +10,7 @@ import {
 	TableHeader,
 	TableRow,
 } from '@/components/ui/table';
-import type { InitiativeTableEntry } from '@/db/record/InitiativeTableEntry';
+import type { InitiativeTableEntryApi } from '@/type/EncounterApi';
 
 import InitiativeTableRow from './InitiativeTableRow';
 
@@ -38,14 +38,14 @@ export default function InitiativeTable({
 	onAdvanceTurnClick,
 	fieldVisibility: vis = defaultFieldVisibility,
 }: {
-	entries: InitiativeTableEntry[];
+	entries: InitiativeTableEntryApi[];
 	currentTurnEntityId?: string | null;
 	selectedEntityId?: string | null;
-	actions?: (entity: InitiativeTableEntry, index: number) => ReactNode;
+	actions?: (entity: InitiativeTableEntryApi, index: number) => ReactNode;
 	footer?: ReactNode;
 	onSwapEntities?: (a: number, b: number) => void;
-	onEntityClick?: (entity: InitiativeTableEntry) => void;
-	onToggleTurn?: (entity: InitiativeTableEntry, pressed: boolean) => void;
+	onEntityClick?: (entity: InitiativeTableEntryApi) => void;
+	onToggleTurn?: (entity: InitiativeTableEntryApi, pressed: boolean) => void;
 	onAdvanceTurnClick?: () => void;
 	fieldVisibility?: FieldVisibility;
 }) {

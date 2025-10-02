@@ -26,9 +26,10 @@ import { Dialog, DialogContent, DialogHeader } from '@/components/ui/dialog';
 import { TableBody, TableCell, TableRow } from '@/components/ui/table';
 import { Toggle } from '@/components/ui/toggle';
 import type { Creature } from '@/db/record/Creature';
-import type { InitiativeTableEntry } from '@/db/record/InitiativeTableEntry';
+import useBehaviorSubject from '@/hooks/useBehaviorSubject';
 import { cn } from '@/lib/utils';
 import useRoomContext from '@/sync/react/context/room/useRoomContext';
+import type { InitiativeTableEntryApi } from '@/type/EncounterApi';
 
 import type { FieldVisibility } from './InitiativeTable';
 
@@ -41,7 +42,7 @@ export default function InitiativeTableRow({
 	fieldVisibility: vis,
 	...props
 }: {
-	entry: InitiativeTableEntry;
+	entry: InitiativeTableEntryApi;
 	onToggleTurn?: (pressed: boolean) => void;
 	currentTurn?: boolean;
 	actions?: () => ReactNode;
@@ -65,10 +66,11 @@ export default function InitiativeTableRow({
 		'id' | 'revision'
 	> | null>(null);
 
+	const entryData = useBehaviorSubject(entry.data$);
 	useEffect(() => {
 		(async () => {
-			if (entry.creature.type === 'unique') {
-				const id = entry.creature.id;
+			if (entryData.creature.type === 'unique') {
+				const id = entryData.creature.id;
 				const creature = await getCreature(id);
 				if (creature) {
 					setCreatureInfo(creature.data);
@@ -76,10 +78,10 @@ export default function InitiativeTableRow({
 					console.error(`Creature with id ${id} not found.`);
 				}
 			} else {
-				setCreatureInfo(entry.creature.data);
+				setCreatureInfo(entryData.creature.data);
 			}
 		})();
-	}, [entry.creature, getCreature]);
+	}, [entryData.creature, getCreature]);
 
 	if (!creatureInfo) {
 		return (
@@ -100,7 +102,7 @@ export default function InitiativeTableRow({
 					<TableRow
 						className={cn({
 							'text-muted-foreground':
-								entry.effect === 'invisible',
+								entryData.effect === 'invisible',
 							'bg-accent/50': selected,
 						})}
 						{...props}
@@ -125,7 +127,7 @@ export default function InitiativeTableRow({
 						</TableCell>
 						{vis.initiative && (
 							<TableCell className="w-0">
-								{entry.initiative}
+								{entryData.initiative}
 							</TableCell>
 						)}
 						{vis.name && (
@@ -152,7 +154,7 @@ export default function InitiativeTableRow({
 									</Avatar>
 								</TableCell>
 								<TableCell>
-									{entry.effect === 'invisible'
+									{entryData.effect === 'invisible'
 										? `(${creatureInfo.name})`
 										: creatureInfo.name}
 								</TableCell>
@@ -161,7 +163,7 @@ export default function InitiativeTableRow({
 						{vis.race && <TableCell>{creatureInfo.race}</TableCell>}
 						{vis.ac && <TableCell>{creatureInfo.ac}</TableCell>}
 						{vis.health && (
-							<TableCell>{entry.healthDisplay}</TableCell>
+							<TableCell>{entryData.healthDisplay}</TableCell>
 						)}
 						{vis.debuffs && (
 							<TableCell className="pr-4">

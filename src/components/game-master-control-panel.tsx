@@ -8,6 +8,7 @@ import {
 	useMemo,
 	useState,
 } from 'react';
+import { combineLatest, distinctUntilChanged, map, Observable } from 'rxjs';
 
 import EntityPropertiesForm from '@/components/forms/EntityProperties/Form';
 import type { EntityProperties } from '@/components/forms/EntityProperties/schema';
@@ -39,6 +40,7 @@ import useBehaviorSubject from '@/hooks/useBehaviorSubject';
 import useCollectionQuery from '@/hooks/useCollectionQuery';
 import useLocalStorage from '@/hooks/useLocalStorage';
 import useMonsterList from '@/hooks/useMonsterList';
+import useObservable from '@/hooks/useObservable';
 import rollDice from '@/lib/rollDice';
 import { type Entity, HealthObfuscation } from '@/store/types/Entity';
 import useRoomContext from '@/sync/react/context/room/useRoomContext';
@@ -476,20 +478,37 @@ function EncounterView({
 		room.db.get('initiativeTableEntry'),
 		encounterFilter,
 	);
-	const entities = useMemo(() => {
-		return (
-			entitiesSet
-				?.values()
-				.toArray()
-				.sort((a, b) => a.data.initiative - b.data.initiative) ?? []
+
+	const initiatives$ = useMemo(() => {
+		if (!entitiesSet) return new Observable<never>();
+
+		return combineLatest(
+			entitiesSet.map((e) =>
+				e.data$.asObservable().pipe(
+					map((data) => data.initiative),
+					distinctUntilChanged(),
+				),
+			),
 		);
 	}, [entitiesSet]);
+
+	const initiatives = useObservable(initiatives$, []);
+
+	console.log(initiatives);
+	const entities = useMemo(() => {
+		return (
+			entitiesSet?.toSorted(
+				(a, b) => b.data.initiative - a.data.initiative,
+			) ?? []
+		);
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [entitiesSet, initiatives.join(',')]);
 
 	const encounterData = useBehaviorSubject(encounter.data$);
 
 	return (
 		<InitiativeTable
-			entries={entities.map((v) => v.data)}
+			entries={entities}
 			selectedEntityId={selectedEntityId}
 			onEntityClick={({ id }) => setSelectedEntityId(id)}
 			currentTurnEntityId={encounterData.currentTurn}
