@@ -2,17 +2,26 @@ import '@/index.css';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render } from 'vitest-browser-react';
 
+import type { LocalConfig } from '@/hooks/useLocalConfig';
+
 import { SettingsDialog } from './SettingsDialog';
 
-// Mock the useServerConfig hook
-const mockSetServerUrl = vi.fn();
-vi.mock('@/hooks/useServerConfig', () => ({
-	useServerConfig: vi.fn(() => ['', mockSetServerUrl]),
+const mockSetLocalConfig = vi.fn();
+vi.mock('@/hooks/useLocalConfig', () => ({
+	useLocalConfig: vi.fn(() => [
+		{} as LocalConfig,
+		(v: LocalConfig | ((old: LocalConfig) => LocalConfig)) =>
+			mockSetLocalConfig(
+				v instanceof Function
+					? v({ hostUrl: '', reconnectOnPageLoad: true })
+					: v,
+			),
+	]),
 }));
 
 describe('SettingsDialog', () => {
 	beforeEach(() => {
-		mockSetServerUrl.mockClear();
+		mockSetLocalConfig.mockClear();
 	});
 
 	it('renders the settings dialog with correct elements', async () => {
@@ -45,9 +54,10 @@ describe('SettingsDialog', () => {
 
 		await screen.getByRole('button', { name: 'Save' }).click();
 
-		expect(mockSetServerUrl).toHaveBeenCalledWith(
-			'https://test-server.com',
-		);
+		expect(mockSetLocalConfig).toHaveBeenCalledWith({
+			hostUrl: 'https://test-server.com',
+			reconnectOnPageLoad: true,
+		});
 		expect(onOpenChange).toHaveBeenCalledWith(false);
 	});
 
@@ -75,7 +85,7 @@ describe('SettingsDialog', () => {
 
 		await screen.getByRole('button', { name: 'Cancel' }).click();
 
-		expect(mockSetServerUrl).not.toHaveBeenCalled();
+		expect(mockSetLocalConfig).not.toHaveBeenCalled();
 		expect(onOpenChange).toHaveBeenCalledWith(false);
 	});
 });

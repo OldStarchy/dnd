@@ -53,10 +53,11 @@ export default function InitiativeTableRow({
 	const [dialogIsOpen, setDialogIsOpen] = useState(false);
 
 	const room = useRoomContext();
-	if (!room) throw new Error('Room required for initiative table');
 
 	const getCreature = useCallback(
 		(id: Creature['id']) => {
+			if (!room) throw new Error('Room required for initiative table');
+
 			return room.db.get('creature').getOne({ id }).unwrapOrNull();
 		},
 		[room],

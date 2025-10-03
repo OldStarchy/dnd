@@ -12,7 +12,7 @@ const localConfigSchema = z.object({
 	reconnectOnPageLoad: z.boolean().default(true),
 });
 
-type LocalConfig = z.infer<typeof localConfigSchema>;
+export type LocalConfig = z.infer<typeof localConfigSchema>;
 
 declare global {
 	interface LocalStorageKeys {

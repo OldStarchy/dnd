@@ -1,11 +1,20 @@
 import '@/index.css';
-import { describe, expect, it } from 'vitest';
+import { BehaviorSubject } from 'rxjs';
+import { beforeEach, describe, expect, it } from 'vitest';
 import { render } from 'vitest-browser-react';
 
 import sybilProfile from '@/components/InitiativeTable/fixtures/sybil_profile.png';
 import { Table } from '@/components/ui/table';
-import type { InitiativeTableEntry } from '@/db/record/InitiativeTableEntry';
+import type { Collection } from '@/db/Collection';
+import { RamCollection } from '@/db/RamCollection';
+import {
+	type InitiativeTableEntry,
+	InitiativeTableEntryCollectionSchema,
+	type InitiativeTableEntryRecord,
+} from '@/db/record/InitiativeTableEntry';
+import { Db } from '@/sync/room/RoomApi';
 import { Debuff } from '@/type/Debuff';
+import { InitiativeTableEntryApi } from '@/type/EncounterApi';
 
 import type { FieldVisibility } from './InitiativeTable';
 import InitiativeTableRow from './InitiativeTableRow';
@@ -22,8 +31,24 @@ const visibility: FieldVisibility = {
 };
 
 describe('InitiativeTableRow', () => {
+	let dummyDb: Collection<
+		InitiativeTableEntryRecord,
+		InitiativeTableEntryApi
+	>;
+
+	beforeEach(() => {
+		dummyDb = new RamCollection<
+			InitiativeTableEntryRecord,
+			InitiativeTableEntryApi
+		>(InitiativeTableEntryCollectionSchema, new Db());
+	});
+
+	function createCreature(data: InitiativeTableEntry) {
+		return new InitiativeTableEntryApi(new BehaviorSubject(data), dummyDb);
+	}
+
 	it('shows the charactres info', async () => {
-		const creature: InitiativeTableEntry = {
+		const creature = createCreature({
 			id: '1' as InitiativeTableEntry['id'],
 			revision: 0,
 			encounterId: 'enc1' as InitiativeTableEntry['encounterId'],
@@ -42,7 +67,7 @@ describe('InitiativeTableRow', () => {
 					maxHp: 12,
 				},
 			},
-		};
+		});
 
 		const screen = render(
 			<ThemeProvider defaultTheme="dark">
@@ -61,7 +86,7 @@ describe('InitiativeTableRow', () => {
 	});
 
 	it('does not show descriptions when not expanded', async () => {
-		const creature: InitiativeTableEntry = {
+		const creature = createCreature({
 			id: '1' as InitiativeTableEntry['id'],
 			revision: 0,
 			encounterId: 'enc1' as InitiativeTableEntry['encounterId'],
@@ -81,7 +106,7 @@ describe('InitiativeTableRow', () => {
 					maxHp: 12,
 				},
 			},
-		};
+		});
 
 		const screen = render(
 			<ThemeProvider defaultTheme="dark">
@@ -104,7 +129,7 @@ describe('InitiativeTableRow', () => {
 	});
 
 	it('expands when clicked to show descriptions', async () => {
-		const creature: InitiativeTableEntry = {
+		const creature = createCreature({
 			id: '1' as InitiativeTableEntry['id'],
 			revision: 0,
 			encounterId: 'enc1' as InitiativeTableEntry['encounterId'],
@@ -124,7 +149,7 @@ describe('InitiativeTableRow', () => {
 					maxHp: 12,
 				},
 			},
-		};
+		});
 
 		const screen = render(
 			<ThemeProvider defaultTheme="dark">
@@ -146,7 +171,7 @@ describe('InitiativeTableRow', () => {
 	});
 
 	it('shows debuffs', async () => {
-		const creature: InitiativeTableEntry = {
+		const creature = createCreature({
 			id: '1' as InitiativeTableEntry['id'],
 			revision: 0,
 			encounterId: 'enc1' as InitiativeTableEntry['encounterId'],
@@ -176,7 +201,7 @@ describe('InitiativeTableRow', () => {
 					maxHp: 12,
 				},
 			},
-		};
+		});
 		const screen = render(
 			<ThemeProvider defaultTheme="dark">
 				<Table>
@@ -192,7 +217,7 @@ describe('InitiativeTableRow', () => {
 	});
 
 	it('shows actions', async () => {
-		const creature: InitiativeTableEntry = {
+		const creature = createCreature({
 			id: '1' as InitiativeTableEntry['id'],
 			revision: 0,
 			encounterId: 'enc1' as InitiativeTableEntry['encounterId'],
@@ -212,7 +237,7 @@ describe('InitiativeTableRow', () => {
 					maxHp: 12,
 				},
 			},
-		};
+		});
 
 		const screen = render(
 			<ThemeProvider defaultTheme="dark">
@@ -234,7 +259,7 @@ describe('InitiativeTableRow', () => {
 	});
 
 	it.skip('shows profile images', async () => {
-		const creature: InitiativeTableEntry = {
+		const creature = createCreature({
 			id: '1' as InitiativeTableEntry['id'],
 			revision: 0,
 			encounterId: 'enc1' as InitiativeTableEntry['encounterId'],
@@ -253,7 +278,7 @@ describe('InitiativeTableRow', () => {
 					maxHp: 11,
 				},
 			},
-		};
+		});
 
 		const screen = render(
 			<ThemeProvider defaultTheme="dark">
@@ -272,7 +297,7 @@ describe('InitiativeTableRow', () => {
 	});
 
 	it('clicking a profile image in the extended description shows a larger version', async () => {
-		const creature: InitiativeTableEntry = {
+		const creature = createCreature({
 			id: '1' as InitiativeTableEntry['id'],
 			revision: 0,
 			encounterId: 'enc1' as InitiativeTableEntry['encounterId'],
@@ -291,7 +316,7 @@ describe('InitiativeTableRow', () => {
 					maxHp: 11,
 				},
 			},
-		};
+		});
 
 		const screen = render(
 			<ThemeProvider defaultTheme="dark">

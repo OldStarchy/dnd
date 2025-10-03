@@ -1,14 +1,40 @@
 import '@/index.css';
-import { describe, expect, it, vi } from 'vitest';
+import { BehaviorSubject } from 'rxjs';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render } from 'vitest-browser-react';
+
+import type { Collection } from '@/db/Collection';
+import { RamCollection } from '@/db/RamCollection';
+import { Db } from '@/sync/room/RoomApi';
+import { InitiativeTableEntryApi } from '@/type/EncounterApi';
 
 import InitiativeTable from './InitiativeTable';
 import ThemeProvider from '../../context/theme/ThemeProvider';
-import type { InitiativeTableEntry } from '../../db/record/InitiativeTableEntry';
+import {
+	type InitiativeTableEntry,
+	InitiativeTableEntryCollectionSchema,
+	type InitiativeTableEntryRecord,
+} from '../../db/record/InitiativeTableEntry';
 
 describe('InitiativeTable', () => {
+	let dummyDb: Collection<
+		InitiativeTableEntryRecord,
+		InitiativeTableEntryApi
+	>;
+
+	beforeEach(() => {
+		dummyDb = new RamCollection<
+			InitiativeTableEntryRecord,
+			InitiativeTableEntryApi
+		>(InitiativeTableEntryCollectionSchema, new Db());
+	});
+
+	function createCreature(data: InitiativeTableEntry) {
+		return new InitiativeTableEntryApi(new BehaviorSubject(data), dummyDb);
+	}
+
 	it('shows the charactres info', async () => {
-		const creature: InitiativeTableEntry = {
+		const creature = createCreature({
 			id: '1' as InitiativeTableEntry['id'],
 			encounterId: 'enc1' as InitiativeTableEntry['encounterId'],
 			revision: 0,
@@ -27,7 +53,7 @@ describe('InitiativeTable', () => {
 					description: undefined,
 				},
 			},
-		};
+		});
 
 		const screen = render(
 			<ThemeProvider>
@@ -41,7 +67,7 @@ describe('InitiativeTable', () => {
 	});
 
 	it('triggers onSwap when an entity is dragged and dropped', async () => {
-		const creature1: InitiativeTableEntry = {
+		const creature1 = createCreature({
 			id: '1' as InitiativeTableEntry['id'],
 			revision: 0,
 			encounterId: 'enc1' as InitiativeTableEntry['encounterId'],
@@ -60,8 +86,8 @@ describe('InitiativeTable', () => {
 					maxHp: 12,
 				},
 			},
-		};
-		const creature2: InitiativeTableEntry = {
+		});
+		const creature2 = createCreature({
 			id: '2' as InitiativeTableEntry['id'],
 			revision: 0,
 			encounterId: 'enc1' as InitiativeTableEntry['encounterId'],
@@ -80,7 +106,7 @@ describe('InitiativeTable', () => {
 					maxHp: 12,
 				},
 			},
-		};
+		});
 
 		const onSwapMock = vi.fn();
 
@@ -102,7 +128,7 @@ describe('InitiativeTable', () => {
 	});
 
 	it('shows actions for entities', async () => {
-		const creature: InitiativeTableEntry = {
+		const creature = createCreature({
 			id: '1' as InitiativeTableEntry['id'],
 			revision: 0,
 			encounterId: 'enc1' as InitiativeTableEntry['encounterId'],
@@ -121,7 +147,7 @@ describe('InitiativeTable', () => {
 					maxHp: 12,
 				},
 			},
-		};
+		});
 
 		const screen = render(
 			<ThemeProvider>
