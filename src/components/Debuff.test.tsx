@@ -1,9 +1,11 @@
 import '@/index.css';
-import { Debuff as DebuffObj } from '@/type/Debuff';
 import { describe, expect, it } from 'vitest';
 import { render } from 'vitest-browser-react';
+
+import type { Debuff as DebuffObj } from '@/type/Debuff';
+
 import Debuff from './Debuff';
-import { ThemeProvider } from './theme-provider';
+import ThemeProvider from '../context/theme/ThemeProvider';
 
 describe('Debuff', () => {
 	it('renders without notes', () => {

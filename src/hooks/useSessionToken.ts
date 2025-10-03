@@ -1,5 +1,11 @@
 import useLocalStorage from './useLocalStorage';
 
+declare global {
+	interface LocalStorageKeys {
+		'session-token': string;
+	}
+}
+
 export function useSessionToken(): [
 	string | null,
 	(token: string | null) => void,

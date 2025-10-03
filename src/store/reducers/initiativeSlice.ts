@@ -1,6 +1,7 @@
 import type { PayloadAction } from '@reduxjs/toolkit';
 import { createSlice } from '@reduxjs/toolkit';
-import type { Entity } from '../types/Entity';
+
+import type { Entity } from '@/store/types/Entity';
 
 export interface InitiativeState {
 	entities: Entity[];

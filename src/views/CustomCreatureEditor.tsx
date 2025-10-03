@@ -1,118 +1,144 @@
-import useCustomCreatureList from '@/hooks/useCustomCreatureList';
-import type { Creature } from '@/type/Creature';
-import { useCallback } from 'react';
+import { AccordionHeader, AccordionTrigger } from '@radix-ui/react-accordion';
+import { ChevronDownIcon, Plus } from 'lucide-react';
+import { useState } from 'react';
+
+import CreatureForm from '@/components/CreatureForm';
+import {
+	Accordion,
+	AccordionContent,
+	AccordionItem,
+} from '@/components/ui/accordion';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import type { Collection } from '@/db/Collection';
+import { LocalStorageCollection } from '@/db/LocalStorageCollection';
+import {
+	CreatureCollectionSchema,
+	type CreatureRecordType,
+} from '@/db/record/Creature';
+import useCollectionQuery from '@/hooks/useCollectionQuery';
+import { Db } from '@/sync/room/RoomApi';
+
+const db = new Db<{
+	creature: Collection<CreatureRecordType>;
+}>({
+	creature: (db) =>
+		new LocalStorageCollection<CreatureRecordType>(
+			CreatureCollectionSchema,
+			db,
+		),
+});
+
+const creatureCollection = db.get('creature');
 
 /**
  * Allows editing of player characters.
  */
 function CustomCreatureEditor() {
-	const [creatures, setCreatures] = useCustomCreatureList();
+	const [selectedCreature, setSelectedCreature] = useState<InstanceType<
+		(typeof CreatureCollectionSchema)['documentClass']
+	> | null>(null);
 
-	const addCreature = useCallback(
-		(character: Creature) => {
-			setCreatures((prev) => [...prev, character]);
-		},
-		[setCreatures],
-	);
-
-	const editCreature = useCallback(
-		(id: string, updatedCreature: Partial<Omit<Creature, 'id'>>) => {
-			setCreatures((prev) =>
-				prev.map((char) =>
-					char.id === id ? { ...char, ...updatedCreature } : char,
-				),
-			);
-		},
-		[setCreatures],
-	);
-
-	const deleteCreature = useCallback(
-		(id: string) => {
-			setCreatures((prev) => prev.filter((char) => char.id !== id));
-		},
-		[setCreatures],
-	);
+	const creatures = useCollectionQuery(creatureCollection) ?? [];
 
 	return (
-		<div>
+		<ScrollArea>
 			<h1 className="text-2xl font-bold mb-4">Permanent Creatures</h1>
 			<p className="mb-4">
 				Here you can manage recurring players and npcs.
 			</p>
 
 			<div className="space-y-4">
-				{creatures.map((creature) => (
-					<div
-						key={creature.id}
-						className="p-4 border rounded-lg flex justify-between items-center"
-					>
-						<div>
-							<h2 className="text-xl font-semibold">
-								{creature.name}
-							</h2>
-							<p>
-								Health: {creature.hp} / {creature.maxHp}
-								{creature.hitpointsRoll
-									? ` (${creature.hitpointsRoll})`
-									: ''}
-							</p>
-						</div>
-						<div className="flex space-x-2">
-							<button
-								onClick={() =>
-									editCreature(creature.id, {
-										name:
-											prompt(
-												'Enter new name',
-												creature.name,
-											) ?? undefined,
-										hp: parseInt(
-											prompt(
-												'Enter new health',
-												creature.hp.toString(),
-											) || '0',
-											10,
-										),
-										maxHp: parseInt(
-											prompt(
-												'Enter new max health',
-												creature.maxHp.toString(),
-											) || '0',
-											10,
-										),
-									})
-								}
-								className="px-3 py-1 bg-blue-500 text-white rounded"
-							>
-								Edit
-							</button>
-							<button
-								onClick={() => deleteCreature(creature.id)}
-								className="px-3 py-1 bg-red-500 text-white rounded"
-							>
-								Delete
-							</button>
-						</div>
-					</div>
-				))}
-				<button
-					onClick={() =>
-						addCreature({
-							id: Date.now().toString(),
-							name:
-								prompt('Enter character name', 'New Hero') ||
-								'',
-							race: prompt('Race', 'Human') || 'Human',
-							maxHp: 100,
-							hp: 100,
-						})
-					}
-					className="px-4 py-2 bg-green-500 text-white rounded"
-				>
-					Add Creature
-				</button>
+				<Accordion type="multiple">
+					{creatures.map((creature) => (
+						<AccordionItem
+							value={creature.data.id}
+							key={creature.data.id}
+						>
+							<AccordionHeader>
+								<AccordionTrigger asChild>
+									<Card className="w-full p-4 flex flex-row justify-start items-center [&[data-state=open]>svg]:rotate-180">
+										<Avatar>
+											<AvatarImage
+												src={creature.data.images?.[0]}
+												alt={creature.data.name}
+											/>
+											<AvatarFallback>
+												{creature.data.name
+													.replace(
+														/[^a-zA-Z0-9 ]+/g,
+														' ',
+													)
+													.replace(
+														/(?:^| )(\w)\w+/g,
+														(_, initial: string) =>
+															initial.toUpperCase(),
+													)}
+											</AvatarFallback>
+										</Avatar>
+										<h2 className="text-xl font-semibold">
+											{creature.data.name}
+										</h2>
+										<p>
+											Health: {creature.data.hp} /{' '}
+											{creature.data.maxHp}
+											{creature.data.hitpointsRoll
+												? ` (${creature.data.hitpointsRoll})`
+												: ''}
+										</p>
+
+										<ChevronDownIcon className="ml-auto text-muted-foreground pointer-events-none size-4 shrink-0 translate-y-0.5 transition-transform duration-200" />
+									</Card>
+								</AccordionTrigger>
+							</AccordionHeader>
+							<AccordionContent className="p-4">
+								<CreatureForm
+									creature={creature.data}
+									onSubmit={(data) => {
+										creature.update({ replace: data });
+									}}
+									actions={
+										<Button
+											onClick={() => creature.delete()}
+											variant="destructive"
+										>
+											Delete
+										</Button>
+									}
+								/>
+							</AccordionContent>
+						</AccordionItem>
+					))}
+					<AccordionItem value="new">
+						<AccordionHeader>
+							<AccordionTrigger asChild>
+								<Card className="w-full p-4 flex flex-row justify-start items-center [&[data-state=open]>svg]:rotate-180">
+									<Avatar>
+										<AvatarFallback>
+											<Plus />
+										</AvatarFallback>
+									</Avatar>
+									<h2 className="text-xl font-semibold">
+										New
+									</h2>
+									<ChevronDownIcon className="ml-auto text-muted-foreground pointer-events-none size-4 shrink-0 translate-y-0.5 transition-transform duration-200" />
+								</Card>
+							</AccordionTrigger>
+						</AccordionHeader>
+						<AccordionContent className="p-4">
+							<CreatureForm
+								creature={undefined}
+								onSubmit={(record) => {
+									creatureCollection.create(record);
+								}}
+							/>
+						</AccordionContent>
+					</AccordionItem>
+				</Accordion>
 			</div>
-		</div>
+		</ScrollArea>
 	);
 }
 

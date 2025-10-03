@@ -1,4 +1,7 @@
-import type { Creature } from '@/type/Creature';
+import z from 'zod';
+
+import { creatureSchema } from '@/db/record/Creature';
+import exhaustiveCheck from '@/lib/exhaustiveCheck';
 
 export const HealthObfuscation = {
 	/**
@@ -18,13 +21,24 @@ export const HealthObfuscation = {
 export type HealthObfuscation =
 	(typeof HealthObfuscation)[keyof typeof HealthObfuscation];
 
-export type Entity = {
-	id: string;
-	initiative: number;
-	visible: boolean;
-	obfuscateHealth: HealthObfuscation;
-	creature: Creature;
-};
+export const entitySchema = z.object({
+	id: z.string(),
+	visible: z.boolean(),
+	obfuscateHealth: z.enum(HealthObfuscation),
+	initiative: z.number(),
+	creature: z
+		.object({
+			type: z.literal('unique'),
+			id: z.string(),
+		})
+		.or(
+			z.object({
+				type: z.literal('generic'),
+				data: creatureSchema.omit({ id: true, revision: true }),
+			}),
+		),
+});
+export type Entity = z.infer<typeof entitySchema>;
 
 export type PlayerEntityView = {
 	id: string;
@@ -66,6 +80,5 @@ export function getObfuscatedHealthText(
 			return '??';
 	}
 
-	// @ts-expect-error unused
-	const _exhaustiveCheck: never = entity.obfuscateHealth;
+	exhaustiveCheck(obfuscateHealth);
 }

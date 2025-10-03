@@ -1,0 +1,31 @@
+.typography {
+	max-width: 40rem;
+	h1 {
+		font-size: 2em;
+		margin-bottom: 0.5em;
+	}
+
+	h2 {
+		font-size: 1.5em;
+		margin-bottom: 0.25em;
+	}
+
+	ol {
+		padding-left: 2rem;
+		list-style: decimal;
+	}
+
+	ul {
+		padding-left: 2rem;
+		list-style: disc;
+	}
+
+	p {
+		margin: 0.5em 0;
+	}
+
+	a {
+		text-decoration: underline;
+		color: blueviolet;
+	}
+}

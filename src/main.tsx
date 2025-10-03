@@ -1,68 +1,20 @@
-import { PopoutProvider } from '@/components/PopoutProvider';
-import { ShareProvider } from '@/components/ShareProvider';
-import { ThemeProvider } from '@/components/theme-provider';
 import '@/index.css';
-import Layout from '@/layout/layout';
-import { primaryStore } from '@/store/primary-store';
-import CustomCreatureEditor from '@/views/CustomCreatureEditor';
-import Home from '@/views/Encounter';
-import Monsters from '@/views/Monsters';
-import PopoutView from '@/views/Popout';
-import Sandbox from '@/views/Sandbox';
+
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
-import { Provider } from 'react-redux';
 import {
 	createBrowserRouter,
 	createHashRouter,
 	RouterProvider,
-	type RouteObject,
 } from 'react-router';
-import { ConfigurableBackendApiProvider } from './components/ConfigurableBackendApiProvider';
-import RoomView from './views/Room';
-function GmLayout() {
-	return (
-		<Provider store={primaryStore}>
-			<ShareProvider>
-				<PopoutProvider>
-					<Layout />
-				</PopoutProvider>
-			</ShareProvider>
-		</Provider>
-	);
-}
 
-const routes: RouteObject[] = [
-	{
-		Component: GmLayout,
-		children: [
-			{
-				index: true,
-				Component: Home,
-			},
-			{
-				path: '/room',
-				Component: RoomView,
-			},
-			{
-				path: '/characters',
-				Component: CustomCreatureEditor,
-			},
-			{
-				path: '/monsters',
-				Component: Monsters,
-			},
-			{
-				path: '/sandbox',
-				Component: Sandbox,
-			},
-		],
-	},
-	{
-		path: '/popout/',
-		Component: PopoutView,
-	},
-];
+import ThemeProvider from '@/context/theme/ThemeProvider';
+import Logger, { consoleWriter } from '@/lib/log';
+import routes from '@/routes';
+import RoomContextProvider from '@/sync/react/context/roomActions/RoomActionsContextProvider';
+import { RoomHostContextProvider } from '@/sync/react/context/roomHost/RoomHostContextProvider';
+
+Logger.default.addWriter(Logger.INFO, consoleWriter);
 
 const useHashRouter = import.meta.env.VITE_SPA === 'true';
 const router = useHashRouter
@@ -71,10 +23,12 @@ const router = useHashRouter
 
 createRoot(document.getElementById('root')!).render(
 	<StrictMode>
-		<ConfigurableBackendApiProvider>
-			<ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
-				<RouterProvider router={router} />
-			</ThemeProvider>
-		</ConfigurableBackendApiProvider>
+		<RoomHostContextProvider>
+			<RoomContextProvider>
+				<ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
+					<RouterProvider router={router} />
+				</ThemeProvider>
+			</RoomContextProvider>
+		</RoomHostContextProvider>
 	</StrictMode>,
 );

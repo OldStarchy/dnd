@@ -1,121 +1,422 @@
+import { AlertTriangle, RefreshCcw } from 'lucide-react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+
 import { Button } from '@/components/ui/button';
-import {
-	Form,
-	FormControl,
-	FormField,
-	FormItem,
-	FormLabel,
-} from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { useBackendApi } from '@/hooks/useBackendApi';
-import { useSessionToken } from '@/hooks/useSessionToken';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { useCallback, useEffect, useState } from 'react';
-import { useForm } from 'react-hook-form';
-import { Link, useNavigate } from 'react-router';
-import { z } from 'zod';
+import { Label } from '@/components/ui/label';
+import { Separator } from '@/components/ui/separator';
+import useRoomSession from '@/hooks/room/useRoomSession';
+import useBehaviorSubject from '@/hooks/useBehaviorSubject';
+import useCollectionQuery from '@/hooks/useCollectionQuery';
+import Logger from '@/lib/log';
+import useRoomContext from '@/sync/react/context/room/useRoomContext';
+import useRoomActionsContext from '@/sync/react/context/roomActions/useRoomActionsContext';
+import { useRoomHost } from '@/sync/react/context/roomHost/useRoomHost';
+import RemoteRoom from '@/sync/room/RemoteRoom';
+import Room from '@/sync/room/Room';
+import type RoomApi from '@/sync/room/RoomApi';
+import RoomHost from '@/sync/room/RoomHost';
+import { RoomCode } from '@/sync/room/types';
 
-const createJoinFormSpec = z.object({
-	roomCode: z
-		.string()
-		.length(4)
-		.transform((val) => val?.toUpperCase())
-		.or(z.literal('')),
-});
-type CreateJoinFormSpec = z.infer<typeof createJoinFormSpec>;
+/**
+ * This page allows creating, publishing, or joining a room, as well as managing
+ * room metadata and members when the room is published.
+ */
+function RoomConfigurator() {
+	const room = useRoomContext();
+	const roomActions = useRoomActionsContext();
+	const [roomSession, setRoomSession] = useRoomSession();
+	const roomHost = useRoomHost();
 
-function RoomView() {
-	const [connectionToken, setConnectionToken] = useSessionToken();
-	const [isGm, setIsGm] = useState<boolean | null>(null);
+	const [joinRoomCode, setJoinRoomCode] = useState('');
 
-	const backendApi = useBackendApi();
-	const navigate = useNavigate();
+	const [error, setError] = useState<string | null>(null);
+
+	const mounted = useRef(false);
+	useEffect(() => {
+		if (mounted.current) return;
+		mounted.current = true;
+
+		return () => {
+			mounted.current = false;
+		};
+	}, []);
+
+	const displayError = useCallback((err: string) => {
+		Logger.error('RoomView Error:', err);
+		if (!mounted.current) return;
+
+		setError(err);
+	}, []);
+
+	if (!room) {
+		return (
+			<div>
+				{error && (
+					<Label>
+						<AlertTriangle /> {error}
+					</Label>
+				)}
+				You're not currently in a room.
+				{roomSession.lastRoom !== null &&
+					(roomSession.lastRoom.type === 'hosted' ? (
+						<div>
+							<p>
+								You have an existing session token for a room
+								you hosted.
+							</p>
+							<p>
+								Previously hosted "{roomSession.lastRoom.name}"
+								at {roomSession.lastRoom.host} with code{' '}
+								<code>{roomSession.lastRoom.code}</code>
+							</p>
+							<Button
+								onClick={() =>
+									roomActions
+										.reconnect(
+											roomHost,
+											roomSession.lastRoom!
+												.membershipToken,
+										)
+										.inspectErr((err) =>
+											Logger.error(
+												'Reconnect failed',
+												err,
+											),
+										)
+										.mapErr((error) => {
+											switch (error) {
+												case 'invalid_token':
+												case 'not_found':
+													return 'The session on the room server no longer exists. You can still rehost the same room, but the room code will change and you will need to reassign roles.';
+
+												case 'missing_room_meta':
+													return 'The room you hosted no longer exists. Create a new room to host.';
+
+												default:
+													return error.message;
+											}
+										})
+										.unwrapOrElse(displayError)
+								}
+							>
+								Rehost
+							</Button>
+						</div>
+					) : (
+						<div>
+							<p>
+								You have an existing session token from a
+								session you joined that might still be valid,
+								you can try reconnecting.
+							</p>
+							<p>
+								Previously Joined "{roomSession.lastRoom.name}"
+								at {roomSession.lastRoom.host} with code{' '}
+								<code>{roomSession.lastRoom.code}</code>
+							</p>
+							<Button
+								onClick={() =>
+									roomActions
+										.rejoin(
+											roomHost,
+											roomSession.lastRoom!
+												.membershipToken,
+										)
+										.inspectErr((err) =>
+											Logger.error('Rejoin failed', err),
+										)
+										.mapErr((error) => {
+											switch (error) {
+												case 'invalid_token':
+												case 'not_found':
+													return 'The room no longer exists.';
+
+												case 'missing_room_meta':
+													return 'The host did not provide room metadata.';
+
+												default:
+													return error.message;
+											}
+										})
+										.unwrapOrElse(displayError)
+								}
+							>
+								Rejoin
+							</Button>
+						</div>
+					))}
+				<div>
+					<Button
+						onClick={() => roomActions.create({ name: 'My Room' })}
+					>
+						Create Room
+					</Button>
+					<p>
+						you can publish it so others can join in the next step
+					</p>
+				</div>
+				<div>
+					<Input
+						type="text"
+						placeholder="Room Code"
+						value={joinRoomCode}
+						onChange={(e) => setJoinRoomCode(e.target.value)}
+					/>
+					<Button
+						onClick={() =>
+							roomActions
+								.join(roomHost, RoomCode(joinRoomCode))
+								.inspectErr((error) =>
+									Logger.error('Join failed', error),
+								)
+								.mapErr((error) => {
+									switch (error) {
+										case 'invalid_token':
+										case 'not_found':
+											return 'The room code you entered was not found.';
+
+										case 'missing_room_meta':
+											return 'The host did not provide room metadata.';
+
+										default:
+											return error.message;
+									}
+								})
+								.unwrapOrElse(displayError)
+						}
+					>
+						Join Room
+					</Button>
+					<p>
+						if you have a room code, enter it above to join an
+						existing room
+					</p>
+				</div>
+			</div>
+		);
+	}
+
+	return <RoomConfiguratorInner handleError={displayError} />;
+}
+function RoomConfiguratorInner({
+	handleError,
+}: {
+	handleError: (err: string) => void;
+}) {
+	const room = useRoomContext();
+	const roomActions = useRoomActionsContext();
+
+	const roomHost = useRoomHost();
+
+	const newRoomNameRef = useRef<HTMLInputElement>(null);
+	const roomCodeRef = useRef<HTMLInputElement>(null);
+
+	const [error, setError] = useState('');
+
+	const [name, setNameImpl] = useState('');
 
 	useEffect(() => {
-		if (connectionToken) {
-			backendApi.getRoom(connectionToken).then(
-				(result) => {
-					if (result.roomCode) {
-						setIsGm(result.isGm);
-					} else {
-						setConnectionToken(null);
-						setIsGm(null);
-					}
-				},
-				() => {
-					setConnectionToken(null);
-					setIsGm(null);
-				},
-			);
+		if (room) {
+			setNameImpl(room.me.data.name);
+		} else {
+			setNameImpl('');
 		}
-	}, [connectionToken, backendApi, setConnectionToken]);
+	}, [room]);
 
-	const form = useForm({
-		resolver: zodResolver(createJoinFormSpec),
-		defaultValues: {
-			roomCode: '',
-		},
-	});
+	useEffect(() => {
+		if (!room) return;
 
-	const handleSubmit = useCallback(
-		async (data: CreateJoinFormSpec) => {
-			if (data.roomCode) {
-				try {
-					const { token } = await backendApi.joinRoom(data.roomCode);
-					setConnectionToken(token);
-				} catch (error) {
-					console.error('Failed to join room:', error);
-					form.setError('roomCode', {
-						type: 'manual',
-						message: 'Failed to join room. Please check the code.',
-					});
-					return;
-				}
-			} else {
-				const { token, roomCode: _ } = await backendApi.createRoom();
-				setConnectionToken(token);
-			}
-			// Redirect to the room with the token
-			navigate('/popout');
-		},
-		[backendApi, setConnectionToken, form, navigate],
-	);
+		const sub = room.me.data$.subscribe({
+			next: (data) => {
+				setNameImpl(data.name);
+			},
+		});
+
+		return () => sub.unsubscribe();
+	}, [room]);
+
+	const setName = async (name: string) => {
+		if (room) {
+			await room.me.update({ merge: { name: { replace: name } } });
+		}
+	};
 
 	return (
 		<div>
-			{connectionToken ? (
-				<div>
-					<h1>Welcome back!</h1>
-					<Link to={isGm ? '/' : '/popout'}>Reconnect to Room</Link>
-				</div>
+			<h2>Room Configuration</h2>
+			<div className="text-red-600">{error}</div>
+			{room ? (
+				<>
+					{room instanceof Room ? (
+						<LocalRoomView room={room} handleError={handleError} />
+					) : room instanceof RemoteRoom ? (
+						<GenericRoomView room={room} />
+					) : null}
+
+					<Button type="button" onClick={() => roomActions.close()}>
+						Leave/Close Room
+					</Button>
+
+					<Input
+						type="text"
+						value={name}
+						onChange={(e) => setName(e.target.value)}
+						placeholder="Your Name"
+					/>
+				</>
 			) : (
-				<div>
-					<h1>Create or Join a Room</h1>
-					<Form {...form}>
-						<form onSubmit={form.handleSubmit(handleSubmit)}>
-							<FormField
-								control={form.control}
-								name="roomCode"
-								render={({ field }) => (
-									<FormItem>
-										<FormLabel>Room Code</FormLabel>
-										<FormControl>
-											<Input
-												type="text"
-												maxLength={4}
-												{...field}
-											/>
-										</FormControl>
-									</FormItem>
-								)}
-							/>
-							<Button type="submit">Join Room</Button>
-						</form>
-					</Form>
-				</div>
+				<>
+					<p>No Room Exists</p>
+					<Input
+						type="text"
+						ref={newRoomNameRef}
+						placeholder="Room Name"
+					/>
+					<Button
+						type="button"
+						onClick={() =>
+							roomActions.create({
+								name:
+									newRoomNameRef.current!.value || 'My Room',
+							})
+						}
+					>
+						Create a room
+					</Button>
+					<Separator />
+					<Input
+						type="text"
+						ref={roomCodeRef}
+						placeholder="Room Code"
+					/>
+					<Button
+						type="button"
+						onClick={() =>
+							roomActions.join(
+								roomHost,
+								RoomCode(roomCodeRef.current!.value),
+							)
+						}
+					>
+						Join Room
+					</Button>
+				</>
 			)}
 		</div>
 	);
 }
 
-export default RoomView;
+export default RoomConfigurator;
+
+function LocalRoomView({
+	room,
+	handleError,
+}: {
+	room: Room;
+	handleError: (err: string) => void;
+}) {
+	const roomHost = useRoomHost();
+	const [enteredRoomHost, setEnteredRoomHost] = useState(roomHost.host);
+
+	const hosts = useBehaviorSubject(room.hosts$);
+
+	return (
+		<>
+			<p>Local Room "{room.meta.data.name}"</p>
+			<ul className="ml-2">
+				{[...hosts.entries()].map(([host, publication]) => {
+					return (
+						<li key={host}>
+							Published to {host} with code {publication.roomCode}
+						</li>
+					);
+				})}
+
+				<li>
+					<div className="flex gap-2">
+						<Input
+							type="text"
+							value={enteredRoomHost}
+							onChange={(e) => setEnteredRoomHost(e.target.value)}
+						/>
+						<Button
+							variant="outline"
+							onClick={() => setEnteredRoomHost(roomHost.host)}
+							disabled={enteredRoomHost === roomHost.host}
+						>
+							<RefreshCcw />
+						</Button>
+						<Button
+							onClick={() =>
+								room
+									.publish(RoomHost.get(enteredRoomHost))
+									.inspectErr((err) => {
+										Logger.error('Publish failed', err);
+									})
+									.mapErr((err) => {
+										return err.message;
+									})
+									.unwrapOrElse(handleError)
+							}
+							disabled={
+								enteredRoomHost.length === 0 ||
+								hosts.has(enteredRoomHost)
+							}
+						>
+							{hosts.has(enteredRoomHost)
+								? 'Already Published'
+								: 'Publish'}
+						</Button>
+					</div>
+				</li>
+			</ul>
+
+			<GenericRoomView room={room} />
+		</>
+	);
+}
+
+function GenericRoomView({ room }: { room: RoomApi }) {
+	const meta = useBehaviorSubject(room.meta.data$);
+	const members = useCollectionQuery(room.db.get('member')) ?? [];
+	const presense = useBehaviorSubject(room.presence$);
+
+	return (
+		<>
+			<p>Remote Room "{meta.name}"</p>
+
+			{members.length > 0 && (
+				<>
+					<h3>Members</h3>
+					<ul>
+						{members.map(({ data: member }) => (
+							<li
+								key={member.id}
+								title={member.id}
+								className="pl-2"
+							>
+								{member.name}:{' '}
+								<span className="text-rose-300">
+									{member.id}
+								</span>
+								<ul>
+									{member.identities.map((id) => (
+										<li key={id.host} className="pl-2">
+											<span className="text-indigo-300">
+												{id.id}{' '}
+												{presense.get(id.id)
+													? '(Online)'
+													: '(Offline)'}
+											</span>
+										</li>
+									))}
+								</ul>
+							</li>
+						))}
+					</ul>
+				</>
+			)}
+		</>
+	);
+}

@@ -1,36 +1,23 @@
-import sybilProfile from '@/components/InitiativeTable/fixtures/sybil_profile.png';
-import { Button } from '@/components/ui/button';
-import {
-	ResizableHandle,
-	ResizablePanel,
-	ResizablePanelGroup,
-} from '@/components/ui/resizable';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Dnd5eApi } from '@/generated/dnd5eapi/Dnd5eApi';
-import useCustomCreatureList from '@/hooks/useCustomCreatureList';
-import useLocalStorage from '@/hooks/useLocalStorage';
-import useMonsterList from '@/hooks/useMonsterList';
-import { useShareCode } from '@/hooks/useShareCode';
-import { usePrimaryDispatch, usePrimarySelector } from '@/store/primary-store';
-import {
-	removeEntity,
-	setCurrentTurnEntityId,
-	setDefault,
-	setEntity,
-	swapEntities,
-} from '@/store/reducers/initiativeSlice';
-import {
-	getObfuscatedHealthText,
-	HealthObfuscation,
-	type Entity,
-} from '@/store/types/Entity';
 import { DropdownMenuTrigger } from '@radix-ui/react-dropdown-menu';
 import { ChevronDown, Plus, Trash } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import EntityPropertyPanel from './entity-property-panel';
-import InitiativeTable from './InitiativeTable/InitiativeTable';
-import type { InitiativeTableEntry } from './InitiativeTable/InitiativeTableEntry';
-import { usePopout } from './PopoutProvider';
+import {
+	type Dispatch,
+	type SetStateAction,
+	useCallback,
+	useEffect,
+	useMemo,
+	useState,
+} from 'react';
+import { combineLatest, distinctUntilChanged, map, Observable } from 'rxjs';
+
+import EntityPropertiesForm from '@/components/forms/EntityProperties/Form';
+import type { EntityProperties } from '@/components/forms/EntityProperties/schema';
+import {
+	applyEntityToInitiativeEntry,
+	toEntity,
+} from '@/components/forms/EntityProperties/translate';
+import InitiativeTable from '@/components/InitiativeTable/InitiativeTable';
+import { Button } from '@/components/ui/button';
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -38,146 +25,117 @@ import {
 	DropdownMenuItem,
 	DropdownMenuLabel,
 	DropdownMenuSeparator,
-} from './ui/dropdown-menu';
-import { Input } from './ui/input';
+} from '@/components/ui/dropdown-menu';
+import { Input } from '@/components/ui/input';
+import {
+	ResizableHandle,
+	ResizablePanel,
+	ResizablePanelGroup,
+} from '@/components/ui/resizable';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import type { DocumentApi } from '@/db/Collection';
+import type { InitiativeTableEntryRecord } from '@/db/record/InitiativeTableEntry';
+import { dnd5eApi, dnd5eApiUrl } from '@/dnd5eApi';
+import useBehaviorSubject from '@/hooks/useBehaviorSubject';
+import useCollectionQuery from '@/hooks/useCollectionQuery';
+import useLocalStorage from '@/hooks/useLocalStorage';
+import useMonsterList from '@/hooks/useMonsterList';
+import useObservable from '@/hooks/useObservable';
+import rollDice from '@/lib/rollDice';
+import { type Entity, HealthObfuscation } from '@/store/types/Entity';
+import useRoomContext from '@/sync/react/context/room/useRoomContext';
+import type RoomApi from '@/sync/room/RoomApi';
+import type EncounterApi from '@/type/EncounterApi';
 
-function GameMasterControlPanel() {
-	const shareCodes = useShareCode();
+function GameMasterControlPanel({
+	room,
+	encounter,
+}: {
+	room: RoomApi;
+	encounter: EncounterApi;
+}) {
 	const [splitDirection] = useLocalStorage('layoutDirection', (v) =>
 		v !== 'vertical' ? 'horizontal' : 'vertical',
 	);
 
-	const { entities, currentTurnEntityId } = usePrimarySelector(
-		(state) => state.initiative,
+	const initiativeTableEntry = useCollectionQuery(
+		room.db.get('initiativeTableEntry'),
 	);
-	const dispatch = usePrimaryDispatch();
+	const encounterData = useBehaviorSubject(encounter.data$);
+	const shareCode = useBehaviorSubject(room.code$);
 
-	const [characters] = useCustomCreatureList();
 	const { monsters } = useMonsterList();
 
-	useEffect(() => {
-		dispatch(
-			setDefault([
-				{
-					id: crypto.randomUUID(),
-					visible: true,
-					initiative: 10,
-					obfuscateHealth: HealthObfuscation.NO,
-
-					creature: {
-						id: crypto.randomUUID(),
-						name: 'Sybil Snow',
-						race: 'Human',
-						notes: "Sybil is a cool chick who doesn't afraid of anything.",
-						image: sybilProfile,
-						hp: 11,
-						maxHp: 11,
-						debuffs: [],
-					},
-				},
-			]),
-		);
-	}, [dispatch]);
+	const characters = useCollectionQuery(room.db.get('creature'));
 
 	const [selectedEntityId, setSelectedEntityId] = useState<string | null>(
 		null,
 	);
 
-	const { setOpen } = usePopout();
-
-	const selectedEntity = entities.find(
-		(entity) => entity.id === selectedEntityId,
-	);
+	const selectedInitiativeTableEntry = initiativeTableEntry
+		?.values()
+		.find((entity) => entity.data.id === selectedEntityId);
 
 	const createNewEntity = useCallback(() => {
-		const newEntity: Entity = {
+		const _newEntity: Entity = {
 			id: crypto.randomUUID(),
 			visible: false,
 			initiative: 0,
 			obfuscateHealth: HealthObfuscation.NO,
 			creature: {
-				id: crypto.randomUUID(),
-				name: 'New Entity',
-				race: 'Ghost',
-				hp: 10,
-				maxHp: 10,
-				debuffs: [],
+				type: 'generic',
+				data: {
+					name: 'New Entity',
+					race: 'Ghost',
+					hp: 10,
+					maxHp: 10,
+					debuffs: [],
+					images: [],
+				},
 			},
 		};
-		dispatch(setEntity(newEntity));
-		setSelectedEntityId(newEntity.id);
-	}, [dispatch]);
 
-	const entitiesView: InitiativeTableEntry[] = useMemo(
-		() =>
-			entities.map((entity) => {
-				const ety: InitiativeTableEntry = {
-					initiative: entity.initiative,
-					name: entity.creature.name,
-					race: entity.creature.race,
-					image: entity.creature.image,
-					description: entity.creature.notes,
-					id: entity.id,
-					healthDisplay:
-						`${entity.creature.hp}/${entity.creature.maxHp}${entity.creature.hitpointsRoll ? ` (${entity.creature.hitpointsRoll})` : ''}` +
-						(entity.obfuscateHealth !== HealthObfuscation.NO
-							? ` (${getObfuscatedHealthText(
-									entity.creature.hp,
-									entity.creature.maxHp,
-									entity.obfuscateHealth,
-								)})`
-							: ''),
-					debuffs: entity.creature.debuffs ?? [],
-				};
-				if (!entity.visible) {
-					ety.effect = 'invisible';
-				}
-				return ety;
-			}),
-		[entities],
-	);
+		// dispatch(setEntity(newEntity));
+		// setSelectedEntityId(newEntity.id);
+	}, []);
 
-	const advanceTurn = useCallback(() => {
-		const currentIndex = entities.findIndex(
-			(entity) => entity.id === currentTurnEntityId,
-		);
-		if (currentIndex === -1) return;
-		const currentEntity = entities[currentIndex];
-
-		const nextIndex = (currentIndex + 1) % entities.length;
-		const nextEntity = entities[nextIndex];
-		if (
-			currentEntity.creature.debuffs?.some(
-				(debuff) => debuff.duration !== undefined,
-			)
-		) {
-			const newDebuffs = currentEntity.creature.debuffs
-				.map((debuff) => {
-					if (debuff.duration !== undefined) {
-						return {
-							...debuff,
-							duration: debuff.duration - 1,
-						};
-					}
-					return debuff;
-				})
-				.filter(
-					(debuff) =>
-						debuff.duration === undefined || debuff.duration > 0,
-				);
-
-			dispatch(
-				setEntity({
-					...currentEntity,
-					creature: {
-						...currentEntity.creature,
-						debuffs: newDebuffs,
-					},
-				}),
-			);
-		}
-		dispatch(setCurrentTurnEntityId(nextEntity.id));
-	}, [entities, currentTurnEntityId, dispatch]);
+	// const entitiesView: InitiativeTableEntry[] = useMemo(
+	// 	() =>
+	// 		entities
+	// 			.filter((entity) => {
+	// 				if (entity.creature.type === 'unique') {
+	// 					const id = entity.creature.id;
+	// 					return characters.some((c) => c.id === id);
+	// 				}
+	// 			})
+	// 			.map((entity) => {
+	// 				const creature = (() => {
+	// 					if (entity.creature.type === 'unique') {
+	// 						const id = entity.creature.id;
+	// 						return characters.find((c) => c.id === id)!;
+	// 					} else return entity.creature.data;
+	// 				})();
+	// 				const ety: InitiativeTableEntry = {
+	// 					id: entity.id,
+	// 					initiative: entity.initiative,
+	// 					creature: entity.creature,
+	// 					healthDisplay:
+	// 						`${creature.hp}/${creature.maxHp}${creature.hitpointsRoll ? ` (${creature.hitpointsRoll})` : ''}` +
+	// 						(entity.obfuscateHealth !== HealthObfuscation.NO
+	// 							? ` (${getObfuscatedHealthText(
+	// 									creature.hp,
+	// 									creature.maxHp,
+	// 									entity.obfuscateHealth,
+	// 								)})`
+	// 							: ''),
+	// 				};
+	// 				if (!entity.visible) {
+	// 					ety.effect = 'invisible';
+	// 				}
+	// 				return ety;
+	// 			}),
+	// 	[entities, characters],
+	// );
 
 	return (
 		<ResizablePanelGroup
@@ -186,15 +144,24 @@ function GameMasterControlPanel() {
 		>
 			<ResizablePanel defaultSize={50}>
 				<ScrollArea className="h-full">
-					<Button onClick={() => setOpen(true)}>
-						Open in Popout
-					</Button>
-					<Input
-						type="text"
-						value={shareCodes.roomCode ?? ''}
-						readOnly
+					<Button onClick={() => alert('NYI')}>Open in Popout</Button>
+					<Input type="text" value={shareCode ?? ''} readOnly />
+					<EncounterView
+						room={room}
+						encounter={encounter}
+						selectedEntityId={selectedEntityId}
+						setSelectedEntityId={setSelectedEntityId}
 					/>
-					<InitiativeTable
+					{/* <InitiativeTable
+						fieldVisibility={{
+							initiative: true,
+							name: true,
+							race: true,
+							ac: true,
+							health: true,
+							debuffs: true,
+							description: true,
+						}}
 						entries={entitiesView}
 						selectedEntityId={selectedEntityId}
 						onEntityClick={({ id }) => setSelectedEntityId(id)}
@@ -220,7 +187,7 @@ function GameMasterControlPanel() {
 								<span className="sr-only">Edit entity</span>
 							</Button>
 						)}
-					/>
+					/> */}
 					<div className="sticky bottom-0 left-0 w-full flex justify-center p-4">
 						<div className="inline-flex items-stretch border rounded-md overflow-hidden divide-x divide-border bg-background shadow shadow-black">
 							<Button
@@ -247,34 +214,44 @@ function GameMasterControlPanel() {
 										<DropdownMenuLabel>
 											Players
 										</DropdownMenuLabel>
-										{characters.length > 0 ? (
-											characters.map((character) => (
-												<DropdownMenuItem
-													key={character.id}
-													onClick={() => {
-														const newEntity: Entity =
-															{
-																id: crypto.randomUUID(),
-																creature:
-																	character,
-																visible: false,
-																initiative: 0,
-																obfuscateHealth:
-																	HealthObfuscation.NO,
-															};
-														dispatch(
-															setEntity(
-																newEntity,
-															),
-														);
-														setSelectedEntityId(
-															newEntity.id,
-														);
-													}}
-												>
-													{character.name}
-												</DropdownMenuItem>
-											))
+										{characters && characters.length > 0 ? (
+											characters.map(
+												({ data: character }) => (
+													<DropdownMenuItem
+														key={character.id}
+														onClick={() => {
+															room.db
+																.get(
+																	'initiativeTableEntry',
+																)
+																.create({
+																	encounterId:
+																		encounterData.id,
+																	creature: {
+																		type: 'unique',
+																		id: character.id,
+																	},
+																	healthDisplay:
+																		HealthObfuscation.NO,
+																	initiative: 0,
+																})
+																.then(
+																	(
+																		record,
+																	) => {
+																		setSelectedEntityId(
+																			record
+																				.data
+																				.id,
+																		);
+																	},
+																);
+														}}
+													>
+														{character.name}
+													</DropdownMenuItem>
+												),
+											)
 										) : (
 											<DropdownMenuItem disabled>
 												Create some Player Character
@@ -293,13 +270,20 @@ function GameMasterControlPanel() {
 													key={monster.index}
 													onClick={() => {
 														(async () => {
-															const api =
-																new Dnd5eApi();
-															const result = (
-																await api.api._2014MonstersDetail(
-																	monster.index,
-																)
-															).data;
+															const {
+																data: result,
+															} =
+																await dnd5eApi.GET(
+																	'/api/2014/monsters/{index}',
+																	{
+																		params: {
+																			path: {
+																				index: monster.index,
+																			},
+																		},
+																	},
+																);
+															if (!result) return;
 															const hitpoints =
 																result.hit_points_roll !==
 																undefined
@@ -311,52 +295,62 @@ function GameMasterControlPanel() {
 																		)
 																	: (result.hit_points ??
 																		0);
-															const newEntity: Entity =
-																{
-																	id: crypto.randomUUID(),
-																	visible: false,
+															room.db
+																.get(
+																	'initiativeTableEntry',
+																)
+																.create({
+																	encounterId:
+																		encounterData.id,
 																	initiative: 0,
 
-																	obfuscateHealth:
-																		HealthObfuscation.TEXT,
+																	healthDisplay:
+																		'dead',
 																	creature: {
-																		id: result.index!,
-																		name: result.name!,
-																		race: result.name!,
-																		hp: hitpoints,
-																		maxHp: hitpoints,
-																		attributes:
-																			{
-																				strength:
-																					result.strength,
-																				dexterity:
-																					result.dexterity,
-																				constitution:
-																					result.constitution,
-																				intelligence:
-																					result.intelligence,
-																				wisdom: result.wisdom,
-																				charisma:
-																					result.charisma,
-																			},
-																		speed: result.speed,
-																		image:
-																			api.baseUrl +
-																			result.image,
-																		hitpointsRoll:
-																			result.hit_points_roll,
-																		debuffs:
-																			[],
+																		type: 'generic',
+																		data: {
+																			name: result.name!,
+																			race: result.name!,
+																			hp: hitpoints,
+																			maxHp: hitpoints,
+																			attributes:
+																				{
+																					strength:
+																						result.strength,
+																					dexterity:
+																						result.dexterity,
+																					constitution:
+																						result.constitution,
+																					intelligence:
+																						result.intelligence,
+																					wisdom: result.wisdom,
+																					charisma:
+																						result.charisma,
+																				},
+																			speed: result.speed,
+																			images: [
+																				dnd5eApiUrl +
+																					result.image,
+																			],
+																			hitpointsRoll:
+																				result.hit_points_roll,
+																			debuffs:
+																				[],
+																		},
 																	},
-																};
-															dispatch(
-																setEntity(
-																	newEntity,
-																),
-															);
-															setSelectedEntityId(
-																newEntity.id,
-															);
+																})
+																.then(
+																	(
+																		newEntity,
+																	) => {
+																		setSelectedEntityId(
+																			newEntity
+																				.data$
+																				.value
+																				.id,
+																		);
+																	},
+																);
 														})();
 													}}
 												>
@@ -378,14 +372,11 @@ function GameMasterControlPanel() {
 			<ResizableHandle />
 			<ResizablePanel defaultSize={50}>
 				<ScrollArea className="h-full">
-					{selectedEntity ? (
+					{selectedInitiativeTableEntry ? (
 						<div className="pl-4 pr-6 py-4">
-							<EntityPropertyPanel
-								entity={selectedEntity}
-								key={selectedEntity.id}
-								onChange={(entity) => {
-									dispatch(setEntity(entity));
-								}}
+							<InitiativeTableEntryForm
+								record={selectedInitiativeTableEntry}
+								key={selectedInitiativeTableEntry.data.id}
 							/>
 						</div>
 					) : (
@@ -399,30 +390,155 @@ function GameMasterControlPanel() {
 	);
 }
 
-function rollDice(str: string): number {
-	const [count, sides, modifier] = (() => {
-		const match =
-			/^(?<count>\d+)d(?<sides>\d+)(?<modifier>[+-]?\d+)?$/.exec(str);
-		if (!match) {
-			throw new Error(`Invalid dice format: ${str}`);
-		}
-
-		const { count, sides, modifier } = match.groups as {
-			count: string;
-			sides: string;
-			modifier?: string;
-		};
-		return [
-			Number(count),
-			Number(sides),
-			modifier ? Number(modifier) : 0,
-		] as const;
-	})();
-
-	let total = 0;
-	for (let i = 0; i < count; i++) {
-		total += Math.floor(Math.random() * sides) + 1;
-	}
-	return total + modifier;
-}
 export default GameMasterControlPanel;
+
+function InitiativeTableEntryForm({
+	record,
+}: {
+	record: DocumentApi<InitiativeTableEntryRecord>;
+}) {
+	const room = useRoomContext();
+
+	if (!room) {
+		throw new Error('No room context');
+	}
+
+	const [entity, setEntity] = useState<EntityProperties>();
+
+	useEffect(() => {
+		toEntity(record.data, room.db.get('creature')).then(setEntity);
+	}, [record, room]);
+
+	const saveEntityPanelChanges = useCallback(
+		async (id: string, data: EntityProperties) => {
+			const record = await room.db
+				.get('initiativeTableEntry')
+				.getOne({ id })
+				.unwrap('Entity not found');
+			applyEntityToInitiativeEntry(record, data, room.db.get('creature'));
+		},
+		[room],
+	);
+
+	if (!entity) {
+		return <div>Loading...</div>;
+	}
+
+	return (
+		<EntityPropertiesForm
+			entity={entity}
+			onChange={(data) => {
+				applyEntityToInitiativeEntry(
+					record,
+					data,
+					room.db.get('creature'),
+				);
+				setEntity(data);
+			}}
+		/>
+	);
+}
+
+// function InitiativeTableWrapper() {
+// 	const room = useRoomContext();
+
+// 	if (!room) {
+// 		return <div>No room</div>;
+// 	}
+
+// 	if (!encounter.ready) {
+// 		return <div>Loading encounter...</div>;
+// 	}
+
+// 	if (!encounter.value) {
+// 		return <div>No encounter found</div>;
+// 	}
+
+// 	return <EncounterView room={room} encounter={encounter.value} />;
+// }
+
+function EncounterView({
+	room,
+	encounter,
+	selectedEntityId,
+	setSelectedEntityId,
+}: {
+	room: RoomApi;
+	encounter: EncounterApi;
+	selectedEntityId: string | null;
+	setSelectedEntityId: Dispatch<SetStateAction<string | null>>;
+}) {
+	const encounterFilter = useMemo(
+		() => ({
+			encounterId: encounter.data.id,
+		}),
+		[encounter],
+	);
+	const entitiesSet = useCollectionQuery(
+		room.db.get('initiativeTableEntry'),
+		encounterFilter,
+	);
+
+	const initiatives$ = useMemo(() => {
+		if (!entitiesSet) return new Observable<never>();
+
+		return combineLatest(
+			entitiesSet.map((e) =>
+				e.data$.asObservable().pipe(
+					map((data) => data.initiative),
+					distinctUntilChanged(),
+				),
+			),
+		);
+	}, [entitiesSet]);
+
+	const initiatives = useObservable(initiatives$, []);
+
+	console.log(initiatives);
+	const entities = useMemo(() => {
+		return (
+			entitiesSet?.toSorted(
+				(a, b) => b.data.initiative - a.data.initiative,
+			) ?? []
+		);
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [entitiesSet, initiatives.join(',')]);
+
+	const encounterData = useBehaviorSubject(encounter.data$);
+
+	return (
+		<InitiativeTable
+			entries={entities}
+			selectedEntityId={selectedEntityId}
+			onEntityClick={({ id }) => setSelectedEntityId(id)}
+			currentTurnEntityId={encounterData.currentTurn}
+			onToggleTurn={({ id }, pressed) => {
+				encounter.update({
+					merge: { currentTurn: { replace: pressed ? id : null } },
+				});
+			}}
+			fieldVisibility={{
+				initiative: true,
+				name: true,
+				race: true,
+				ac: true,
+				health: true,
+				debuffs: true,
+				description: true,
+			}}
+			onAdvanceTurnClick={() => encounter.advanceTurn()}
+			actions={(entity) => (
+				<Button
+					variant="ghost"
+					className="opacity-0 group-hover:opacity-100"
+					onClick={() => {
+						entity.delete();
+					}}
+				>
+					<Trash />
+					<span className="sr-only">Edit entity</span>
+				</Button>
+			)}
+		/>
+	);
+}

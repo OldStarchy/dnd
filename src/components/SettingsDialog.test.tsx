@@ -1,6 +1,7 @@
 import '@/index.css';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render } from 'vitest-browser-react';
+
 import { SettingsDialog } from './SettingsDialog';
 
 // Mock the useServerConfig hook

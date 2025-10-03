@@ -1,26 +1,18 @@
-import {
-	MessagePortClientProvider,
-	WebsocketClientProvider,
-} from '@/components/ClientProvider';
-import PlayerViewPanel from '@/components/player-view-panel';
+// import PlayerViewPanel from '@/components/player-view-panel';
 import { useSearchParams } from 'react-router';
 
 function PopoutView() {
 	const [params] = useSearchParams();
 
 	if (params.get('local') !== null) {
-		return (
-			<MessagePortClientProvider>
-				<PlayerViewPanel />
-			</MessagePortClientProvider>
-		);
+		return <PlayerViewPanel />;
 	} else {
-		return (
-			<WebsocketClientProvider>
-				<PlayerViewPanel />
-			</WebsocketClientProvider>
-		);
+		return <PlayerViewPanel />;
 	}
 }
 
 export default PopoutView;
+
+function PlayerViewPanel() {
+	return <div>Player View Panel (TODO)</div>;
+}

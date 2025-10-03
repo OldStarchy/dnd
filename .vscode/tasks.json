@@ -1,0 +1,34 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"type": "npm",
+			"script": "build",
+			"group": {
+				"kind": "build",
+				"isDefault": true
+			},
+			"problemMatcher": [],
+			"label": "npm: build",
+			"detail": "tsc -b && vite build"
+		},
+		{
+			"type": "npm",
+			"script": "dev",
+			"problemMatcher": [],
+			"label": "npm: dev",
+			"detail": "vite",
+			"runOptions": {
+				"runOn": "folderOpen"
+			}
+		},
+		{
+			"type": "npm",
+			"script": "type-check/watch",
+			"group": "build",
+			"problemMatcher": ["$tsc-watch"],
+			"label": "npm: type-check/watch",
+			"detail": "tsc --project tsconfig.app.json --noEmit --watch"
+		}
+	]
+}

@@ -1,6 +1,8 @@
+import type { ComponentPropsWithoutRef } from 'react';
+
 import { cn } from '@/lib/utils';
-import { Debuff as DebuffObj } from '@/type/Debuff';
-import { type ComponentPropsWithoutRef } from 'react';
+import type { Debuff as DebuffObj } from '@/type/Debuff';
+
 import { Badge } from './ui/badge';
 import { HoverCard, HoverCardContent, HoverCardTrigger } from './ui/hover-card';
 import { Separator } from './ui/separator';

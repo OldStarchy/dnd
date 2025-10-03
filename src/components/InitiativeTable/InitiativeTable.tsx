@@ -1,5 +1,6 @@
-import { Fragment, useCallback, useRef, type ReactNode } from 'react';
-import { Button } from '../ui/button';
+import { Fragment, type ReactNode, useCallback, useRef } from 'react';
+
+import { Button } from '@/components/ui/button';
 import {
 	Table,
 	TableBody,
@@ -8,9 +9,22 @@ import {
 	TableHead,
 	TableHeader,
 	TableRow,
-} from '../ui/table';
-import type { InitiativeTableEntry } from './InitiativeTableEntry';
+} from '@/components/ui/table';
+import type { InitiativeTableEntryApi } from '@/type/EncounterApi';
+
 import InitiativeTableRow from './InitiativeTableRow';
+
+const defaultFieldVisibility = {
+	initiative: true,
+	name: true,
+	race: true,
+	ac: true,
+	health: true,
+	debuffs: true,
+	description: true,
+};
+
+export type FieldVisibility = typeof defaultFieldVisibility;
 
 export default function InitiativeTable({
 	entries,
@@ -22,16 +36,18 @@ export default function InitiativeTable({
 	onEntityClick,
 	onToggleTurn,
 	onAdvanceTurnClick,
+	fieldVisibility: vis = defaultFieldVisibility,
 }: {
-	entries: InitiativeTableEntry[];
+	entries: InitiativeTableEntryApi[];
 	currentTurnEntityId?: string | null;
 	selectedEntityId?: string | null;
-	actions?: (entity: InitiativeTableEntry, index: number) => ReactNode;
+	actions?: (entity: InitiativeTableEntryApi, index: number) => ReactNode;
 	footer?: ReactNode;
 	onSwapEntities?: (a: number, b: number) => void;
-	onEntityClick?: (entity: InitiativeTableEntry) => void;
-	onToggleTurn?: (entity: InitiativeTableEntry, pressed: boolean) => void;
+	onEntityClick?: (entity: InitiativeTableEntryApi) => void;
+	onToggleTurn?: (entity: InitiativeTableEntryApi, pressed: boolean) => void;
 	onAdvanceTurnClick?: () => void;
+	fieldVisibility?: FieldVisibility;
 }) {
 	const draggable = Boolean(onSwapEntities) || undefined;
 	const dragFromIndex = useRef<number | null>(null);
@@ -72,19 +88,23 @@ export default function InitiativeTable({
 			<TableHeader>
 				<TableRow>
 					<TableHead className="w-0">Turn</TableHead>
-					<TableHead>
-						<span title="Initiative">Init.</span>
-					</TableHead>
-					<TableHead colSpan={2}>Name</TableHead>
-					<TableHead>Race</TableHead>
-					<TableHead>Health</TableHead>
-					<TableHead>Debuffs</TableHead>
+					{vis.initiative && (
+						<TableHead>
+							<span title="Initiative">Init.</span>
+						</TableHead>
+					)}
+					{vis.name && <TableHead colSpan={2}>Name</TableHead>}
+					{vis.race && <TableHead>Race</TableHead>}
+					{vis.ac && <TableHead>AC</TableHead>}
+					{vis.health && <TableHead>Health</TableHead>}
+					{vis.debuffs && <TableHead>Debuffs</TableHead>}
 					<TableHead />
 				</TableRow>
 			</TableHeader>
 			{entries.map((entity, index) => (
 				<Fragment key={entity.id}>
 					<InitiativeTableRow
+						fieldVisibility={vis}
 						entry={entity}
 						selected={selectedEntityId === entity.id}
 						draggable={draggable}

@@ -5,12 +5,11 @@ export const debuffSpec = z.object({
 	color: z.string().min(1, 'Color is required'),
 	notes: z.string().optional(),
 	description: z.string().optional(),
-	duration: z.coerce
-		.number()
+	duration: z
 		.int()
 		.min(0, 'Duration must be a non-negative integer')
-		.optional()
-		.transform((val) => (val === 0 ? undefined : val)),
+		.transform((val) => (val === 0 ? undefined : val))
+		.optional(),
 });
 
 export type Debuff = z.infer<typeof debuffSpec>;

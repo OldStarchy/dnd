@@ -1,0 +1,36 @@
+{
+	"[typescript]": {
+		"editor.defaultFormatter": "esbenp.prettier-vscode",
+		"editor.codeActionsOnSave": {
+			"source.organizeImports": "never",
+			"source.fixAll.eslint": "always"
+		}
+	},
+
+	"[typescriptreact]": {
+		"editor.defaultFormatter": "esbenp.prettier-vscode",
+		"editor.codeActionsOnSave": {
+			"source.organizeImports": "never",
+			"source.fixAll.eslint": "always"
+		}
+	},
+
+	"remote.portsAttributes": {
+		"3000": {
+			"label": "Application",
+			"onAutoForward": "ignore"
+		},
+		"5173": {
+			"label": "Vite",
+			"onAutoForward": "ignore"
+		}
+	},
+
+	"typescript.preferences.autoImportSpecifierExcludeRegexes": [
+		"^node:",
+		"vm",
+		"^@radix-ui/.*"
+	],
+
+	"typescript.tsdk": "node_modules/typescript/lib"
+}

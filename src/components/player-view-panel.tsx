@@ -1,7 +1,9 @@
+/*
 import InitiativeTable from '@/components/InitiativeTable/InitiativeTable';
-import { useClient } from '@/hooks/useClient';
-import { useState } from 'react';
-import type { InitiativeTableEntry } from './InitiativeTable/InitiativeTableEntry';
+import { setCurrentTurnEntityId } from '@/store/reducers/initiativeSlice';
+import useRoomContext from '@/sync/react/hooks/useRoomContext';
+import { useEffect, useState } from 'react';
+import type { InitiativeTableEntry } from '../db/record/InitiativeTableEntry';
 
 function PlayerViewPanel() {
 	const [initiativeTableEntries, setInitiativeTableEntries] = useState<
@@ -11,24 +13,32 @@ function PlayerViewPanel() {
 		string | null
 	>(null);
 
-	useClient({
-		handleNotification: (update) => {
+	const room = useRoomContext();
+
+	useEffect(() => {
+		return room?.notification$.on((update) => {
 			switch (update.type) {
 				case 'initiativeTableUpdate': {
-					setInitiativeTableEntries(update.data);
+					setInitiativeTableEntries(update.data.entries);
+					setCurrentTurnEntityId(update.data.currentTurnId);
 					break;
 				}
-				default: {
-					// @ts-expect-error unused
-					const _exhaustiveCheck: never = update;
-				}
 			}
-		},
-	});
+		});
+	}, [client]);
 
 	return (
 		<div>
 			<InitiativeTable
+				fieldVisibility={{
+					initiative: true,
+					name: true,
+					race: false,
+					ac: false,
+					health: true,
+					debuffs: true,
+					description: true,
+				}}
 				entries={initiativeTableEntries}
 				currentTurnEntityId={currentTurnEntityId}
 			/>
@@ -37,3 +47,4 @@ function PlayerViewPanel() {
 }
 
 export default PlayerViewPanel;
+*/
