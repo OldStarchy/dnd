@@ -99,9 +99,9 @@ export function applyChangeset<T>(
 
 				if (typeof filter === 'object') {
 					filter = merged.findIndex(
-						(v) => v.id == (filter as { id: unknown }).id,
+						(v) => v.id === (filter as { id: unknown }).id,
 					);
-					if (filter == -1) continue;
+					if (filter === -1) continue;
 				}
 
 				const newVal = applyChangeset(merged[filter], change);
@@ -117,9 +117,9 @@ export function applyChangeset<T>(
 			for (let filter of update.remove! as Filter<T>[]) {
 				if (typeof filter === 'object') {
 					filter = merged.findIndex(
-						(v) => v.id == (filter as { id: unknown }).id,
+						(v) => v.id === (filter as { id: unknown }).id,
 					);
-					if (filter == -1) continue;
+					if (filter === -1) continue;
 				}
 				removals.push(filter as number);
 			}
@@ -147,7 +147,7 @@ export function applyChangeset<T>(
 					return filter;
 				} else if ('id' in filter) {
 					const index = merged.findIndex(
-						(item) => item['id'] === filter.id,
+						(item) => item.id === filter.id,
 					);
 					if (index === -1) {
 						throw new Error(

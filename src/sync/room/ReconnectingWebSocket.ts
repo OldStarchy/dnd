@@ -117,6 +117,7 @@ export default class ReconnectingWebSocket
 
 				// Normal Closure
 				// TODO: 1005 is a bug in the server, it should be 1000
+				// Tracked by https://github.com/OldStarchy/dnd_host/issues/4
 				if (event.code === 1000 || event.code === 1005) {
 					this.updateState(socket.readyState);
 					return;

@@ -18,6 +18,8 @@
 		/* Linting */
 		"strict": true,
 		// TODO: change this to true after https://github.com/microsoft/TypeScript/pull/62323
+		// TS is returning false positives when variables start with an
+		// underscore (eg. `const _exhaustiveCheck: never = foo;`)
 		"noUnusedLocals": false,
 		"noUnusedParameters": true,
 		"erasableSyntaxOnly": false,

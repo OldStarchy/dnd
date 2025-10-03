@@ -5,11 +5,7 @@ function PopoutView() {
 	const [params] = useSearchParams();
 
 	if (params.get('local') !== null) {
-		return (
-			// <RoomProvider port={port}>
-			<PlayerViewPanel />
-			// </RoomProvider>
-		);
+		return <PlayerViewPanel />;
 	} else {
 		return <PlayerViewPanel />;
 	}
