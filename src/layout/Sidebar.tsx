@@ -1,3 +1,4 @@
+import { SiGithub } from '@icons-pack/react-simple-icons';
 import { DropdownMenuLabel } from '@radix-ui/react-dropdown-menu';
 import {
 	BugPlay,
@@ -306,6 +307,21 @@ export default function AppSidebar() {
 									>
 										<Cog />
 										Settings
+									</Button>
+								</DropdownMenuItem>
+								<DropdownMenuItem asChild>
+									<Button
+										variant="ghost"
+										className="w-full justify-start"
+										asChild
+									>
+										<Link
+											to="https://github.com/OldStarchy/dnd"
+											target="_blank"
+										>
+											<SiGithub />
+											GitHub
+										</Link>
 									</Button>
 								</DropdownMenuItem>
 							</DropdownMenuContent>
