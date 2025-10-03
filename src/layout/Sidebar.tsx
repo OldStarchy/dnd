@@ -41,8 +41,7 @@ import slugToTitleCase from '@/lib/slugToTitleCase';
 import { sandboxRoutes } from '@/routes';
 
 export default function AppSidebar() {
-	const [settingsOpen, setSettingsOpen] = useState(false);
-	const [userDropdownOpen, setUserDropdownOpen] = useState(false);
+	const [menuOpen, setMenuOpen] = useState<null | 'settings' | 'user'>(null);
 
 	const mainEntries = [
 		{
@@ -269,8 +268,10 @@ export default function AppSidebar() {
 					))}
 					<SidebarMenuItem>
 						<DropdownMenu
-							open={userDropdownOpen}
-							onOpenChange={setUserDropdownOpen}
+							open={menuOpen === 'user'}
+							onOpenChange={(open) =>
+								setMenuOpen(open ? 'user' : null)
+							}
 						>
 							<DropdownMenuTrigger asChild>
 								<SidebarMenuButton>
@@ -299,8 +300,7 @@ export default function AppSidebar() {
 									<Button
 										onClick={(e) => {
 											e.preventDefault();
-											setUserDropdownOpen(false);
-											setSettingsOpen(true);
+											setMenuOpen('settings');
 										}}
 										variant="ghost"
 										className="w-full justify-start"
@@ -330,8 +330,8 @@ export default function AppSidebar() {
 				</SidebarMenu>
 			</SidebarFooter>
 			<SettingsDialog
-				open={settingsOpen}
-				onOpenChange={setSettingsOpen}
+				open={menuOpen === 'settings'}
+				onOpenChange={(open) => setMenuOpen(open ? 'settings' : null)}
 			/>
 		</Sidebar>
 	);
