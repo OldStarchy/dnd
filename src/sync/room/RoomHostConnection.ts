@@ -7,6 +7,7 @@ import deferred from '@/deferred';
 import CancellablePromise from '@/lib/CancellablePromise';
 import filterMap, { Skip } from '@/lib/filterMap';
 import Logger from '@/lib/log';
+import createUuid from '@/lib/uuid';
 import { InboundNotification, InboundRequest } from '@/sync/message/inbound';
 import type { OutboundNotification } from '@/sync/message/outbound';
 import {
@@ -219,7 +220,7 @@ export default class RoomHostConnection {
 	): CancellablePromise<UserMessageOfType<'response'>> {
 		return new CancellablePromise<UserMessageOfType<'response'>>(
 			(resolve, reject, signal) => {
-				const id: string = crypto.randomUUID();
+				const id: string = createUuid();
 
 				const subscription = this.userMessage$
 					.pipe(

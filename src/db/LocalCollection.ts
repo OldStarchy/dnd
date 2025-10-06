@@ -3,6 +3,7 @@ import type z from 'zod';
 
 import { AsyncOption } from '@/lib/AsyncOption';
 import { applyChangeset, type ChangeSet } from '@/lib/changeSet';
+import createUuid from '@/lib/uuid';
 import type { DndDb } from '@/sync/room/RoomApi';
 
 import type { Collection, DocumentApi } from './Collection';
@@ -53,7 +54,7 @@ export abstract class LocalCollection<
 	}
 
 	private generateId(): string {
-		return crypto.randomUUID();
+		return createUuid();
 	}
 
 	protected abstract getRaw(): RecordType['record'][];

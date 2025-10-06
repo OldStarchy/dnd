@@ -4,6 +4,7 @@ import type z from 'zod';
 import type { Collection, DocumentApi } from '@/db/Collection';
 import type { AnyRecordType } from '@/db/RecordType';
 import exhaustiveCheck from '@/lib/exhaustiveCheck';
+import createUuid from '@/lib/uuid';
 import type {
 	closeGet$RequestSchema,
 	createRequestSchema,
@@ -115,7 +116,7 @@ export class CollectionHost<
 				'A subscription to a database was made but the member went missing before it could start.',
 			);
 
-		const id = crypto.randomUUID();
+		const id = createUuid();
 		const subscription = collection.get$(data.filter).subscribe((items) => {
 			const raw = items.values().map((item) => item.data);
 

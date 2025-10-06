@@ -42,6 +42,7 @@ import useLocalStorage from '@/hooks/useLocalStorage';
 import useMonsterList from '@/hooks/useMonsterList';
 import useObservable from '@/hooks/useObservable';
 import rollDice from '@/lib/rollDice';
+import createUuid from '@/lib/uuid';
 import { type Entity, HealthObfuscation } from '@/store/types/Entity';
 import useRoomContext from '@/sync/react/context/room/useRoomContext';
 import type RoomApi from '@/sync/room/RoomApi';
@@ -78,7 +79,7 @@ function GameMasterControlPanel({
 
 	const createNewEntity = useCallback(() => {
 		const _newEntity: Entity = {
-			id: crypto.randomUUID(),
+			id: createUuid(),
 			visible: false,
 			initiative: 0,
 			obfuscateHealth: HealthObfuscation.NO,
