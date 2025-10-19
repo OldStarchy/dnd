@@ -29,8 +29,18 @@ export class AsyncOption<T> implements PromiseLike<Option<T>> {
 		return new AsyncOption(Promise.resolve(None()));
 	}
 
-	map<U>(fn: (value: T) => U): AsyncOption<U> {
-		return new AsyncOption(this.then((v) => v.map(fn)));
+	map<U>(fn: (value: T) => U | PromiseLike<U>): AsyncOption<U> {
+		return new AsyncOption(
+			this.then(async (v) => {
+				if (v.isNone()) return v;
+
+				return Some(await fn(v.unwrap()));
+			}),
+		);
+	}
+
+	andThen<U>(fn: (value: T) => Option<U>): AsyncOption<U> {
+		return new AsyncOption(this.then((v) => v.andThen(fn)));
 	}
 
 	inspect(fn: (value: T) => Promise<void> | void): AsyncOption<T> {
@@ -54,6 +64,25 @@ export class AsyncOption<T> implements PromiseLike<Option<T>> {
 
 	unwrap(message?: string): PromiseLike<T> {
 		return this.then((v) => v.unwrap(message));
+	}
+
+	filter<U extends T>(predicate: (value: T) => value is U): AsyncOption<U>;
+	filter(
+		predicate: (value: T) => boolean | PromiseLike<boolean>,
+	): AsyncOption<T>;
+
+	filter(
+		predicate: (value: T) => boolean | PromiseLike<boolean>,
+	): AsyncOption<unknown> {
+		return new AsyncOption(
+			this.then((v) => {
+				if (v.isNone()) return v;
+
+				if (!predicate(v.unwrap())) return None();
+
+				return v;
+			}),
+		);
 	}
 
 	then<TResult1, TResult2>(
