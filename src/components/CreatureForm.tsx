@@ -25,7 +25,7 @@ const formSchema = creatureSchema.omit({
 
 export type CreatureFormData = z.infer<typeof formSchema>;
 
-function defaultCreature(): CreatureFormData {
+function defaultCreature() {
 	return {
 		name: '',
 		hp: 10,
@@ -110,6 +110,9 @@ function CreatureForm({
 											<FormControl>
 												<Input
 													{...field}
+													value={
+														field.value ?? undefined
+													}
 													placeholder="Race"
 												/>
 											</FormControl>
@@ -203,6 +206,7 @@ function CreatureForm({
 									<FormControl>
 										<Textarea
 											{...field}
+											value={field.value ?? undefined}
 											placeholder="Additional notes..."
 										/>
 									</FormControl>
@@ -227,6 +231,7 @@ function CreatureForm({
 												type="string"
 												className="[grid-row-start:field]"
 												{...field}
+												value={field.value ?? undefined}
 												placeholder="-"
 											/>
 										</FormControl>
@@ -247,6 +252,7 @@ function CreatureForm({
 												type="string"
 												className="[grid-row-start:field]"
 												{...field}
+												value={field.value ?? undefined}
 												placeholder="-"
 											/>
 										</FormControl>
@@ -267,6 +273,7 @@ function CreatureForm({
 												type="string"
 												className="[grid-row-start:field]"
 												{...field}
+												value={field.value ?? undefined}
 												placeholder="-"
 											/>
 										</FormControl>
@@ -287,6 +294,7 @@ function CreatureForm({
 												type="string"
 												className="[grid-row-start:field]"
 												{...field}
+												value={field.value ?? undefined}
 												placeholder="-"
 											/>
 										</FormControl>
@@ -313,9 +321,7 @@ function CreatureForm({
 								<FormField
 									key={attr}
 									control={form.control}
-									name={
-										`attributes.${attr}` as keyof CreatureFormData['attributes']
-									}
+									name={`attributes.${attr as keyof CreatureFormData['attributes']}`}
 									render={({ field }) => (
 										<FormItem className="contents">
 											<FormLabel className="[grid-column-start:label] capitalize">
@@ -328,6 +334,9 @@ function CreatureForm({
 													type="number"
 													className="[grid-column-start:field]"
 													{...field}
+													value={
+														field.value ?? undefined
+													}
 													placeholder="-"
 												/>
 											</FormControl>
@@ -335,10 +344,7 @@ function CreatureForm({
 
 											<Label className="[grid-column-start:mod]">
 												{Math.floor(
-													(Number.parseInt(
-														field.value ?? '0',
-													) -
-														10) /
+													((field.value ?? 0) - 10) /
 														2,
 												)
 													.toString()
