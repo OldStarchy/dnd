@@ -19,13 +19,15 @@ import type { UserMessageOfType } from '@/sync/message/raw';
 import type RoomHostConnection from '@/sync/room/RoomHostConnection';
 import type { MemberId } from '@/sync/room/types';
 
+import type { Db } from '../room/RoomApi';
+
 export class CollectionHost<
 	const RecordMap extends {
 		[name: string]: Collection<AnyRecordType, DocumentApi<AnyRecordType>>;
 	},
 > {
-	readonly sources: RecordMap;
-	constructor(sources: RecordMap) {
+	readonly sources: Db<RecordMap>;
+	constructor(sources: Db<RecordMap>) {
 		this.sources = sources;
 	}
 
@@ -56,7 +58,7 @@ export class CollectionHost<
 					return this.#handleCloseGet$(data);
 			}
 
-			const collection = this.sources[data.collection];
+			const collection = this.sources.get(data.collection);
 			if (!collection) throw 'Collection not found';
 
 			switch (data.action) {

@@ -231,10 +231,7 @@ export default class Room implements RoomApi {
 				);
 		}
 
-		const roomMetaHost = new CollectionHost({
-			room: Room.rooms,
-			...this.db,
-		});
+		const roomMetaHost = new CollectionHost(this.db);
 
 		const teardown = roomMetaHost.provide(connection);
 

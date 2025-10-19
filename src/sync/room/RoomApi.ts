@@ -34,7 +34,10 @@ export type DndDb = Db<{
 }>;
 
 export class Db<
-	Collections extends Record<string, Collection<AnyRecordType, unknown>>,
+	Collections extends Record<
+		string,
+		Collection<AnyRecordType, unknown>
+	> = Record<string, Collection<AnyRecordType, unknown>>,
 > {
 	private readonly collections: Partial<Collections> = {};
 
