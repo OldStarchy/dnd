@@ -1,5 +1,6 @@
+import { tanstackRouter } from "@tanstack/router-plugin/vite";
 import react from "@vitejs/plugin-react";
-import { defineConfig } from "vite-plus";
+import { defineConfig, type Plugin } from "vite-plus";
 
 // https://vite.dev/config/
 export default defineConfig({
@@ -15,6 +16,7 @@ export default defineConfig({
     ],
   },
   lint: {
+    jsPlugins: ["@tanstack/eslint-plugin-router"],
     plugins: ["oxc", "typescript", "unicorn", "react"],
     categories: {
       correctness: "warn",
@@ -23,6 +25,9 @@ export default defineConfig({
       builtin: true,
     },
     ignorePatterns: ["dist"],
+    rules: {
+      "@tanstack/router/create-route-property-order": "error",
+    },
     overrides: [
       {
         files: ["**/*.{ts,tsx}"],
@@ -127,5 +132,8 @@ export default defineConfig({
       typeCheck: true,
     },
   },
-  plugins: [react()],
+  plugins: [
+    tanstackRouter({ target: "react", autoCodeSplitting: true }) as Plugin[],
+    react() as Plugin[],
+  ],
 });
