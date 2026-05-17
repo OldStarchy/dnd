@@ -1,9 +1,19 @@
-import { defineConfig } from "vite-plus";
 import react from "@vitejs/plugin-react";
+import { defineConfig } from "vite-plus";
 
 // https://vite.dev/config/
 export default defineConfig({
-  fmt: {},
+  fmt: {
+    overrides: [
+      {
+        files: ["package.json"],
+        options: {
+          tabWidth: 2,
+          useTabs: false,
+        },
+      },
+    ],
+  },
   lint: {
     plugins: ["oxc", "typescript", "unicorn", "react"],
     categories: {
