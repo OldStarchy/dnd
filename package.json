@@ -1,38 +1,38 @@
 {
-  "name": "d-zero",
-  "version": "0.0.0",
-  "private": true,
-  "type": "module",
-  "scripts": {
-    "dev": "vp dev",
-    "build": "tsc -b && vp build",
-    "lint": "vp lint .",
-    "preview": "vp preview"
-  },
-  "dependencies": {
-    "@tanstack/react-router": "^1.170.4",
-    "react": "^19.2.6",
-    "react-dom": "^19.2.6",
-    "yjs": "^13.6.30"
-  },
-  "devDependencies": {
-    "@eslint/js": "^10.0.1",
-    "@tanstack/eslint-plugin-router": "^1.162.0",
-    "@tanstack/router-plugin": "^1.168.6",
-    "@types/node": "^24.12.4",
-    "@types/react": "^19.2.14",
-    "@types/react-dom": "^19.2.3",
-    "@vitejs/plugin-react": "^6.0.2",
-    "@vitest/browser-playwright": "^4.1.6",
-    "eslint-plugin-react-hooks": "^7.1.1",
-    "eslint-plugin-react-refresh": "^0.5.2",
-    "globals": "^17.6.0",
-    "typescript": "~6.0.3",
-    "typescript-eslint": "^8.59.4",
-    "vite": "catalog:",
-    "vite-plus": "catalog:",
-    "vitest": "catalog:",
-    "vitest-browser-react": "^2.2.0"
-  },
-  "packageManager": "pnpm@11.1.1"
+	"name": "d-zero",
+	"version": "0.0.0",
+	"private": true,
+	"type": "module",
+	"scripts": {
+		"dev": "vp dev",
+		"build": "tsc -b && vp build",
+		"lint": "vp lint .",
+		"preview": "vp preview"
+	},
+	"dependencies": {
+		"@tanstack/react-router": "^1.170.4",
+		"react": "^19.2.6",
+		"react-dom": "^19.2.6",
+		"yjs": "^13.6.30"
+	},
+	"devDependencies": {
+		"@eslint/js": "^10.0.1",
+		"@tanstack/eslint-plugin-router": "^1.162.0",
+		"@tanstack/router-plugin": "^1.168.6",
+		"@types/node": "^24.12.4",
+		"@types/react": "^19.2.14",
+		"@types/react-dom": "^19.2.3",
+		"@vitejs/plugin-react": "^6.0.2",
+		"@vitest/browser-playwright": "^4.1.6",
+		"eslint-plugin-react-hooks": "^7.1.1",
+		"eslint-plugin-react-refresh": "^0.5.2",
+		"globals": "^17.6.0",
+		"typescript": "~6.0.3",
+		"typescript-eslint": "^8.59.4",
+		"vite": "catalog:",
+		"vite-plus": "catalog:",
+		"vitest": "catalog:",
+		"vitest-browser-react": "^2.2.0"
+	},
+	"packageManager": "pnpm@11.1.1"
 }
