@@ -5,6 +5,11 @@ import { defineConfig } from 'vitest/config';
 export default defineConfig({
 	plugins: [react()],
 	test: {
+		include: ['src/**/*.test.ts', 'src/**/*.test.tsx'],
+		coverage: {
+			enabled: true,
+			provider: 'v8',
+		},
 		projects: [
 			{
 				test: {
@@ -20,8 +25,16 @@ export default defineConfig({
 						headless: true,
 						instances: [
 							{ browser: 'chromium' },
-							//webkit only works in headless mode
-							{ browser: 'webkit' },
+
+							// webkit doesn't work with v8 coverage, and there's no good way to check if coverage is enabled (via
+							// --coverage) to exclude it; checking process.argv doesn't work when running from the vitest test
+							// explorer in vscode.
+							// {
+							// 	browser: 'webkit',
+
+							// 	//webkit only works in headless mode
+							// 	headless: true,
+							// },
 						],
 					},
 				},
