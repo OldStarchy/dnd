@@ -1,6 +1,6 @@
 import { tanstackRouter } from '@tanstack/router-plugin/vite';
 import react from '@vitejs/plugin-react';
-import { defineConfig, type Plugin } from 'vite-plus';
+import { defineConfig } from 'vite-plus';
 
 // https://vite.dev/config/
 export default defineConfig({
@@ -91,13 +91,19 @@ export default defineConfig({
 					'no-array-constructor': 'error',
 					'no-unused-expressions': 'error',
 					'typescript/ban-ts-comment': 'error',
+					'typescript/consistent-type-assertions': [
+						'error',
+						{
+							assertionStyle: 'never',
+						},
+					],
 					'typescript/no-duplicate-enum-values': 'error',
 					'typescript/no-empty-object-type': 'error',
 					'typescript/no-explicit-any': 'error',
 					'typescript/no-extra-non-null-assertion': 'error',
 					'typescript/no-misused-new': 'error',
-					'typescript/no-namespace': 'error',
 					'typescript/no-non-null-asserted-optional-chain': 'error',
+					'typescript/no-non-null-assertion': 'error',
 					'typescript/no-require-imports': 'error',
 					'typescript/no-this-alias': 'error',
 					'typescript/no-unnecessary-type-constraint': 'error',
@@ -124,13 +130,14 @@ export default defineConfig({
 		options: {
 			typeAware: true,
 			typeCheck: true,
+			reportUnusedDisableDirectives: 'error',
 		},
 	},
 	plugins: [
 		tanstackRouter({
 			target: 'react',
 			autoCodeSplitting: true,
-		}) as Plugin[],
-		react() as Plugin[],
+		}),
+		react(),
 	],
 });

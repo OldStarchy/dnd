@@ -1,15 +1,7 @@
-interface Creature {
-	id: string;
-	name: string;
-	description: string;
-}
-
-interface DmData {
-	creatures: Record<string, Creature>;
-}
-
-// oxlint-disable-next-line typescript/no-empty-object-type
-interface PlayerData extends DmData {}
+import createId from './createId';
+import type CreatureFragment from './docs/CreatureFragment';
+import type { Creature } from './docs/CreatureFragment';
+import PlayerDoc from './docs/PlayerDoc';
 
 type SyncOptions =
 	| {
@@ -21,51 +13,48 @@ type SyncOptions =
 			syncAll?: undefined;
 	  };
 
-interface PlayerEntry {
-	player: Player;
-	defaultSyncOptions: SyncOptions;
-	syncMapping: Map<string, SyncOptions>;
-}
-
+/**
+ * A "SourceView" (name pending) holds both the DM's source of truth (`data`) and every players view of that data.
+ *
+ * When players are added, sync options can be set to determine how the player's view of that data is obfuscated.
+ */
 export default class SourceView {
-	private data: DmData = {
-		creatures: {},
-	};
-	private players: Map<string, PlayerEntry> = new Map();
+	public data = new PlayerDoc();
+	private playerData: Map<string, Player> = new Map();
 
-	getData() {
-		return structuredClone(this.data);
+	constructor() {
+		this.data.creature$.subscribe((deletedIdOrCreature) => {
+			if (typeof deletedIdOrCreature === 'string') {
+				// creature was deleted
+				for (const player of this.playerData.values()) {
+					player.data.deleteCreature(deletedIdOrCreature);
+				}
+			} else {
+				// creature was added or updated
+				for (const player of this.playerData.values()) {
+					this.syncCreatureToPlayer(deletedIdOrCreature, player);
+				}
+			}
+		});
 	}
 
 	addPlayer(name: string, syncOptions: SyncOptions) {
-		const id = crypto.randomUUID();
-		const newPlayer = (() => {
-			if (syncOptions.syncAll) {
-				return new Player(id, name, structuredClone(this.data));
-			} else {
-				return new Player(id, name, { creatures: {} });
-			}
-		})();
+		const player = new Player(name, syncOptions);
 
-		this.players.set(id, {
-			player: newPlayer,
-			defaultSyncOptions: syncOptions,
-			syncMapping: new Map(),
-		});
+		this.playerData.set(player.id, player);
 
-		return newPlayer;
+		for (const creature of Object.values(this.data.creatures)) {
+			this.syncCreatureToPlayer(creature, player);
+		}
+		if (this.data.encounter) {
+			player.data.startEncounter(this.data.encounter.export());
+		}
+
+		return player;
 	}
 
 	getPlayerNames() {
-		return Array.from(this.players.keys());
-	}
-
-	addCreature(creature: Creature) {
-		this.data.creatures[creature.id] = creature;
-
-		for (const entry of this.players.values()) {
-			this.syncCreatureToPlayer(creature, entry);
-		}
+		return Array.from(this.playerData.values().map((playerData) => playerData.name));
 	}
 
 	updateCreature(creatureId: string, updates: Partial<Creature>) {
@@ -74,24 +63,21 @@ export default class SourceView {
 			throw new Error(`Creature with id ${creatureId} does not exist.`);
 		}
 
-		this.data.creatures[creatureId] = { ...creature, ...updates };
-
-		for (const entry of this.players.values()) {
-			this.syncCreatureToPlayer(this.data.creatures[creatureId], entry);
-		}
+		creature.import({ ...creature.export(), ...updates });
 	}
 
-	private syncCreatureToPlayer(creature: Creature, entry: PlayerEntry) {
-		const { player, defaultSyncOptions, syncMapping } = entry;
+	private syncCreatureToPlayer(creature: CreatureFragment, player: Player) {
+		const { defaultSyncOptions, syncMapping } = player;
 		const effectiveSyncOptions = syncMapping.get(creature.id) ?? defaultSyncOptions;
 
+		const data = creature.export();
+
 		if (effectiveSyncOptions.syncAll) {
-			player.acceptNewData(this.data);
+			player.data.publishCreature(data);
 		} else if (effectiveSyncOptions.obfuscator) {
-			const obfuscatedCreature = effectiveSyncOptions.obfuscator(creature);
-			const playerData = player.getData();
-			playerData.creatures[creature.id] = obfuscatedCreature;
-			player.acceptNewData(playerData);
+			const obfuscatedCreature = effectiveSyncOptions.obfuscator(data);
+
+			player.data.publishCreature(obfuscatedCreature);
 		}
 	}
 
@@ -101,29 +87,28 @@ export default class SourceView {
 			throw new Error(`Creature with id ${creatureId} does not exist.`);
 		}
 
-		const playerEntry = this.players.get(playerId);
-		if (!playerEntry) {
+		const player = this.playerData.get(playerId);
+		if (!player) {
 			throw new Error(`Player with id ${playerId} does not exist.`);
 		}
 
-		playerEntry.syncMapping.set(creatureId, syncOptions);
+		player.syncMapping.set(creatureId, syncOptions);
 
-		this.syncCreatureToPlayer(creature, playerEntry);
+		this.syncCreatureToPlayer(creature, player);
 	}
 }
 
 export class Player {
+	public readonly id: string;
+	public syncMapping: Map<string, SyncOptions>;
+	public readonly data: PlayerDoc;
+
 	constructor(
-		public readonly id: string,
-		private name: string,
-		private data: PlayerData,
-	) {}
-
-	getData() {
-		return structuredClone(this.data);
-	}
-
-	acceptNewData(newData: PlayerData) {
-		this.data = structuredClone(newData);
+		public readonly name: string,
+		public defaultSyncOptions: SyncOptions,
+	) {
+		this.id = createId();
+		this.syncMapping = new Map();
+		this.data = new PlayerDoc();
 	}
 }

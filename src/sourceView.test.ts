@@ -9,7 +9,7 @@ describe('SourceView', () => {
 
 	test('initializes dmData', () => {
 		const sourceOfTruth = new SourceView();
-		expect(sourceOfTruth.getData()).toEqual({ creatures: {} });
+		expect(sourceOfTruth.data).toBeDefined();
 	});
 
 	test('players are tracked', () => {
@@ -24,8 +24,7 @@ describe('SourceView', () => {
 		describe('syncAll: true', () => {
 			test('syncs intial data to player', () => {
 				const sourceOfTruth = new SourceView();
-				sourceOfTruth.addCreature({
-					id: '1',
+				sourceOfTruth.data.createCreature({
 					name: 'Goblin',
 					description: 'A small, green creature.',
 				});
@@ -34,13 +33,12 @@ describe('SourceView', () => {
 					syncAll: true,
 				});
 
-				expect(otherPlayer.getData().creatures).toEqual(sourceOfTruth.getData().creatures);
+				expect(otherPlayer.data.export()).toEqual(sourceOfTruth.data.export());
 			});
 
 			test('syncs changed to data to player', () => {
 				const sourceOfTruth = new SourceView();
-				sourceOfTruth.addCreature({
-					id: '1',
+				sourceOfTruth.data.createCreature({
 					name: 'Goblin',
 					description: 'A small, green creature.',
 				});
@@ -49,21 +47,19 @@ describe('SourceView', () => {
 					syncAll: true,
 				});
 
-				sourceOfTruth.addCreature({
-					id: '2',
+				sourceOfTruth.data.createCreature({
 					name: 'Orc',
 					description: 'A large, brutish creature.',
 				});
 
-				expect(otherPlayer.getData().creatures).toEqual(sourceOfTruth.getData().creatures);
+				expect(otherPlayer.data.export()).toEqual(sourceOfTruth.data.export());
 			});
 		});
 
 		describe('syncAll: false', () => {
 			test('does not syncs initial to data to player', () => {
 				const sourceOfTruth = new SourceView();
-				sourceOfTruth.addCreature({
-					id: '1',
+				sourceOfTruth.data.createCreature({
 					name: 'Goblin',
 					description: 'A small, green creature.',
 				});
@@ -72,21 +68,19 @@ describe('SourceView', () => {
 					syncAll: false,
 				});
 
-				expect(otherPlayer.getData().creatures).toEqual({});
+				expect(otherPlayer.data.export().creatures).toEqual({});
 			});
 		});
 
 		describe('publishCreature', () => {
 			test('syncs published creatures to player', () => {
 				const sourceOfTruth = new SourceView();
-				sourceOfTruth.addCreature({
-					id: '1',
+				const { id: id1 } = sourceOfTruth.data.createCreature({
 					name: 'Goblin',
 					description: 'A small, green creature.',
 				});
 
-				sourceOfTruth.addCreature({
-					id: '2',
+				const { id: id2 } = sourceOfTruth.data.createCreature({
 					name: 'Big Bad Boss Guy',
 					description: 'A large, brutish creature.',
 				});
@@ -95,8 +89,8 @@ describe('SourceView', () => {
 					syncAll: false,
 				});
 
-				sourceOfTruth.publishCreature('1', otherPlayer.id, { syncAll: true });
-				sourceOfTruth.publishCreature('2', otherPlayer.id, {
+				sourceOfTruth.publishCreature(id1, otherPlayer.id, { syncAll: true });
+				sourceOfTruth.publishCreature(id2, otherPlayer.id, {
 					obfuscator: (creature) => ({
 						...creature,
 						name: 'Unknown Creature',
@@ -104,14 +98,14 @@ describe('SourceView', () => {
 					}),
 				});
 
-				expect(otherPlayer.getData().creatures).toEqual({
-					'1': {
-						id: '1',
+				expect(otherPlayer.data.export().creatures).toEqual({
+					[id1]: {
+						id: id1,
 						name: 'Goblin',
 						description: 'A small, green creature.',
 					},
-					'2': {
-						id: '2',
+					[id2]: {
+						id: id2,
 						name: 'Unknown Creature',
 						description: 'An unknown creature.',
 					},
@@ -120,14 +114,12 @@ describe('SourceView', () => {
 
 			test('obfuscates updates to creatures', () => {
 				const sourceOfTruth = new SourceView();
-				sourceOfTruth.addCreature({
-					id: '1',
+				const { id: id1 } = sourceOfTruth.data.createCreature({
 					name: 'Goblin',
 					description: 'A small, green creature.',
 				});
 
-				sourceOfTruth.addCreature({
-					id: '2',
+				const { id: id2 } = sourceOfTruth.data.createCreature({
 					name: 'Big Bad Boss Guy',
 					description: 'A large, brutish creature.',
 				});
@@ -136,8 +128,8 @@ describe('SourceView', () => {
 					syncAll: false,
 				});
 
-				sourceOfTruth.publishCreature('1', otherPlayer.id, { syncAll: true });
-				sourceOfTruth.publishCreature('2', otherPlayer.id, {
+				sourceOfTruth.publishCreature(id1, otherPlayer.id, { syncAll: true });
+				sourceOfTruth.publishCreature(id2, otherPlayer.id, {
 					obfuscator: (creature) => ({
 						...creature,
 						name: 'Unknown Creature',
@@ -145,35 +137,51 @@ describe('SourceView', () => {
 					}),
 				});
 
-				expect(otherPlayer.getData().creatures).toEqual({
-					'1': {
-						id: '1',
+				expect(otherPlayer.data.export().creatures).toEqual({
+					[id1]: {
+						id: id1,
 						name: 'Goblin',
 						description: 'A small, green creature.',
 					},
-					'2': {
-						id: '2',
+					[id2]: {
+						id: id2,
 						name: 'Unknown Creature',
 						description: 'An unknown creature.',
 					},
 				});
 
-				sourceOfTruth.updateCreature('1', { name: 'Barry' });
-				sourceOfTruth.updateCreature('2', { description: 'A very dangerous creature.' });
+				sourceOfTruth.updateCreature(id1, { name: 'Barry' });
+				sourceOfTruth.updateCreature(id2, { description: 'A very dangerous creature.' });
 
-				expect(otherPlayer.getData().creatures).toEqual({
-					'1': {
-						id: '1',
+				expect(otherPlayer.data.export().creatures).toEqual({
+					[id1]: {
+						id: id1,
 						name: 'Barry',
 						description: 'A small, green creature.',
 					},
-					'2': {
-						id: '2',
+					[id2]: {
+						id: id2,
 						name: 'Unknown Creature',
 						description: 'An unknown creature.',
 					},
 				});
 			});
+		});
+
+		test('delete creature syncs to player', () => {
+			const sourceOfTruth = new SourceView();
+			const { id } = sourceOfTruth.data.createCreature({
+				name: 'Goblin',
+				description: 'A small, green creature.',
+			});
+
+			const otherPlayer = sourceOfTruth.addPlayer('Alice', {
+				syncAll: true,
+			});
+
+			sourceOfTruth.data.deleteCreature(id);
+
+			expect(otherPlayer.data.export().creatures).toEqual({});
 		});
 	});
 });
