@@ -1,6 +1,12 @@
 {
 	"npm.scriptRunner": "vp",
 	"editor.defaultFormatter": "oxc.oxc-vscode",
+	"[css]": {
+		"editor.defaultFormatter": "oxc.oxc-vscode"
+	},
+	"[json]": {
+		"editor.defaultFormatter": "oxc.oxc-vscode"
+	},
 	"[javascript]": {
 		"editor.defaultFormatter": "oxc.oxc-vscode"
 	},

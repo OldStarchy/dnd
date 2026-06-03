@@ -8,6 +8,7 @@ export default defineConfig({
 		singleQuote: true,
 		semi: true,
 		useTabs: true,
+		ignorePatterns: ['*.gen.ts'],
 	},
 	lint: {
 		jsPlugins: ['@tanstack/eslint-plugin-router'],
@@ -18,7 +19,7 @@ export default defineConfig({
 		env: {
 			builtin: true,
 		},
-		ignorePatterns: ['dist'],
+		ignorePatterns: ['*.gen.ts'],
 		rules: {
 			'@tanstack/router/create-route-property-order': 'error',
 		},
