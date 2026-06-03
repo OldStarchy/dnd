@@ -1,3 +1,4 @@
+// oxlint-disable typescript/no-non-null-assertion
 import { describe, expect, test } from 'vitest';
 import * as Y from 'yjs';
 
