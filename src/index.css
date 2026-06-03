@@ -64,6 +64,149 @@ body {
 	margin: 0;
 }
 
+.page-home {
+	padding: 24px;
+	text-align: left;
+	display: grid;
+	gap: 16px;
+}
+
+.page-home__mode {
+	margin: 0;
+	font-size: 14px;
+	color: var(--text);
+}
+
+.chat-room {
+	display: grid;
+	gap: 16px;
+	padding: 20px;
+	border: 1px solid var(--border);
+	border-radius: 12px;
+	box-shadow: var(--shadow);
+	background: linear-gradient(180deg, var(--bg), var(--code-bg));
+}
+
+.chat-room__header {
+	display: grid;
+	gap: 4px;
+}
+
+.chat-room__header h1 {
+	margin: 0;
+	font-size: 32px;
+	letter-spacing: -0.5px;
+}
+
+.chat-room__status {
+	font-size: 14px;
+	color: var(--text);
+}
+
+.chat-room__status[data-status='connected'] {
+	color: #0f766e;
+}
+
+.chat-room__status[data-status='connecting'] {
+	color: #1d4ed8;
+}
+
+.chat-room__status[data-status='unsupported'] {
+	color: #b91c1c;
+}
+
+.chat-room__panel {
+	padding: 12px;
+	border-radius: 10px;
+	border: 1px solid var(--border);
+	background: var(--bg);
+	display: grid;
+	gap: 8px;
+}
+
+.chat-room__panel h2 {
+	margin: 0;
+	font-size: 18px;
+}
+
+.chat-room__panel ul,
+.chat-room__messages {
+	margin: 0;
+	padding-inline-start: 20px;
+	display: grid;
+	gap: 6px;
+}
+
+.chat-room__messages li {
+	display: grid;
+	gap: 2px;
+	word-break: break-word;
+}
+
+.chat-room__messages li[data-kind='message'] {
+	padding: 8px;
+	border-radius: 8px;
+	background: var(--code-bg);
+}
+
+.chat-room__composer {
+	display: grid;
+	grid-template-columns: 1fr auto;
+	gap: 8px;
+	align-items: center;
+}
+
+.chat-room__composer label {
+	grid-column: 1 / -1;
+	font-size: 14px;
+	font-weight: 500;
+}
+
+.chat-room__composer input {
+	height: 40px;
+	padding: 0 12px;
+	border-radius: 8px;
+	border: 1px solid var(--border);
+	background: var(--bg);
+	color: var(--text-h);
+	font: inherit;
+}
+
+.chat-room__composer button {
+	height: 40px;
+	padding: 0 16px;
+	border-radius: 8px;
+	border: 1px solid var(--accent-border);
+	background: var(--accent-bg);
+	color: var(--text-h);
+	font: inherit;
+	font-weight: 600;
+	cursor: pointer;
+}
+
+.chat-room__composer button:disabled {
+	opacity: 0.5;
+	cursor: not-allowed;
+}
+
+@media (max-width: 720px) {
+	.page-home {
+		padding: 16px;
+	}
+
+	.chat-room {
+		padding: 14px;
+	}
+
+	.chat-room__header h1 {
+		font-size: 24px;
+	}
+
+	.chat-room__composer {
+		grid-template-columns: 1fr;
+	}
+}
+
 h1,
 h2 {
 	font-family: var(--heading);
