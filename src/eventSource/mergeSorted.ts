@@ -1,5 +1,8 @@
+// oxlint-disable typescript/no-non-null-assertion
+
 export function mergeSorted<T>(left: T[], right: T[], compare: (a: T, b: T) => number): T[] {
-	let i = 0, j = 0;
+	let i = 0,
+		j = 0;
 	const result: T[] = [];
 
 	while (i < left.length && j < right.length) {

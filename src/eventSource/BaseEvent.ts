@@ -1,7 +1,7 @@
-export interface BaseEvent {
+export interface BaseEvent<Payload> {
 	id: string;
-	type: string;
 	timestamp: number;
-	source: {clientId: string;};
-	context?: Record<string, any>;
+	source: { clientId: string };
+	context?: Record<string, unknown>;
+	payload: Payload;
 }

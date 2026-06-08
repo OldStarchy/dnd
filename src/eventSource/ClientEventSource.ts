@@ -1,17 +1,21 @@
-import type {BaseEvent} from './BaseEvent';
-import type {EventMessage} from './EventMessage';
-import {EventSource} from './EventSource';
-import type {ReconnectingPort} from './ReconnectingPort';
+import createUid from '../lib/createUid';
+import type { BaseEvent } from './BaseEvent';
+import type { EventMessage } from './EventMessage';
+import { EventSource } from './EventSource';
+import type { Port } from './ReconnectingPort';
 
-class ClientEventSource<E extends BaseEvent, State> extends EventSource<E, State> {
+export default class ClientEventSource<EventPayload, State> extends EventSource<
+	EventPayload,
+	State
+> {
 	private static readonly PROPOSED_EVENT_RETRY_TIMEOUT = 5000; // 5 seconds
 
-	private pending: Map<string, E> = new Map();
+	private pending: Map<string, BaseEvent<EventPayload>> = new Map();
 
 	constructor(
 		initialState: State,
-		applyEvent: (state: State, event: E) => State,
-		private port: ReconnectingPort<EventMessage<E>>
+		applyEvent: (state: State, event: EventPayload) => State,
+		private port: Port<EventMessage<EventPayload>>,
 	) {
 		super(initialState, applyEvent);
 
@@ -29,29 +33,30 @@ class ClientEventSource<E extends BaseEvent, State> extends EventSource<E, State
 		this.port.addEventListener('connected', () => {
 			// Resend pending events
 			for (const event of this.pending.values()) {
-				this.sendToHost(event);
+				this.sendToHost(event.id, event.payload);
 			}
 
-			const latestTimestamp = this.events[this.events.length - 1]?.timestamp || 0;
+			const latestTimestamp = this.getEvents().at(-1)?.timestamp || 0;
 			this.requestEventHistory(latestTimestamp);
 		});
 	}
 
-	propose(eventData: Omit<E, 'id' | 'timestamp' | 'source'>): void {
-		const proposedEvent = {
-			...eventData,
-			id: this.generateEventId(),
+	propose(eventData: EventPayload): void {
+		const proposedEvent: BaseEvent<EventPayload> = {
+			id: createUid(),
 			timestamp: Date.now(),
-		} as E;
+			source: { clientId: 'self' },
+			payload: eventData,
+		};
 
 		this.pending.set(proposedEvent.id, proposedEvent);
-		this.dispatch(proposedEvent);
+		this.dispatchEvent(proposedEvent);
 
-		this.sendToHost(proposedEvent);
+		this.sendToHost(proposedEvent.id, proposedEvent.payload);
 
 		const retry = () => {
 			if (this.pending.has(proposedEvent.id)) {
-				this.sendToHost(proposedEvent);
+				this.sendToHost(proposedEvent.id, proposedEvent.payload);
 			}
 
 			setTimeout(retry, ClientEventSource.PROPOSED_EVENT_RETRY_TIMEOUT);
@@ -60,9 +65,13 @@ class ClientEventSource<E extends BaseEvent, State> extends EventSource<E, State
 		setTimeout(retry, ClientEventSource.PROPOSED_EVENT_RETRY_TIMEOUT);
 	}
 
-	protected receiveFromHost(event: E): void {
-		this.pending.delete(event.id);
-		this.dispatch(event);
+	protected receiveFromHost(event: BaseEvent<EventPayload>): void {
+		const pendingEvent = this.pending.get(event.id);
+
+		if (pendingEvent) {
+			this.pending.delete(event.id);
+			this.replaceEvent(event);
+		} else this.dispatchEvent(event);
 	}
 
 	protected rejectPendingEvent(eventId: string): void {
@@ -73,10 +82,11 @@ class ClientEventSource<E extends BaseEvent, State> extends EventSource<E, State
 		this.removeEvent(rejectedEvent);
 	}
 
-	private sendToHost(event: E): void {
+	private sendToHost(id: string, payload: EventPayload): void {
 		this.port.postMessage({
-			type: 'event',
-			event,
+			type: 'proposeEvent',
+			id,
+			payload,
 		});
 	}
 
