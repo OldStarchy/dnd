@@ -1,80 +1,12 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import createUid from '../lib/createUid';
+import { applyEvent } from './__test/applyEvent';
+import type { CounterState } from './__test/CounterState';
+import { MockPort } from './__test/MockPort';
+import type { TestEvent } from './__test/TestEvent';
 import type { BaseEvent } from './BaseEvent';
 import type { EventMessage } from './EventMessage';
 import HostEventSource from './HostEventSource';
-import type { Port, PortEventMap } from './ReconnectingPort';
-interface TestEvent {
-	type: 'ADD' | 'SUBTRACT' | 'MULTIPLY' | 'RESET';
-	payload?: {
-		value?: number;
-		newValue?: number;
-	};
-}
-
-interface CounterState {
-	count: number;
-	lastOperationType?: string;
-}
-
-function applyEvent(state: Readonly<CounterState>, event: TestEvent): CounterState {
-	switch (event.type) {
-		case 'ADD':
-			return {
-				count: state.count + (event.payload?.value ?? 1),
-				lastOperationType: 'ADD',
-			};
-		case 'SUBTRACT':
-			return {
-				count: state.count - (event.payload?.value ?? 1),
-				lastOperationType: 'SUBTRACT',
-			};
-		case 'MULTIPLY':
-			return {
-				count: state.count * (event.payload?.value ?? 1),
-				lastOperationType: 'MULTIPLY',
-			};
-		case 'RESET':
-			return {
-				count: event.payload?.newValue ?? 0,
-				lastOperationType: 'RESET',
-			};
-		default:
-			return state;
-	}
-}
-
-class MockPort<T> implements Port<T> {
-	private listeners: {
-		[K in keyof PortEventMap<T>]?: ((this: Port<T>, ev: PortEventMap<T>[K]) => unknown)[];
-	} = {};
-
-	public sentMessages: T[] = [];
-
-	postMessage(message: T): void {
-		this.sentMessages.push(message);
-	}
-
-	addEventListener<K extends keyof PortEventMap<T>>(
-		type: K,
-		listener: (this: Port<T>, ev: PortEventMap<T>[K]) => unknown,
-		_options?: { signal?: AbortSignal },
-	): void {
-		if (!this.listeners[type]) {
-			this.listeners[type] = [];
-		}
-		this.listeners[type].push(listener);
-	}
-
-	async simulateReceivedEvent<K extends keyof PortEventMap<T>>(
-		type: K,
-		event: PortEventMap<T>[K],
-	): Promise<void> {
-		this.listeners[type]?.forEach((listener) => listener.call(this, event));
-
-		await new Promise<void>((r) => setTimeout(() => r(), 0));
-	}
-}
 
 class TestHostEventSource extends HostEventSource<TestEvent, CounterState> {
 	eventQueue: {

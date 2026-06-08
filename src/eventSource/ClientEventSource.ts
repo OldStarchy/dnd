@@ -2,20 +2,18 @@ import createUid from '../lib/createUid';
 import type { BaseEvent } from './BaseEvent';
 import type { EventMessage } from './EventMessage';
 import { EventSource } from './EventSource';
-import type { Port } from './ReconnectingPort';
+import type { ReconnectingPort } from './ReconnectingPort';
 
 export default class ClientEventSource<EventPayload, State> extends EventSource<
 	EventPayload,
 	State
 > {
-	private static readonly PROPOSED_EVENT_RETRY_TIMEOUT = 5000; // 5 seconds
-
 	private pending: Map<string, BaseEvent<EventPayload>> = new Map();
 
 	constructor(
 		initialState: State,
 		applyEvent: (state: State, event: EventPayload) => State,
-		private port: Port<EventMessage<EventPayload>>,
+		private port: ReconnectingPort<EventMessage<EventPayload>>,
 	) {
 		super(initialState, applyEvent);
 
@@ -53,16 +51,6 @@ export default class ClientEventSource<EventPayload, State> extends EventSource<
 		this.dispatchEvent(proposedEvent);
 
 		this.sendToHost(proposedEvent.id, proposedEvent.payload);
-
-		const retry = () => {
-			if (this.pending.has(proposedEvent.id)) {
-				this.sendToHost(proposedEvent.id, proposedEvent.payload);
-			}
-
-			setTimeout(retry, ClientEventSource.PROPOSED_EVENT_RETRY_TIMEOUT);
-		};
-
-		setTimeout(retry, ClientEventSource.PROPOSED_EVENT_RETRY_TIMEOUT);
 	}
 
 	protected receiveFromHost(event: BaseEvent<EventPayload>): void {

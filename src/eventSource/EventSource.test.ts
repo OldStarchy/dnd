@@ -18,58 +18,19 @@
  * to validate the event sourcing behavior in a predictable manner.
  */
 
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-
 import type { Subscription } from 'rxjs';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import createUid from '../lib/createUid';
+import { applyEvent } from './__test/applyEvent';
+import type { CounterState } from './__test/CounterState';
+import type { TestEvent } from './__test/TestEvent';
 import type { BaseEvent } from './BaseEvent';
 import { EventSource } from './EventSource';
-
-// Test event types
-interface TestEvent {
-	type: 'ADD' | 'SUBTRACT' | 'MULTIPLY' | 'RESET';
-	payload?: {
-		value?: number;
-		newValue?: number;
-	};
-}
-
-interface CounterState {
-	count: number;
-	lastOperationType?: string;
-}
 
 // Test implementation
 class TestEventSource extends EventSource<TestEvent, CounterState> {
 	constructor(initialState: CounterState = { count: 0 }, options?: { snapshotInterval?: number }) {
-		super(initialState, TestEventSource.applyEvent, options);
-	}
-
-	static applyEvent(this: void, state: Readonly<CounterState>, event: TestEvent): CounterState {
-		switch (event.type) {
-			case 'ADD':
-				return {
-					count: state.count + (event.payload?.value ?? 1),
-					lastOperationType: 'ADD',
-				};
-			case 'SUBTRACT':
-				return {
-					count: state.count - (event.payload?.value ?? 1),
-					lastOperationType: 'SUBTRACT',
-				};
-			case 'MULTIPLY':
-				return {
-					count: state.count * (event.payload?.value ?? 1),
-					lastOperationType: 'MULTIPLY',
-				};
-			case 'RESET':
-				return {
-					count: event.payload?.newValue ?? 0,
-					lastOperationType: 'RESET',
-				};
-			default:
-				return state;
-		}
+		super(initialState, applyEvent, options);
 	}
 
 	dispatchEventPublic(event: BaseEvent<TestEvent>): void {
@@ -452,7 +413,7 @@ describe('EventSource', () => {
 					if (event.type === 'SUBTRACT') {
 						throw new Error('Faulty apply event');
 					}
-					return TestEventSource.applyEvent(state, event);
+					return applyEvent(state, event);
 				}
 
 				dispatchEventPublic(event: BaseEvent<TestEvent>): void {

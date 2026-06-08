@@ -2,10 +2,10 @@ import createUid from '../lib/createUid';
 import type { BaseEvent } from './BaseEvent';
 import type { EventMessage } from './EventMessage';
 import { EventSource } from './EventSource';
-import type { Port } from './ReconnectingPort';
+import type { ReconnectingPort } from './ReconnectingPort';
 
 interface Client<EventPayload> extends Disposable {
-	port: Port<EventMessage<EventPayload>>;
+	port: ReconnectingPort<EventMessage<EventPayload>>;
 }
 
 export default class HostEventSource<EventPayload, State> extends EventSource<EventPayload, State> {
@@ -43,7 +43,7 @@ export default class HostEventSource<EventPayload, State> extends EventSource<Ev
 		this.broadcast(event);
 	}
 
-	addClient(clientId: string, port: Port<EventMessage<EventPayload>>): void {
+	addClient(clientId: string, port: ReconnectingPort<EventMessage<EventPayload>>): void {
 		const abortController = new AbortController();
 
 		port.addEventListener(
@@ -105,14 +105,6 @@ export default class HostEventSource<EventPayload, State> extends EventSource<Ev
 			client[Symbol.dispose]();
 			this.clients.delete(clientId);
 		}
-	}
-
-	/**
-	 * Remove the most recent event. used for testing
-	 */
-	drop() {
-		const e = this.getEvents().at(-1);
-		if (e) this.removeEvent(e);
 	}
 
 	protected async validateClientEvent(
